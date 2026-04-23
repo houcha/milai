@@ -1,50 +1,63 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  SYNC IMPACT REPORT
+  Version change: 2.0.0 → 3.0.0
+  Removed principles: VI. Conventional Commits (relocated to CLAUDE.md — commit workflow is agent/tooling
+                       guidance, not an engineering principle)
+  Templates reviewed:
+    ✅ .specify/templates/plan-template.md — no changes needed
+    ✅ .specify/templates/spec-template.md — no changes needed
+    ✅ .specify/templates/tasks-template.md — no changes needed
+-->
+
+# milai Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Test-First
+Write tests before implementation. The default cycle is RED (failing test) → GREEN (minimum implementation) → REFACTOR. When a unit of work is exploratory or a spike, that scope MUST be explicitly acknowledged upfront; any resulting code MUST be covered by tests or discarded before the work is merged.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+**Rationale**: Tests written after implementation tend to validate what the code does rather than what it should do. Fixing the order fixes the feedback loop.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Exception rule**: Exploratory work is not exempt from eventual test coverage — it is only exempt from the strict write-test-first ordering, provided the exception is declared and resolved at merge time.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Evidence-Based Validation
+A task is complete when the expected behaviour is confirmed with realistic inputs end-to-end — not when code compiles, not when unit tests pass in isolation. Bugs MUST be reproduced with a failing test before any fix is written.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+**Rationale**: Code that passes its own tests can still fail in context. Requiring real-input verification closes the gap between "tests pass" and "done."
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Decision rule**: If you cannot show the feature working with real data, it is not done. If you cannot show the bug reproducing in a test, the root cause is not yet understood.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### III. DRY (Don't Repeat Yourself)
+Stable, repeated logic MUST live in a single named module. Extract when a pattern has appeared in three or more places AND the abstraction is stable and clearly named.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Duplication of stable logic forces every future change to be applied in multiple places, creating drift and defects.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**Tradeoff with YAGNI**: Do not extract prematurely to prevent future duplication — that is speculation, not DRY. Prefer temporary duplication while requirements are still evolving. Extract once the pattern has stabilised. When DRY and YAGNI conflict, YAGNI wins at the abstraction level; DRY wins once the pattern is confirmed stable.
+
+### IV. YAGNI (You Aren't Gonna Need It)
+Implement only what the current spec requires. When choosing between a simpler and a more flexible design, choose simpler unless the spec explicitly requires the flexibility today.
+
+**Rationale**: Unused flexibility adds cognitive load and maintenance cost without delivering value. Every abstraction not required by the spec is a liability until proven otherwise.
+
+**Tradeoff with DRY**: See Principle III. YAGNI governs when to introduce an abstraction; DRY governs when duplicated, stable logic must be consolidated.
+
+### V. Provider Interface
+Any dependency on an external service — AI provider, remote API, or data store outside the application boundary — MUST be mediated by an interface defined by the consuming code. Feature code MUST NOT import or reference a concrete provider implementation directly.
+
+**Rationale**: Interfaces decouple feature logic from external volatility, enable mocking in tests, and make provider substitution a configuration change rather than a code change.
+
+**Decision rule**: Before writing feature code that calls an external service, define the interface first. The interface is owned by the feature; the provider is a plugin.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other practices and preferences. When a principle conflicts with an implementation convenience, the principle wins. Exceptions must be explicitly justified in the PR description; unjustified exceptions are a review failure.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- All code reviews MUST verify compliance with these principles
+- Complexity or exception violations require explicit justification in the PR description
+- Amendments require: documented rationale, version bump, and updated dependent templates
+- Constitution version follows semantic versioning:
+  - MAJOR: principle removal or incompatible redefinition
+  - MINOR: new principle or material guidance addition
+  - PATCH: clarifications, wording, or non-semantic refinements
+
+**Version**: 3.0.0 | **Ratified**: 2026-04-24 | **Last Amended**: 2026-04-24

@@ -1,0 +1,32 @@
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "C4",
+    "SIM",
+    "S",
+    # "D" temporarily disabled 
+]
+
+# [tool.ruff.lint.pydocstyle]
+# convention = "google"
+
+[project]
+name = "milai"
+version = "0.1.0"
+description = "AI-Native Adaptive Language Tutor"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "prek>=0.3.10",
+    "pytest>=9.0.3",
+    "ruff>=0.15.11",
+    "textual>=8.2.4",
+    "ty>=0.0.32",
+]
