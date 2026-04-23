@@ -1,0 +1,31 @@
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+hooks = [
+  { id = "check-yaml" },
+  { id = "check-added-large-files" },
+]
+
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit"
+rev = "v0.15.11"
+hooks = [
+  # Run the linter.
+  { id = "ruff-check", args = ["--fix"], types_or = ["python", "pyi"] },
+  # Run the formatter.
+  { id = "ruff-format", types_or = ["python", "pyi"] },
+]
+
+[[repos]]
+repo = "https://github.com/crate-ci/typos"
+rev = "v1.45.0"
+hooks = [
+  { id = "typos" },
+]
+
+[[repos]]
+repo = "https://github.com/zizmorcore/zizmor-pre-commit"
+rev = "v1.24.1"
+hooks = [
+  { id = "zizmor" },
+]
