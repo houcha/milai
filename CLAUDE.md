@@ -1,9 +1,3 @@
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan:
-`specs/001-ai-language-learning/plan.md`
-<!-- SPECKIT END -->
-
 ## Toolchain
 
 Use `uv` for all Python commands. Never invoke `python`, `pip`, or `pip install` directly.
