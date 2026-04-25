@@ -1,0 +1,158 @@
+# Contract: StorageClient
+
+**File**: `milai/storage/client.py`
+**Type**: Python `Protocol` (structural subtyping)
+**Purpose**: Abstract local persistence so state handlers never reference file paths or JSON serialisation directly. Satisfies Constitution Principle V for the storage dependency.
+
+---
+
+## Protocol Definitions
+
+Two storage protocols with separate concerns:
+
+```python
+from typing import Protocol
+from milai.models.user_state import UserState
+from milai.models.history import HistoryEvent
+
+class StorageClient(Protocol):
+    async def load(self) -> UserState | None:
+        """
+        Load and return the persisted UserState, or None if no state exists yet
+        (first run). Raises StorageError if the file exists but is corrupt/invalid.
+        """
+
+    async def save(self, state: UserState) -> None:
+        """
+        Atomically persist UserState. Raises StorageError on write failure.
+        Must be safe to call after every state transition (frequent writes).
+        """
+
+    async def delete(self) -> None:
+        """
+        Delete the persisted state (user-initiated reset). No-op if no state exists.
+        Raises StorageError on failure.
+        """
+
+
+class HistoryClient(Protocol):
+    async def append(self, event: HistoryEvent) -> None:
+        """
+        Append a single event to the history log. Must not rewrite existing entries.
+        Raises StorageError on write failure.
+        """
+
+    async def read_all(self) -> list[HistoryEvent]:
+        """
+        Read and return all history events in chronological order.
+        Returns empty list if no history exists yet.
+        Raises StorageError if the log is corrupt.
+        """
+```
+
+---
+
+## Exceptions
+
+```python
+# milai/storage/errors.py
+
+class StorageError(Exception):
+    """Raised on read/write failures or data corruption."""
+    def __init__(self, message: str, *, corrupt: bool = False):
+        super().__init__(message)
+        self.corrupt = corrupt  # True = data exists but is unreadable; offer recovery
+```
+
+---
+
+## Contract Rules
+
+1. **`save` is atomic**: write to a temp file in the same directory, then `os.replace`. A crash mid-write must never leave the state file in a partially-written state.
+2. **`load` returns `None` (not raises) for a missing file**: callers treat `None` as "first run".
+3. **`load` raises `StorageError(corrupt=True)` for a present-but-invalid file**: callers handle this by offering the user a recovery prompt (backup + fresh start).
+4. **`delete` is a no-op for a missing file**: idempotent.
+5. **All methods are `async`**: even though local file I/O is synchronous, the protocol is async so a future networked implementation (e.g., cloud sync in v3) is a drop-in.
+
+---
+
+## Concrete Implementations
+
+```python
+# milai/storage/local.py
+
+class LocalStorage:
+    """
+    Stores UserState as JSON at ~/.milai/state.json.
+    Atomic writes via tempfile + os.replace.
+    """
+    DEFAULT_PATH = Path.home() / ".milai" / "state.json"
+
+    def __init__(self, path: Path = DEFAULT_PATH) -> None:
+        self._path = path
+
+    async def load(self) -> UserState | None: ...
+    async def save(self, state: UserState) -> None: ...
+    async def delete(self) -> None: ...
+
+
+class LocalHistory:
+    """
+    Appends HistoryEvents to ~/.milai/history.db (SQLite).
+    Schema is created on first use if the file does not exist.
+    """
+    DEFAULT_PATH = Path.home() / ".milai" / "history.db"
+
+    def __init__(self, path: Path = DEFAULT_PATH) -> None:
+        self._path = path
+
+    async def append(self, event: HistoryEvent) -> None: ...
+    async def read_all(self) -> list[HistoryEvent]: ...
+```
+
+Both accept a `path` parameter so tests can use `tmp_path` without touching `~/.milai`.
+
+---
+
+## Test Doubles
+
+```python
+# tests/fakes/storage_client.py
+
+class InMemoryStorage:
+    def __init__(self, initial: UserState | None = None):
+        self._state = initial
+        self.save_count = 0
+
+    async def load(self) -> UserState | None:
+        return self._state
+
+    async def save(self, state: UserState) -> None:
+        self._state = state
+        self.save_count += 1
+
+    async def delete(self) -> None:
+        self._state = None
+
+
+class InMemoryHistory:
+    def __init__(self):
+        self.events: list[HistoryEvent] = []
+
+    async def append(self, event: HistoryEvent) -> None:
+        self.events.append(event)
+
+    async def read_all(self) -> list[HistoryEvent]:
+        return list(self.events)
+```
+
+---
+
+## Implementations
+
+| Version | Implementation class | Location |
+|---|---|---|
+| v1 state | `LocalStorage` | `milai/storage/local.py` |
+| v1 history | `LocalHistory` | `milai/storage/local.py` |
+| Tests state | `InMemoryStorage` | `tests/fakes/storage_client.py` |
+| Tests history | `InMemoryHistory` | `tests/fakes/storage_client.py` |
