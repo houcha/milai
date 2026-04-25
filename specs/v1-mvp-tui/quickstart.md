@@ -1,6 +1,6 @@
 # Quickstart: milai (v1 TUI)
 
-**Branch**: `001-ai-language-learning` | **Date**: 2026-04-24
+**Branch**: `v1-mvp-tui` | **Date**: 2026-04-24
 
 ---
 

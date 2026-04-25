@@ -7,7 +7,7 @@
 
 ## Context
 
-v1 (`001-ai-language-learning`) delivered a fully working TUI application where all user-facing I/O is mediated through the `IOMediator` protocol (`milai/io/mediator.py`). The architecture was explicitly designed for this migration: `TextualMediator` is the v1 concrete implementation; v2 adds `ApiMediator` alongside it. The state machine, handlers, data model, LLM client, storage client, and SRS subsystem are unchanged.
+v1 (`v1-mvp-tui`) delivered a fully working TUI application where all user-facing I/O is mediated through the `IOMediator` protocol (`milai/io/mediator.py`). The architecture was explicitly designed for this migration: `TextualMediator` is the v1 concrete implementation; v2 adds `ApiMediator` alongside it. The state machine, handlers, data model, LLM client, storage client, and SRS subsystem are unchanged.
 
 ## Clarifications
 

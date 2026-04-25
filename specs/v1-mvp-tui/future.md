@@ -1,6 +1,6 @@
 # Future Work & Deferred Decisions
 
-**Branch**: `001-ai-language-learning` | **Date**: 2026-04-24
+**Branch**: `v1-mvp-tui` | **Date**: 2026-04-24
 
 Items here are intentionally out of scope for v1. They are recorded to prevent re-litigation and to give v2/v3 a clear starting point.
 

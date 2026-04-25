@@ -1,6 +1,6 @@
 # Feature Specification: AI-Native Self-Paced Language Learning
 
-**Feature Branch**: `001-ai-language-learning`
+**Feature Branch**: `v1-mvp-tui`
 **Created**: 2026-04-24
 **Status**: Draft
 **Input**: User description: "build an AI-native self-paced language learning application. The system is feedback-driven learning controller with a generative interface - NOT a static curriculum engine. The system is a thin wrapper over an LLM, but NOT a general-purpose autonomous agent. User flow: 1) onboarding, 2) skill assessment, 3) curriculum generation, 4) human-in-the-loop review, 5) learning loop."
