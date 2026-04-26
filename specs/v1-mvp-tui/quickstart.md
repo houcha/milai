@@ -99,10 +99,6 @@ just qa
 ## Project Layout
 
 See [plan.md](plan.md) for the full annotated project layout.
-├── pyproject.toml
-├── justfile
-└── README.md
-```
 
 ---
 
@@ -128,14 +124,3 @@ See [plan.md](plan.md) for the full annotated project layout.
 | `ANTHROPIC_API_KEY` | Anthropic models |
 
 API keys are intentionally not in `config.yaml` — secrets must not be written to files.
-
----
-
-## Extending to v2 (Web)
-
-The IOMediator pattern makes the TUI → API transition mechanical:
-
-1. Implement `ApiMediator(IOMediator)` in `milai/io/api/handler.py` — maps `show/prompt/choose/confirm` to WebSocket or HTTP SSE events
-2. Add `FastAPI` app in `milai/io/api/app.py` — injects `ApiMediator` into the `run()` loop
-3. No changes to `milai/state/`, `milai/llm/`, `milai/srs/`, or `milai/models/`
-4. Wrap in Docker: `Dockerfile` builds the FastAPI server; `milai/io/tui/` stays as a local dev entrypoint

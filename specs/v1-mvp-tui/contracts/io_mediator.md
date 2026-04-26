@@ -1,8 +1,8 @@
 # Contract: IOMediator
 
-**File**: `milai/io/mediator.py`
+**File**: `src/milai/io/mediator.py`
 **Type**: Python `Protocol` (structural subtyping)
-**Purpose**: Decouple all user-facing input/output from the state machine and LLM logic. The Textual TUI is one implementation; a future REST API or test double is another. Nothing in `milai/state/`, `milai/llm/`, or `milai/srs/` may import Textual directly.
+**Purpose**: Decouple all user-facing input/output from the state machine and LLM logic. The Textual TUI is the temporary v1 implementation; the v2 browser adapter is expected to become the product implementation. Nothing in `src/milai/state/`, `src/milai/llm/`, or `src/milai/srs/` may import Textual, FastAPI, WebSocket, cookie, or browser-specific APIs directly.
 
 ---
 
@@ -38,7 +38,7 @@ class IOMediator(Protocol):
 ## Supporting Types
 
 ```python
-# milai/io/types.py
+# src/milai/io/types.py
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -111,12 +111,12 @@ class ScriptedMediator:
 
 ---
 
-## Implementations (v1 / v2)
+## Implementations
 
 | Version | Implementation class | Location |
 |---|---|---|
-| v1 TUI | `TextualMediator` | `milai/io/tui/app.py` |
-| v2 API | `ApiMediator` (future) | `milai/io/api/handler.py` |
+| v1 TUI scaffolding | `TextualMediator` | `src/milai/io/tui/app.py` |
+| v2 Web product UI | `ApiMediator` (future) | `src/milai/io/web/mediator.py` |
 | Tests | `ScriptedMediator` | `tests/fakes/mediator.py` |
 
-The concrete implementation is injected at the top-level entrypoint (`milai/main.py`) and passed into the `run()` loop alongside `LLMClient` and `StorageClient`. No state handler knows which implementation it is using.
+The concrete implementation is injected at the top-level entrypoint (`src/milai/main.py`) and passed into the `run()` loop alongside `LLMClient` and `StorageClient`. No state handler knows which implementation it is using. v2 does not need to preserve the Textual implementation if it is no longer useful.

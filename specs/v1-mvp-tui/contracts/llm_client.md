@@ -1,6 +1,6 @@
 # Contract: LLMClient
 
-**File**: `milai/llm/client.py`
+**File**: `src/milai/llm/client.py`
 **Type**: Python `Protocol` (structural subtyping)
 **Purpose**: Mediate all LLM calls through a single interface. State handlers and prompt builders never import `litellm` directly — they call through `LLMClient`. This makes the LLM provider a configuration choice, enables test doubles, and satisfies Constitution Principle V.
 
@@ -44,7 +44,7 @@ class LLMClient(Protocol):
 ## Supporting Types
 
 ```python
-# milai/llm/types.py
+# src/milai/llm/types.py
 
 from dataclasses import dataclass
 from enum import Enum
@@ -65,7 +65,7 @@ class Message:
 ## Exceptions
 
 ```python
-# milai/llm/errors.py
+# src/milai/llm/errors.py
 
 class LLMError(Exception):
     """Raised when the LLM provider returns an error or is unreachable."""
@@ -98,7 +98,7 @@ class LLMParseError(LLMError):
 ## Concrete Implementation (LiteLLM)
 
 ```python
-# milai/llm/litellm_client.py
+# src/milai/llm/litellm_client.py
 
 from milai.config import LLMConfig
 
@@ -160,5 +160,5 @@ class ScriptedLLMClient:
 
 | Version | Implementation class | Location |
 |---|---|---|
-| v1 | `LiteLLMClient` | `milai/llm/litellm_client.py` |
+| v1 | `LiteLLMClient` | `src/milai/llm/litellm_client.py` |
 | Tests | `ScriptedLLMClient` | `tests/fakes/llm_client.py` |

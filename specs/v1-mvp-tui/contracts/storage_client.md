@@ -1,6 +1,6 @@
 # Contract: StorageClient
 
-**File**: `milai/storage/client.py`
+**File**: `src/milai/storage/client.py`
 **Type**: Python `Protocol` (structural subtyping)
 **Purpose**: Abstract local persistence so state handlers never reference file paths or JSON serialisation directly. Satisfies Constitution Principle V for the storage dependency.
 
@@ -55,7 +55,7 @@ class HistoryClient(Protocol):
 ## Exceptions
 
 ```python
-# milai/storage/errors.py
+# src/milai/storage/errors.py
 
 class StorageError(Exception):
     """Raised on read/write failures or data corruption."""
@@ -79,7 +79,7 @@ class StorageError(Exception):
 ## Concrete Implementations
 
 ```python
-# milai/storage/local.py
+# src/milai/storage/local.py
 
 class LocalStorage:
     """
@@ -152,7 +152,7 @@ class InMemoryHistory:
 
 | Version | Implementation class | Location |
 |---|---|---|
-| v1 state | `LocalStorage` | `milai/storage/local.py` |
-| v1 history | `LocalHistory` | `milai/storage/local.py` |
+| v1 state | `LocalStorage` | `src/milai/storage/local.py` |
+| v1 history | `LocalHistory` | `src/milai/storage/local.py` |
 | Tests state | `InMemoryStorage` | `tests/fakes/storage_client.py` |
 | Tests history | `InMemoryHistory` | `tests/fakes/storage_client.py` |
