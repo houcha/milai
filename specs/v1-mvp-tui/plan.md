@@ -6,7 +6,7 @@
 
 ## Summary
 
-Build `milai`: a TUI-based, AI-native language learning application driven by a state machine that wraps an LLM. The TUI is temporary scaffolding for v1; all user-facing I/O is mediated through an `IOMediator` protocol so the learning flow can later run behind the v2 browser interface without importing web framework or browser transport details. All LLM calls go through an `LLMClient` protocol (LiteLLM-backed). A single `UserState` document is the canonical source of truth, persisted atomically to `~/.milai/state.json` after every transition. A lightweight SRS scheduler reinforces weak skill topics by injecting them into LLM prompts at lesson-generation time.
+Build `milai`: a TUI-based, AI-native language learning application driven by a state machine that wraps an LLM. The TUI is temporary scaffolding for v1; all user-facing I/O is mediated through an `IOMediator` protocol so the learning flow can later run behind the v2 browser interface without importing web framework or browser transport details. All LLM calls go through an `LLMClient` protocol (LiteLLM-backed). A single `PersistedState` snapshot (`UserState` + `AppState`) is the canonical persisted source of truth, written atomically to `~/.milai/state.json` after every transition. A lightweight SRS scheduler reinforces weak skill topics by injecting them into LLM prompts at lesson-generation time.
 
 ---
 
@@ -14,7 +14,7 @@ Build `milai`: a TUI-based, AI-native language learning application driven by a 
 
 **Language/Version**: Python 3.12
 **Primary Dependencies**: `textual>=8.2.4` (TUI), `litellm` (provider-agnostic LLM), `pydantic` (data model + structured LLM output), `pyyaml` (config file parsing)
-**Storage**: Local JSON file at `~/.milai/state.json`; atomic writes via `tempfile` + `os.replace`
+**Storage**: Local JSON file at `~/.milai/state.json` containing `PersistedState`; atomic writes via `tempfile` + `os.replace`
 **Testing**: `pytest` (test runner), `ty` (type checker), `ruff` (lint + format)
 **Target Platform**: Linux/macOS terminal (TUI); Docker + FastAPI in v2
 **Project Type**: CLI/TUI application
@@ -68,7 +68,7 @@ src/
     │
     ├── state/
     │   ├── __init__.py
-    │   ├── machine.py               # run() loop: match/case dispatch → call handler → save state
+    │   ├── machine.py               # run() loop: match/case dispatch → call handler → save PersistedState
     │   ├── variants.py              # AppState discriminated union (Pydantic); all state variant models
     │   ├── context.py               # SessionContext (in-memory only; session_id + pending_retry)
     │   └── handlers/
@@ -85,6 +85,7 @@ src/
     │
     ├── models/
     │   ├── __init__.py
+    │   ├── state.py                 # PersistedState (Pydantic root snapshot)
     │   ├── user_state.py            # UserState, UserProfile, Skill (Pydantic)
     │   ├── curriculum.py            # Curriculum, Module, Lesson, Exercise (Pydantic)
     │   ├── assessment.py            # AssessmentQuestion (Pydantic; used by AssessmentState variant)

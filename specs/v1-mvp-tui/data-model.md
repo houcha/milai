@@ -6,12 +6,7 @@
 
 ## Overview
 
-Two separate structures are persisted together in `~/.milai/state.json` under two top-level keys:
-
-- **`UserState`** — the user's learning domain data: profile, skills, curriculum. No workflow information. Could be loaded and inspected independently of the application.
-- **`AppState`** — the application's current workflow state: a discriminated union where each variant carries only the payload relevant to that state.
-
-Keeping them separate means `UserState` is never polluted with workflow concerns, and `AppState` never carries domain data. The state machine receives both as independent arguments.
+The persisted application snapshot is a `PersistedState` document stored at `~/.milai/state.json`:
 
 ```json
 {
@@ -19,6 +14,25 @@ Keeping them separate means `UserState` is never polluted with workflow concerns
   "app":  { "type": "deviation", "history": [...], "lesson_context": "..." }
 }
 ```
+
+`PersistedState` contains two separate structures:
+
+- **`UserState`** — the user's learning domain data: profile, skills, curriculum. No workflow information. Could be loaded and inspected independently of the application.
+- **`AppState`** — the application's current workflow state: a discriminated union where each variant carries only the payload relevant to that state.
+
+Keeping them separate means `UserState` is never polluted with workflow concerns, and `AppState` never carries domain data. Persisting them together atomically means the state machine can resume from an exact checkpoint, including in-progress assessment or deviation state.
+
+---
+
+## PersistedState
+
+```text
+PersistedState
+├── user: UserState
+└── app: AppState
+```
+
+`PersistedState` is the storage boundary for `StorageClient.load()` / `save()`. The state machine may work with `user` and `app` as separate in-memory values, but they are persisted and loaded as one atomic snapshot.
 
 ---
 

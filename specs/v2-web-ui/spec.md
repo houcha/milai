@@ -41,7 +41,7 @@ The learning flow supports all required interaction primitives in the browser: f
 
 **Why this priority**: Without complete browser support for these interaction primitives, the web UI cannot run a real learning session end to end.
 
-**Independent Test**: Can be fully tested by driving a complete lesson — starting from a pre-populated `UserState` — through theory display, exercise completion, deviation, and return, entirely in the browser.
+**Independent Test**: Can be fully tested by driving a complete lesson — starting from a pre-populated `PersistedState` snapshot — through theory display, exercise completion, deviation, and return, entirely in the browser.
 
 **Acceptance Scenarios**:
 
@@ -72,7 +72,7 @@ The entire application — backend + frontend static assets — ships as a singl
 ### Functional Requirements
 
 - **FR-001**: The web application MUST implement the interaction boundary via `ApiMediator` over a WebSocket-based browser connection. The state machine and learning handlers MUST NOT import FastAPI, WebSocket, cookie, or browser-specific APIs.
-- **FR-002**: Session state MUST be preserved across browser tab close/reopen for the duration of the installation's active session (persistent cookie + file-backed state).
+- **FR-002**: Session state MUST be preserved across browser tab close/reopen for the duration of the installation's active session (persistent cookie + file-backed `PersistedState` snapshot).
 - **FR-003**: The frontend MUST render `RichContent` with `ContentKind.MARKDOWN` using a Markdown renderer.
 - **FR-004**: The frontend MUST present `choose()` as interactive buttons and `confirm()` as Yes/No buttons.
 - **FR-005**: The frontend MUST show a connection status indicator and automatically reconnect on WebSocket drop.
@@ -106,7 +106,7 @@ The entire application — backend + frontend static assets — ships as a singl
 - The application is self-hosted (Docker on a personal machine or home server). No cloud deployment, no external auth, no user accounts.
 - The frontend is served as static files directly by the selected backend web server; no CDN or separate static server is needed for the HTML shell (Alpine.js and Marked.js are loaded from CDN on first visit; vendored copies for offline Docker use).
 - Markdown rendering is the only rich display format needed for v2; no audio, images, or video.
-- `LLMClient` and `StorageClient` are unchanged from v1.
+- `LLMClient` is unchanged from v1, and `StorageClient` continues to persist the v1 `PersistedState` snapshot.
 - The v1 TUI is scaffolding and is not a supported v2 product interface.
 
 ---

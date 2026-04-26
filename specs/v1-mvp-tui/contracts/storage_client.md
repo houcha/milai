@@ -12,20 +12,22 @@ Two storage protocols with separate concerns:
 
 ```python
 from typing import Protocol
-from milai.models.user_state import UserState
+from milai.models.state import PersistedState
 from milai.models.history import HistoryEvent
 
 class StorageClient(Protocol):
-    async def load(self) -> UserState | None:
+    async def load(self) -> PersistedState | None:
         """
-        Load and return the persisted UserState, or None if no state exists yet
-        (first run). Raises StorageError if the file exists but is corrupt/invalid.
+        Load and return the persisted application snapshot, or None if no state
+        exists yet (first run). Raises StorageError if the file exists but is
+        corrupt/invalid.
         """
 
-    async def save(self, state: UserState) -> None:
+    async def save(self, state: PersistedState) -> None:
         """
-        Atomically persist UserState. Raises StorageError on write failure.
-        Must be safe to call after every state transition (frequent writes).
+        Atomically persist PersistedState (`UserState` + `AppState`). Raises
+        StorageError on write failure. Must be safe to call after every state
+        transition (frequent writes).
         """
 
     async def delete(self) -> None:
@@ -73,6 +75,7 @@ class StorageError(Exception):
 3. **`load` raises `StorageError(corrupt=True)` for a present-but-invalid file**: callers handle this by offering the user a recovery prompt (backup + fresh start).
 4. **`delete` is a no-op for a missing file**: idempotent.
 5. **All methods are `async`**: even though local file I/O is synchronous, the protocol is async so a future networked implementation (e.g., cloud sync in v3) is a drop-in.
+6. **`PersistedState` is the persistence unit**: workflow resume depends on persisting both `UserState` and `AppState` together after each transition.
 
 ---
 
@@ -83,7 +86,7 @@ class StorageError(Exception):
 
 class LocalStorage:
     """
-    Stores UserState as JSON at ~/.milai/state.json.
+    Stores PersistedState as JSON at ~/.milai/state.json.
     Atomic writes via tempfile + os.replace.
     """
     DEFAULT_PATH = Path.home() / ".milai" / "state.json"
@@ -91,8 +94,8 @@ class LocalStorage:
     def __init__(self, path: Path = DEFAULT_PATH) -> None:
         self._path = path
 
-    async def load(self) -> UserState | None: ...
-    async def save(self, state: UserState) -> None: ...
+    async def load(self) -> PersistedState | None: ...
+    async def save(self, state: PersistedState) -> None: ...
     async def delete(self) -> None: ...
 
 
@@ -120,14 +123,14 @@ Both accept a `path` parameter so tests can use `tmp_path` without touching `~/.
 # tests/fakes/storage_client.py
 
 class InMemoryStorage:
-    def __init__(self, initial: UserState | None = None):
+    def __init__(self, initial: PersistedState | None = None):
         self._state = initial
         self.save_count = 0
 
-    async def load(self) -> UserState | None:
+    async def load(self) -> PersistedState | None:
         return self._state
 
-    async def save(self, state: UserState) -> None:
+    async def save(self, state: PersistedState) -> None:
         self._state = state
         self.save_count += 1
 

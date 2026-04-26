@@ -13,7 +13,7 @@ The key architectural choice is to use FastAPI directly rather than Streamlit or
 
 **Language/Version**: Python 3.12  
 **Primary Dependencies**: `fastapi` (ASGI app + WebSockets + static files), `uvicorn` (ASGI server), `pydantic` (message/data validation), `marked` (browser Markdown renderer), `alpinejs` (minimal reactive UI shell)
-**Storage**: Existing local file-backed state reused for session persistence; Docker mount at `/data`; in-memory `SessionRegistry` for active connections  
+**Storage**: Existing local file-backed `PersistedState` snapshot reused for session persistence; Docker mount at `/data`; in-memory `SessionRegistry` for active connections  
 **Testing**: `pytest`, FastAPI/Starlette `TestClient` for HTTP/WebSocket integration tests, existing contract tests, `ruff`, `ty`  
 **Target Platform**: Localhost development on Linux/macOS and single-container Docker deployment on personal machines/home servers  
 **Project Type**: Single Python web application with a browser interface
@@ -96,7 +96,7 @@ tests/
 | Backend framework | FastAPI | Native WebSocket support, static file serving, idiomatic Python, direct fit for `ApiMediator` |
 | Frontend style | Static HTML/CSS/JS + Alpine.js + Marked.js | Small surface area, no build chain, enough interactivity for chat + buttons + progress |
 | Browser transport | WebSocket | Bidirectional by design; simpler than SSE + extra POST endpoints |
-| Session persistence | Persistent cookie + file-backed state + in-memory registry | Matches resume/reconnect requirements without introducing accounts or a DB |
+| Session persistence | Persistent cookie + file-backed `PersistedState` snapshot + in-memory registry | Matches resume/reconnect requirements without introducing accounts or a DB |
 | Deployment | Single Docker image running Uvicorn | Simplest deployment shape for self-hosted single-user app |
 | TUI lifecycle | Remove or deprecate `TextualMediator` in v2 | The TUI was scaffolding; v2 should optimize around the browser product UI |
 

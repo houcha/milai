@@ -6,7 +6,9 @@
 
 ## Overview
 
-v2 does **not** replace the existing learning data model. `UserState` and `AppState` remain the canonical persisted workflow/domain structures from v1. The v1 TUI may be removed, but the web feature still adds transport-layer entities around the learning model instead of embedding browser concerns into it:
+v2 does **not** replace the existing learning data model. The v1 `PersistedState` snapshot remains the canonical persisted workflow/domain structure.
+
+The v1 TUI may be removed, but the web feature still adds transport-layer entities around that learning model instead of embedding browser concerns into it:
 
 - a persistent browser session identifier
 - an active connection registry
@@ -24,6 +26,7 @@ The important boundary is:
 
 The following models are consumed by the web layer as-is:
 
+- `PersistedState`
 - `UserState`
 - `AppState`
 - `RichContent`
@@ -42,15 +45,14 @@ Represents a durable browser identity across reconnects.
 BrowserSession
 ├── session_id: str               # UUID stored in persistent cookie
 ├── created_at: datetime
-├── last_seen_at: datetime
-└── storage_key: str              # lookup key for persisted app/user state
+└── last_seen_at: datetime
 ```
 
 **Rules**:
 
 - `session_id` is opaque to the client.
 - The session cookie survives tab close/reopen.
-- A reconnect with the same `session_id` resumes the same persisted state.
+- A reconnect with the same `session_id` resumes the same persisted `PersistedState` snapshot for this installation.
 
 ---
 
@@ -288,8 +290,7 @@ second socket for same session_id while first is active
 
 Persisted:
 
-- existing `UserState`
-- existing `AppState`
+- existing `PersistedState` snapshot (`UserState` + `AppState`)
 - cookie value in the browser
 
 Transient:
