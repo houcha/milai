@@ -3,11 +3,13 @@
 **Feature Branch**: `v2-web-ui`
 **Created**: 2026-04-25
 **Status**: Draft
-**Input**: User description: "Create a plan for v2, describe how we will switch from TUI to web UI." Deferred from v1: "ApiMediator (FastAPI + WebSocket/SSE) and Docker packaging — v2".
+**Input**: User description: "Create a plan for v2, describe how we will switch from temporary TUI scaffolding to the browser product UI." Deferred from v1: "ApiMediator (FastAPI + WebSocket) and Docker packaging — v2".
 
 ## Context
 
-v1 (`v1-mvp-tui`) delivered a fully working TUI application where all user-facing I/O is mediated through the `IOMediator` protocol (`milai/io/mediator.py`). The architecture was explicitly designed for this migration: `TextualMediator` is the v1 concrete implementation; v2 adds `ApiMediator` alongside it. The state machine, handlers, data model, LLM client, storage client, and SRS subsystem are unchanged.
+v1 (`v1-mvp-tui`) used a TUI as temporary scaffolding to validate the learning flow quickly. v2 makes the browser UI the product interface. The `IOMediator` protocol remains useful, but its purpose is no longer long-term multi-UI support; it is the interaction boundary that keeps browser transport details (WebSocket request IDs, cookies, reconnects, frontend state) out of the state machine and learning handlers.
+
+The v2 migration may remove or deprecate the Textual TUI implementation. The state machine, handlers, data model, LLM client, storage client, and SRS subsystem should remain independent of FastAPI/WebSocket/browser APIs, but they are not required to preserve TUI behavior.
 
 ## Clarifications
 
@@ -19,11 +21,11 @@ v1 (`v1-mvp-tui`) delivered a fully working TUI application where all user-facin
 
 ### User Story 1 - Start a session from a browser (Priority: P1)
 
-A user opens `http://localhost:8000` in a browser. The milai chat interface loads and the onboarding flow begins automatically — the same conversation flow as v1 TUI, rendered in the browser.
+A user opens `http://localhost:8000` in a browser. The milai chat interface loads and the onboarding flow begins automatically using the existing learning flow, rendered as native browser controls.
 
 **Why this priority**: This is the core feature of v2. All other stories depend on this foundation.
 
-**Independent Test**: Can be fully tested by navigating to localhost, completing the onboarding prompt, and receiving the first assessment question — confirming the state machine drives the browser UI exactly as it does the TUI.
+**Independent Test**: Can be fully tested by navigating to localhost, completing the onboarding prompt, and receiving the first assessment question — confirming the state machine drives the browser UI through the interaction boundary.
 
 **Acceptance Scenarios**:
 
@@ -35,9 +37,9 @@ A user opens `http://localhost:8000` in a browser. The milai chat interface load
 
 ### User Story 2 - Interact with the full learning flow in the browser (Priority: P1)
 
-All interactions available in the TUI — free-text input, choice selection, confirm dialogs, progress updates — are available as native browser controls. Markdown content (theory explanations) renders with formatting.
+The learning flow supports all required interaction primitives in the browser: free-text input, choice selection, confirm dialogs, progress updates, and formatted Markdown content.
 
-**Why this priority**: Without full interaction parity, the web UI cannot replace the TUI for any real learning session.
+**Why this priority**: Without complete browser support for these interaction primitives, the web UI cannot run a real learning session end to end.
 
 **Independent Test**: Can be fully tested by driving a complete lesson — starting from a pre-populated `UserState` — through theory display, exercise completion, deviation, and return, entirely in the browser.
 
@@ -65,41 +67,26 @@ The entire application — backend + frontend static assets — ships as a singl
 2. **Given** a mounted data volume, **When** the container is restarted, **Then** prior session state is preserved and the browser can resume from the same checkpoint.
 3. **Given** `docker-compose up`, **When** the stack starts, **Then** the service is healthy and accessible at `http://localhost:8000` within 30 seconds.
 
----
-
-### User Story 4 - TUI remains functional (Priority: P2)
-
-The `milai` command continues to work in TUI mode. The web UI is additive — it does not remove or break the existing TUI entrypoint.
-
-**Why this priority**: The TUI is an existing, working interface. Regression is unacceptable.
-
-**Acceptance Scenarios**:
-
-1. **Given** `milai --mode tui` (or no `--mode` flag), **When** executed in a terminal, **Then** the Textual TUI launches exactly as in v1 with no behaviour change.
-2. **Given** `milai --mode web`, **When** executed, **Then** the web server starts and serves the web UI.
-
----
-
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: The web application MUST implement the `IOMediator` protocol via `ApiMediator` over a WebSocket-based browser connection. The state machine and all handlers MUST run unchanged.
+- **FR-001**: The web application MUST implement the interaction boundary via `ApiMediator` over a WebSocket-based browser connection. The state machine and learning handlers MUST NOT import FastAPI, WebSocket, cookie, or browser-specific APIs.
 - **FR-002**: Session state MUST be preserved across browser tab close/reopen for the duration of the installation's active session (persistent cookie + file-backed state).
 - **FR-003**: The frontend MUST render `RichContent` with `ContentKind.MARKDOWN` using a Markdown renderer.
 - **FR-004**: The frontend MUST present `choose()` as interactive buttons and `confirm()` as Yes/No buttons.
 - **FR-005**: The frontend MUST show a connection status indicator and automatically reconnect on WebSocket drop.
 - **FR-006**: The application MUST be packaged as a Docker image; state MUST persist to a mounted volume (`/data` inside the container).
-- **FR-007**: The TUI entrypoint MUST remain functional. Running `milai` without `--mode web` MUST launch the TUI.
-- **FR-008**: `ApiMediator` MUST satisfy the existing `IOMediator` protocol; the contract test (`tests/contract/test_io_mediator.py`) MUST pass for `ApiMediator`.
-- **FR-009**: Only one active WebSocket session per session ID is permitted. A second connection with the same session ID MUST receive a `session_conflict` message and be closed.
+- **FR-007**: `ApiMediator` MUST satisfy the narrow interaction contract (`show`, `prompt`, `choose`, `confirm`, `show_error`, `clear`) so learning handlers can be tested without a browser.
+- **FR-008**: Only one active WebSocket session per session ID is permitted. A second connection with the same session ID MUST receive a `session_conflict` message and be closed.
+- **FR-009**: The v2 acceptance scope MUST NOT require preserving terminal UI behavior; the v1 Textual TUI may be removed or left as an unsupported development aid.
 
 ### Non-Functional Requirements
 
 - **NFR-001**: First message visible in browser within 2 seconds after page load on localhost.
 - **NFR-002**: No Node.js build step required at runtime; frontend assets are pure HTML/CSS/JS served directly as static files.
 - **NFR-003**: Total Docker image size < 500 MB.
-- **NFR-004**: All existing tests (unit, integration, contract) MUST continue to pass without modification.
+- **NFR-004**: Existing core learning, model, LLM, storage, and state-machine tests MUST continue to pass. TUI-specific tests may be removed or rewritten if the TUI is removed.
 - **NFR-005**: The feature spec defines externally visible behavior and transport constraints; the concrete backend framework is selected in the implementation plan.
 
 ---
@@ -107,7 +94,7 @@ The `milai` command continues to work in TUI mode. The web UI is additive — it
 ## Key Entities (new for v2)
 
 - **WebSocket session**: A single active browser conversation; identified by a persistent cookie containing a UUID session token. One session per installation at a time.
-- **ApiMediator**: Concrete implementation of `IOMediator` over the browser-facing WebSocket transport selected for v2.
+- **ApiMediator**: Concrete implementation of the interaction boundary over the browser-facing WebSocket transport selected for v2.
 - **WebSocket message**: Typed JSON envelope sent between backend and frontend. Server-to-client messages are display commands and input requests; client-to-server messages are input responses.
 - **SessionRegistry**: In-memory registry tracking active WebSocket connections to prevent concurrent session conflicts.
 
@@ -117,18 +104,17 @@ The `milai` command continues to work in TUI mode. The web UI is additive — it
 
 - Single user per installation — same as v1. The web UI serves one active session at a time. A second browser with the same session cookie joins the same session; a different session cookie starts a fresh session (up to the single-session limit).
 - The application is self-hosted (Docker on a personal machine or home server). No cloud deployment, no external auth, no user accounts.
-- The TUI entrypoint remains usable via `--mode tui`.
 - The frontend is served as static files directly by the selected backend web server; no CDN or separate static server is needed for the HTML shell (Alpine.js and Marked.js are loaded from CDN on first visit; vendored copies for offline Docker use).
 - Markdown rendering is the only rich display format needed for v2; no audio, images, or video.
 - `LLMClient` and `StorageClient` are unchanged from v1.
+- The v1 TUI is scaffolding and is not a supported v2 product interface.
 
 ---
 
 ## Success Criteria
 
-- **SC-001**: All existing v1 tests pass without modification after v2 is added.
-- **SC-002**: The `IOMediator` contract test passes for `ApiMediator`.
+- **SC-001**: All existing non-TUI core tests pass after v2 is added.
+- **SC-002**: The interaction-boundary contract test passes for `ApiMediator` and the scripted test double.
 - **SC-003**: A full onboarding → assessment → curriculum → lesson flow can be completed in the browser.
 - **SC-004**: Session state survives a browser tab close/reopen and a container restart.
 - **SC-005**: `docker-compose up` starts the application accessible at `http://localhost:8000`.
-- **SC-006**: `milai --mode tui` continues to launch the Textual TUI with no regression.

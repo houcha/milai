@@ -6,7 +6,7 @@
 
 ## Overview
 
-v2 does **not** replace the existing learning data model. `UserState` and `AppState` remain the canonical persisted workflow/domain structures from v1. The web feature adds transport-layer entities around them:
+v2 does **not** replace the existing learning data model. `UserState` and `AppState` remain the canonical persisted workflow/domain structures from v1. The v1 TUI may be removed, but the web feature still adds transport-layer entities around the learning model instead of embedding browser concerns into it:
 
 - a persistent browser session identifier
 - an active connection registry
@@ -22,7 +22,7 @@ The important boundary is:
 
 ## Reused Existing Models
 
-The following models are unchanged and are consumed by the web layer as-is:
+The following models are consumed by the web layer as-is:
 
 - `UserState`
 - `AppState`
@@ -30,7 +30,7 @@ The following models are unchanged and are consumed by the web layer as-is:
 - `Choice`
 - `ContentKind`
 
-`ApiMediator` translates these existing domain/UI types into browser-facing message envelopes.
+`ApiMediator` translates these interaction types into browser-facing message envelopes.
 
 ---
 
@@ -188,7 +188,7 @@ ping
 
 ## ApiMediator Pending Request
 
-Transient mediator state used to map an `IOMediator` call to the eventual browser response.
+Transient mediator state used to map an interaction-boundary call to the eventual browser response.
 
 ```text
 PendingRequest

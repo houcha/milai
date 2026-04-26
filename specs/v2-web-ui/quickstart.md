@@ -6,7 +6,7 @@
 
 ## Goal
 
-Run milai in web mode locally and in Docker while keeping the TUI entrypoint available.
+Run milai as a local web application and in Docker.
 
 This document describes the intended developer workflow for the v2 implementation.
 
@@ -48,7 +48,7 @@ If you are using a different provider, export the matching provider key instead.
 ## Run the Web UI
 
 ```bash
-uv run milai --mode web --host 127.0.0.1 --port 8000
+uv run milai --host 127.0.0.1 --port 8000
 ```
 
 Open <http://localhost:8000>.
@@ -59,16 +59,6 @@ Expected behavior:
 2. A persistent session cookie is issued if one does not already exist.
 3. The browser opens a WebSocket connection.
 4. The onboarding flow starts or resumes from the last saved checkpoint.
-
----
-
-## Run the TUI
-
-```bash
-uv run milai --mode tui
-```
-
-This remains the default/non-web interface and must continue to behave as in v1.
 
 ---
 
@@ -107,6 +97,8 @@ uv run pytest tests/integration/test_websocket_session.py
 uv run pytest tests/contract/test_io_mediator.py
 ```
 
+This verifies the web mediator and scripted test double satisfy the interaction boundary used by the learning handlers.
+
 ### Full QA
 
 ```bash
@@ -117,21 +109,10 @@ just qa
 
 ## Manual End-to-End Validation
 
-1. Start `milai --mode web`.
+1. Start `milai`.
 2. Complete onboarding in the browser.
 3. Close the tab.
 4. Re-open `http://localhost:8000`.
 5. Confirm the session resumes from the previous checkpoint.
 6. Refresh or temporarily interrupt the socket and confirm the reconnect indicator appears, then clears automatically.
 7. Restart the container and confirm progress still exists.
-
----
-
-## Suggested Implementation Order
-
-1. Add failing contract and integration tests for web mode.
-2. Implement FastAPI app factory and routes.
-3. Implement typed WebSocket message envelopes.
-4. Implement `ApiMediator`.
-5. Add the static browser shell.
-6. Add Docker packaging and health checks.

@@ -17,7 +17,7 @@ This feature is not "build a quick web demo". It is "add a browser transport to 
 - hold a long-lived bidirectional connection per browser session
 - enforce "one active connection per session ID"
 - reconnect cleanly after a dropped socket
-- map browser events to the existing `IOMediator` contract
+- map browser events to the existing interaction-boundary contract
 
 FastAPI matches that directly. Its official docs cover both static file mounting and first-class WebSocket endpoints, which are the two primitives this feature needs most:
 
@@ -39,7 +39,7 @@ FastAPI is also the right complexity level for a Python-first codebase. It does 
 
 **Rationale**:
 
-Streamlit is good when the framework owns the page lifecycle and your app is mostly "render widgets from Python state." That is not milai's shape. milai already has its own workflow engine and mediator contract.
+Streamlit is good when the framework owns the page lifecycle and your app is mostly "render widgets from Python state." That is not milai's shape. milai already has its own workflow engine and a small interaction-boundary contract.
 
 The decisive mismatch is session behavior. Streamlit's docs explicitly note that Session State is tied to a WebSocket connection and is reset when the browser tab reloads; they also note that Session State is not persisted if the server crashes:
 
@@ -52,7 +52,7 @@ That conflicts with the spec, which requires:
 - reconnect behavior without page reload
 - file-backed persistent state independent of the browser connection
 
-Streamlit also pushes you toward a rerun-oriented widget model. That is workable for prototypes, but awkward for an existing `show/prompt/choose/confirm` mediator interface. You would end up adapting milai to Streamlit instead of adapting the browser to milai.
+Streamlit also pushes you toward a rerun-oriented widget model. That is workable for prototypes, but awkward for an existing `show/prompt/choose/confirm` interaction interface. You would end up adapting milai to Streamlit instead of adapting the browser to milai.
 
 **Alternatives considered**:
 
@@ -116,7 +116,7 @@ This choice keeps the feature learnable for a developer who is new to web work: 
 
 **Rationale**:
 
-`IOMediator` is fundamentally bidirectional. The backend sends display commands and input requests; the browser sends input responses. WebSockets model that directly.
+The interaction boundary is fundamentally bidirectional. The backend sends display commands and input requests; the browser sends input responses. WebSockets model that directly.
 
 SSE would only solve server-to-client streaming. The client-to-server half would then need extra `POST` endpoints for prompt/choice/confirm responses, plus correlation IDs across two transports. That is more surface area and more failure modes for no user-visible gain.
 
