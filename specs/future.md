@@ -16,9 +16,11 @@ The history DB (`~/.milai/history.db`) covers *user-facing* history — conversa
 
 ---
 
-## Multi-user Support (v4)
+## Multi-user and Multi-session Support (v4)
 
-Requires auth, per-user namespacing of `state.json` and `history.db`, and a migration path to a networked database (e.g., PostgreSQL). The `StorageClient` and `HistoryClient` Protocols absorb the backing-store change.
+Multi-session support is intentionally deferred until database-backed multi-user persistence. In v1/v2, the product keeps one persisted learning session per installation; adding multiple local sessions now would require session selection, naming, deletion, and migration mechanics before the durable user identity model exists.
+
+When multi-user support is introduced, model sessions as learning contexts owned by a user: one user can have many sessions, and each session owns its curriculum, progress, assessment state, and history. This should come with auth, user profiles, session listing/resume UX, and a migration path from local single-session storage to a networked database (e.g., PostgreSQL). The `StorageClient` and `HistoryClient` Protocols absorb the backing-store change.
 
 ---
 
