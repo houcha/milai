@@ -8,7 +8,7 @@ Items here are intentionally out of scope for v1. They are recorded to prevent r
 
 ## LLM Telemetry (v3)
 
-The history DB (`~/.milai/history.db`) covers *user-facing* history — conversations and exercises a learner can review. A separate concern — *developer-facing LLM observability* (prompt traces, latency, token cost per call, eval scores) — is deferred until the system moves server-side in v2.
+User-facing interaction review and developer-facing LLM observability are both deferred beyond v1. Developer-facing observability includes prompt traces, latency, token cost per call, and eval scores.
 
 **Recommended tool**: Langfuse (open-source, self-hostable via Docker). It provides trace capture, dataset management for fine-tuning, and eval pipelines — directly useful for the preference-tuning use case.
 
@@ -20,7 +20,7 @@ The history DB (`~/.milai/history.db`) covers *user-facing* history — conversa
 
 Multi-session support is intentionally deferred until database-backed multi-user persistence. In v1/v2, the product keeps one persisted learning session per installation; adding multiple local sessions now would require session selection, naming, deletion, and migration mechanics before the durable user identity model exists.
 
-When multi-user support is introduced, model sessions as learning contexts owned by a user: one user can have many sessions, and each session owns its curriculum, progress, assessment state, and history. This should come with auth, user profiles, session listing/resume UX, and a migration path from local single-session storage to a networked database (e.g., PostgreSQL). The `StorageClient` and `HistoryClient` Protocols absorb the backing-store change.
+When multi-user support is introduced, model sessions as learning contexts owned by a user: one user can have many sessions, and each session owns its curriculum, progress, assessment state, and interaction log. This should come with auth, user profiles, session listing/resume UX, and a migration path from local single-session storage to a networked database (e.g., PostgreSQL). The `StorageClient` Protocol absorbs the backing-store change; add a separate interaction-log interface only once that future version needs it.
 
 ---
 

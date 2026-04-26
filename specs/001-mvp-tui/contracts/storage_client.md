@@ -6,14 +6,13 @@
 
 ---
 
-## Protocol Definitions
+## Protocol Definition
 
-Two storage protocols with separate concerns:
+One storage protocol owns the atomic v1 snapshot:
 
 ```python
 from typing import Protocol
 from milai.models.state import PersistedState
-from milai.models.history import HistoryEvent
 
 class StorageClient(Protocol):
     async def load(self) -> PersistedState | None:
@@ -34,21 +33,6 @@ class StorageClient(Protocol):
         """
         Delete the persisted state (user-initiated reset). No-op if no state exists.
         Raises StorageError on failure.
-        """
-
-
-class HistoryClient(Protocol):
-    async def append(self, event: HistoryEvent) -> None:
-        """
-        Append a single event to the history log. Must not rewrite existing entries.
-        Raises StorageError on write failure.
-        """
-
-    async def read_all(self) -> list[HistoryEvent]:
-        """
-        Read and return all history events in chronological order.
-        Returns empty list if no history exists yet.
-        Raises StorageError if the log is corrupt.
         """
 ```
 
@@ -97,23 +81,9 @@ class LocalStorage:
     async def load(self) -> PersistedState | None: ...
     async def save(self, state: PersistedState) -> None: ...
     async def delete(self) -> None: ...
-
-
-class LocalHistory:
-    """
-    Appends HistoryEvents to ~/.milai/history.db (SQLite).
-    Schema is created on first use if the file does not exist.
-    """
-    DEFAULT_PATH = Path.home() / ".milai" / "history.db"
-
-    def __init__(self, path: Path = DEFAULT_PATH) -> None:
-        self._path = path
-
-    async def append(self, event: HistoryEvent) -> None: ...
-    async def read_all(self) -> list[HistoryEvent]: ...
 ```
 
-Both accept a `path` parameter so tests can use `tmp_path` without touching `~/.milai`.
+`LocalStorage` accepts a `path` parameter so tests can use `tmp_path` without touching `~/.milai`.
 
 ---
 
@@ -136,17 +106,6 @@ class InMemoryStorage:
 
     async def delete(self) -> None:
         self._state = None
-
-
-class InMemoryHistory:
-    def __init__(self):
-        self.events: list[HistoryEvent] = []
-
-    async def append(self, event: HistoryEvent) -> None:
-        self.events.append(event)
-
-    async def read_all(self) -> list[HistoryEvent]:
-        return list(self.events)
 ```
 
 ---
@@ -156,6 +115,4 @@ class InMemoryHistory:
 | Version | Implementation class | Location |
 |---|---|---|
 | v1 state | `LocalStorage` | `src/milai/storage/local.py` |
-| v1 history | `LocalHistory` | `src/milai/storage/local.py` |
 | Tests state | `InMemoryStorage` | `tests/fakes/storage_client.py` |
-| Tests history | `InMemoryHistory` | `tests/fakes/storage_client.py` |

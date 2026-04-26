@@ -11,7 +11,7 @@ The persisted application snapshot is a `PersistedState` document stored at `~/.
 ```json
 {
   "user": { ... },
-  "app":  { "type": "deviation", "history": [...], "lesson_context": "..." }
+  "app":  { "type": "deviation", "context_window": [...], "lesson_context": "..." }
 }
 ```
 
@@ -76,7 +76,7 @@ CurriculumCompleteState  { type: "curriculum_complete" }
 └── current_idx: int                     # index of next unanswered question (enables resume)
 ```
 
-Resumption: if `current_idx > 0`, the state machine offers to resume from that question. On completion, `fluency_level` is extracted to `UserProfile` and the raw Q&A is archived to `history.db`; the state transitions to `AssessmentReviewState`.
+Resumption: if `current_idx > 0`, the state machine offers to resume from that question. On completion, `fluency_level` is extracted to `UserProfile`; the state transitions to `AssessmentReviewState`.
 
 ### AssessmentReviewState payload
 
@@ -90,11 +90,11 @@ Once the user confirms (or overrides), `fluency_level` is written to `UserProfil
 ### DeviationState payload
 
 ```
-├── history: list[Message]               # rolling LLM context window (max 10 exchanges)
+├── context_window: list[Message]        # rolling LLM context window (max 10 exchanges)
 └── lesson_context: str                  # title of the lesson the deviation occurred during
 ```
 
-`history` is the live buffer for building the next LLM prompt. Each exchange is written to `history.db` as a `DeviationExchangeEvent` before being appended here. The DB is the permanent record; this buffer avoids querying the DB on every turn. On `DeviationState` → `LessonState` transition, the payload is dropped; the lesson cursor is unchanged in `Curriculum`.
+`context_window` is the live buffer for building the next LLM prompt. It is capped at 10 exchanges and persisted only as part of `PersistedState` so a mid-deviation session can resume. On `DeviationState` → `LessonState` transition, the payload is dropped; the lesson cursor is unchanged in `Curriculum`.
 
 ### All other states
 
@@ -209,72 +209,16 @@ The `confirmed` flag previously on `Curriculum` is removed — an unconfirmed cu
 
 ---
 
-## History Log (separate from UserState)
+## Snapshot-Owned Interaction State
 
-**File**: `~/.milai/history.db` — SQLite database.
+v1 does not maintain a separate chronological event store or interaction-record model layer. Interaction details needed for resume are owned by the existing snapshot models:
 
-Rationale: `UserState` is the current snapshot (small, write-heavy, atomic-write matters); the history database is the unbounded chronological record (queryable, schema-enforced, indexed). SQLite is zero-dependency (`sqlite3` stdlib), handles 100k+ rows without degradation, and enforces schema on insert.
+- Assessment answers live on `AssessmentQuestion.user_answer` while assessment is in progress.
+- Lesson attempts update the active `Exercise` fields (`user_answer`, `feedback`, `is_correct`) and the relevant `Skill` records.
+- Deviation exchanges live in `DeviationState.context_window` only while the user is in deviation mode.
+- Curriculum review changes update the active `Curriculum` directly before confirmation.
 
-All events are rows in a single `events` table with a `event_type` discriminator column. Additional columns per event type are stored as a `payload` JSON column, keeping the schema stable as new event types are added without requiring migrations.
-
-```sql
-CREATE TABLE events (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type  TEXT    NOT NULL,
-    session_id  TEXT    NOT NULL,   -- UUID per app launch; groups a full session
-    timestamp   TEXT    NOT NULL,   -- ISO 8601 UTC
-    payload     TEXT    NOT NULL    -- JSON; schema per event_type below
-);
-
-CREATE INDEX idx_events_session  ON events(session_id);
-CREATE INDEX idx_events_type     ON events(event_type);
-CREATE INDEX idx_events_ts       ON events(timestamp);
-```
-
-### ExerciseAttemptEvent (`event_type: "exercise_attempt"`)
-
-`payload` fields:
-```
-module_title, lesson_title, exercise_instruction, exercise_type,
-user_answer, feedback, is_correct (bool | null), skill_topics (JSON array)
-```
-
-The inline `Exercise.user_answer` / `Exercise.feedback` in `UserState` reflects the *latest* attempt; the history DB preserves *all* attempts if an exercise is retried.
-
-### DeviationExchangeEvent (`event_type: "deviation_exchange"`)
-
-`payload` fields:
-```
-lesson_context, user_message, assistant_message
-```
-
-Written for each exchange turn before the rolling window is updated. Full conversation reconstructed via `SELECT ... WHERE session_id = ? AND event_type = 'deviation_exchange' ORDER BY id`.
-
-### AssessmentExchangeEvent (`event_type: "assessment_exchange"`)
-
-`payload` fields:
-```
-question, difficulty, user_answer
-```
-
-### CurriculumChangeEvent (`event_type: "curriculum_change"`)
-
-`payload` fields:
-```
-change_type ("reorder" | "remove" | "feedback_adjustment" | "extension"), description
-```
-
----
-
-## SessionContext (in-memory only; not persisted)
-
-```
-SessionContext
-├── session_id: str       # UUID generated once per app launch; used as foreign key in history.db
-└── pending_retry: bool   # True if last LLM call failed and user chose retry
-```
-
-Genuinely ephemeral — a new `session_id` is generated on every launch. Everything else that was previously here (`deviation_history`, `return_state`) now lives on the `DeviationState` payload in `UserState` and is persisted normally.
+Durable chronological interaction logging is deferred to a future version if product needs debugging, analytics, or cross-session audit trails.
 
 ---
 

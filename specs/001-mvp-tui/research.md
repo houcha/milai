@@ -90,7 +90,7 @@ Each `AppState` variant maps to a handler coroutine. The machine holds `AppState
 Benefits:
 - **Resume is trivial**: deserialise `AppState` + `UserState`, dispatch handler for the current variant
 - **LLM retry is local**: each handler catches `LLMError`, shows retry prompt, loops — no re-entry complexity
-- **DEVIATION carries its own payload**: `DeviationState` holds the history buffer directly — no separate nullable field, no risk of the buffer persisting outside DEVIATION
+- **DEVIATION carries its own payload**: `DeviationState` holds the context window directly — no separate nullable field, no risk of the buffer persisting outside DEVIATION
 - **New states are additive**: add a union variant + handler, no existing code changes
 - **Testable in isolation**: each handler is a pure function `(AppState, UserState, IOMediator, LLMClient) → (AppState, UserState)`
 - **`UserState` stays clean**: no workflow fields contaminate the domain model
@@ -110,7 +110,7 @@ AssessmentReviewState     → show fluency result; allow user override; holds pe
 CurriculumGenerationState → LLM generates structured roadmap
 CurriculumReviewState     → human-in-the-loop edit loop
 LessonState               → sequential theory + exercises
-DeviationState            → free conversation; holds history buffer + lesson context
+DeviationState            → free conversation; holds context window + lesson context
 LessonCompleteState       → show progress, advance cursor
 CurriculumCompleteState   → show summary, offer extension
 ```
@@ -165,19 +165,19 @@ due_for_review(skill) = (today - last_seen).days >= interval_days
 
 ## Decision 5: Context Window Management
 
-**Decision**: Stateless per-call context. Conversational history only in DEVIATION mode (capped at 10 exchanges).
+**Decision**: Stateless per-call context. Conversational context window only in DEVIATION mode (capped at 10 exchanges).
 
 **Per-call context budget (structured prompt)**:
 1. System role prompt (~200 tokens): tutor persona + target language + teaching style
 2. User skill summary (~150 tokens): top-10 skills by priority (topic, strength, last_seen only)
-3. State-specific context (~300–800 tokens): current lesson/exercise or assessment history
+3. State-specific context (~300–800 tokens): current lesson/exercise or assessment answers
 4. User message (~50–200 tokens)
 
 Total typical prompt: ~700–1200 tokens. Response: ~300–600 tokens. Per-call cost on Gemini 2.0 Flash: ~$0.0001–$0.0002. Reasonable.
 
-**Deviation mode**: Maintains rolling window of last 10 exchanges (user + assistant). Older exchanges are dropped. On deviation exit, history is discarded — the lesson context is reconstructed from `UserState`.
+**Deviation mode**: Maintains rolling window of last 10 exchanges (user + assistant). Older exchanges are dropped. On deviation exit, the context window is discarded — the lesson context is reconstructed from `UserState`.
 
-**No cross-state history accumulation**: Each state handler builds its context fresh from `UserState`. This keeps prompts predictable, bounded, and testable.
+**No cross-state context accumulation**: Each state handler builds its context fresh from `UserState`. This keeps prompts predictable, bounded, and testable.
 
 ---
 

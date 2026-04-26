@@ -113,7 +113,6 @@ See [plan.md](plan.md) for the full annotated project layout.
 | `llm.top_p` | `0.95` | Nucleus sampling threshold |
 | `llm.max_tokens` | `1024` | Max tokens per LLM response |
 | `storage.path` | `~/.milai/state.json` | Override state file location |
-| `storage.history_path` | `~/.milai/history.db` | Override SQLite history DB location |
 
 ### Environment variables — API keys only
 

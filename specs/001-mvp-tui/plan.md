@@ -70,7 +70,6 @@ src/
     │   ├── __init__.py
     │   ├── machine.py               # run() loop: match/case dispatch → call handler → save PersistedState
     │   ├── variants.py              # AppState discriminated union (Pydantic); all state variant models
-    │   ├── context.py               # SessionContext (in-memory only; session_id + pending_retry)
     │   └── handlers/
     │       ├── __init__.py
     │       ├── onboarding.py        # async def step(state: OnboardingState, ...) -> tuple[AppState, UserState]
@@ -88,8 +87,7 @@ src/
     │   ├── state.py                 # PersistedState (Pydantic root snapshot)
     │   ├── user_state.py            # UserState, UserProfile, Skill (Pydantic)
     │   ├── curriculum.py            # Curriculum, Module, Lesson, Exercise (Pydantic)
-    │   ├── assessment.py            # AssessmentQuestion (Pydantic; used by AssessmentState variant)
-    │   └── history.py               # HistoryEvent union + all event payload types (Pydantic)
+    │   └── assessment.py            # AssessmentQuestion (Pydantic; used by AssessmentState variant)
     │
     ├── io/
     │   ├── __init__.py
@@ -112,8 +110,8 @@ src/
     │
     ├── storage/
     │   ├── __init__.py
-    │   ├── client.py                # StorageClient + HistoryClient Protocols
-    │   ├── local.py                 # LocalStorage (state.json) + LocalHistory (history.db SQLite)
+    │   ├── client.py                # StorageClient Protocol
+    │   ├── local.py                 # LocalStorage (state.json)
     │   └── errors.py                # StorageError
     │
     └── srs/
@@ -125,7 +123,7 @@ tests/
 │   ├── __init__.py
 │   ├── mediator.py              # ScriptedMediator
 │   ├── llm_client.py            # ScriptedLLMClient
-│   └── storage_client.py        # InMemoryStorage + InMemoryHistory
+│   └── storage_client.py        # InMemoryStorage
 ├── unit/
 │   ├── test_srs.py              # SRS rules: success/failure update, priority scoring, due detection
 │   ├── test_state_machine.py    # match/case dispatch, transitions, resume from each state, LLMError retry
@@ -160,7 +158,7 @@ Full rationale in [research.md](research.md). Key decisions:
 | Workflow architecture | Hand-rolled state machine; `AppState` discriminated union; `match/case` dispatch; `UserState`/`AppState` serialised separately | Clean domain/workflow separation; no impossible states; resume trivial; `match/case` is the full topology in ~20 lines — no abstractions needed at 9 states |
 | Persistence format | JSON at `~/.milai/state.json` | Single-user, tiny dataset; human-readable; no migration complexity; atomic via `os.replace` |
 | Spaced repetition | Custom lightweight (SM-2-inspired) | Topic-level granularity; feeds LLM prompts rather than driving a separate review session |
-| Context management | Stateless per call; deviation capped at 10 exchanges | Predictable token budget; no cross-state history accumulation |
+| Context management | Stateless per call; deviation capped at 10 exchanges | Predictable token budget; no cross-state context accumulation |
 | Sub-agents | None in v1 | All LLM calls are single-turn; curriculum generated in one structured call for coherence |
 | Structured LLM output | LiteLLM JSON mode + Pydantic | Provider-agnostic; type-safe; `instructor` available as drop-in if needed |
 
@@ -173,5 +171,7 @@ See [future.md](future.md) for full details. Summary:
 - `ApiMediator` (FastAPI + WebSocket) and Docker packaging — v2; the v1 TUI may be removed or left unsupported
 - LLM telemetry via Langfuse — v2/v3
 - Multi-user support (auth, per-user state files, networked DB) — v2
+- Durable chronological interaction log — v2+ if product needs debugging, analytics, or cross-session audit trails
+- Shared runtime context object — v2+ if handler-local retry/control flow becomes duplicated or cross-cutting
 - Sub-agent parallelism for large curriculum generation — v2+ if needed
 - `instructor` adoption if LiteLLM JSON mode proves unreliable in practice
