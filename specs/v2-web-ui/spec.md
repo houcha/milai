@@ -102,7 +102,7 @@ The entire application — backend + frontend static assets — ships as a singl
 
 ## Assumptions
 
-- Single user per installation — same as v1. The web UI serves one active session at a time. A second browser with the same session cookie joins the same session; a different session cookie starts a fresh session (up to the single-session limit).
+- Single user per installation — same as v1. The web UI serves one persisted learning session per installation. A browser cookie is used to reconnect to that session, not to select among multiple saved learning sessions.
 - The application is self-hosted (Docker on a personal machine or home server). No cloud deployment, no external auth, no user accounts.
 - The frontend is served as static files directly by the selected backend web server; no CDN or separate static server is needed for the HTML shell (Alpine.js and Marked.js are loaded from CDN on first visit; vendored copies for offline Docker use).
 - Markdown rendering is the only rich display format needed for v2; no audio, images, or video.
