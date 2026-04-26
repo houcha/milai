@@ -1,7 +1,7 @@
-# Specification Quality Checklist: AI-Native Self-Paced Language Learning
+# Specification Quality Checklist: MVP TUI
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-04-24
+**Created**: 2026-04-26
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -32,5 +32,5 @@
 ## Notes
 
 - All items pass. Specification is ready for `/speckit-clarify` or `/speckit-plan`.
-- Assumptions section clearly bounds v1 scope: text-only interface, no pre-authored content, no external integrations, auth out of scope.
-- Assessment override by user (FR not explicit but noted in assumptions) is a reasonable default that avoids over-specifying user autonomy.
+- The v1 scope is bounded to a text-based TUI, single-user local progress, dynamic AI-generated learning content, and no external service integrations.
+- No clarification markers remain.

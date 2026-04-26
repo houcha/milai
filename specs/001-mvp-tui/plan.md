@@ -1,6 +1,6 @@
 # Implementation Plan: AI-Native Self-Paced Language Learning (milai)
 
-**Branch**: `v1-mvp-tui` | **Date**: 2026-04-24 | **Spec**: [spec.md](spec.md)
+**Branch**: `001-mvp-tui` | **Date**: 2026-04-26 | **Spec**: [spec.md](spec.md)
 
 ---
 
@@ -45,7 +45,7 @@ No violations. No Complexity Tracking entries required.
 ### Documentation (this feature)
 
 ```
-specs/v1-mvp-tui/
+specs/001-mvp-tui/
 ├── plan.md              # This file
 ├── research.md          # Phase 0: model selection, architecture decisions
 ├── data-model.md        # Phase 1: UserState document model + state transitions

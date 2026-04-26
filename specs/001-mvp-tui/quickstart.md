@@ -1,6 +1,6 @@
 # Quickstart: milai (v1 TUI)
 
-**Branch**: `v1-mvp-tui` | **Date**: 2026-04-24
+**Branch**: `001-mvp-tui` | **Date**: 2026-04-26
 
 ---
 
