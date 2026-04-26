@@ -231,3 +231,6 @@ __marimo__/
 # But DO track the skill definitions (the SDLC blueprints)
 !.claude/*.md
 !.claude/skills/
+
+# Codex
+.codex
