@@ -21,4 +21,8 @@ All commits must follow Conventional Commits format: `<type>(<scope>): <descript
 Types: `feat`, `fix`, `test`, `docs`, `refactor`, `chore`, `perf`, `ops`
 
 - One logical change per commit; unrelated changes go in separate commits and branches
-- Message communicates intent and impact, not a mechanical description of the diff
+- **IMPORTANT**: Commit messages must communicate **why the change was made** and its **intent and impact**, not a mechanical summary of the diff.
+    - Subject: concise outcome-focused summary.
+    - Body: explain the WHY when context is needed, using a second `-m`.
+    - YES: `git commit -m "docs(agents): help agents write outcome-focused commits" -m "Agents tend to produce generic descriptions that don't explain why a change was made. This commit clarifies that commit messages should communicate intent and impact instead of summarizing the diff."`
+    - NO: `git commit -m "docs(agents): clarify commit message intent"`
