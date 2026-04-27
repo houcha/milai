@@ -2,6 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-04-26
+**Updated**: 2026-04-27
 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
@@ -34,3 +35,4 @@
 - All items pass. Specification is ready for `/speckit-clarify` or `/speckit-plan`.
 - The v1 scope is bounded to a text-based TUI, single-user local progress, dynamic AI-generated learning content, and no external service integrations.
 - No clarification markers remain.
+- 2026-04-27 validation update: added the local spaced-repetition reinforcement requirement.

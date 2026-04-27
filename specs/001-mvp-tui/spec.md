@@ -52,7 +52,7 @@ Based on the fluency profile, the AI generates a personalized learning roadmap: 
 
 ### User Story 3 - Learning Loop (Priority: P3)
 
-The user follows their active curriculum lesson by lesson. Within a lesson, they read theory explanations, complete exercises, and receive immediate feedback. At any point, they may deviate by asking a free-form question, requesting a conversational practice session, or asking the AI to explain something differently. They can also request dynamic changes such as skipping a lesson, adding a topic, or changing difficulty.
+The user follows their active curriculum lesson by lesson. Within a lesson, they read theory explanations, complete exercises, and receive immediate feedback. The system tracks topics the learner is struggling with and reinforces them in future lesson content using spaced-repetition behavior, so practice is shaped by demonstrated performance rather than a static lesson list. At any point, they may deviate by asking a free-form question, requesting a conversational practice session, or asking the AI to explain something differently. They can also request dynamic changes such as skipping a lesson, adding a topic, or changing difficulty.
 
 **Why this priority**: This is where the core learning value is delivered. Deviation and dynamic change support distinguish the system from a static curriculum engine.
 
@@ -65,6 +65,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 3. **Given** a lesson in progress, **When** the user sends a free-form message (deviation), **Then** the system responds conversationally and offers to return to the lesson afterward.
 4. **Given** a lesson in progress, **When** the user requests a dynamic change (e.g., "make this harder" or "skip to pronouns"), **Then** the system adapts the current or next lesson content accordingly.
 5. **Given** a completed lesson, **When** the user finishes all exercises, **Then** their progress is recorded and the next lesson in the curriculum becomes available.
+6. **Given** a learner repeatedly misses exercises for a skill topic, **When** they continue into later lesson content, **Then** the system prioritizes reinforcement of that weak topic without requiring the learner to start a separate review mode.
 
 ---
 
@@ -96,6 +97,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **FR-012**: System MUST allow users to resume or restart an incomplete skill assessment.
 - **FR-013**: When an LLM call fails, the system MUST display a clear error message, preserve current session state, and offer the user a retry option without data loss.
 - **FR-014**: When the user completes the final lesson of their curriculum, the system MUST display a completion summary and offer to generate additional advanced modules to continue learning.
+- **FR-015**: System MUST track learner strength by skill topic from assessment and exercise performance, then prioritize weaker or due topics for reinforcement in future lesson content.
 
 ### Key Entities
 
@@ -105,6 +107,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **Module**: A thematic grouping of lessons (e.g., "Greetings & Introductions"); has a title, description, and ordered list of lessons.
 - **Lesson**: A single learning unit within a module; contains theory content and a set of exercises.
 - **Exercise**: An individual practice item (e.g., translation, fill-in-the-blank, multiple choice) with an expected response and feedback.
+- **Skill Topic**: A language-learning concept or ability (e.g., articles, past tense, travel phrases) with learner-specific strength and review priority derived from assessment and exercise outcomes.
 - **Session**: A single continuous interaction between the user and the system; records progress made and deviations taken.
 
 ## Success Criteria *(mandatory)*
@@ -128,5 +131,5 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - A single user account corresponds to a single active curriculum per target language; multiple target languages may be tracked independently.
 - The system is single-user per installation; no login or account selection is required. Profile and progress are stored locally.
 - User authentication and account management (sign-up, login, password reset) are out of scope for v1.
-- The system does not integrate with external services (e.g., spaced-repetition engines, speech APIs) in v1.
+- The system does not integrate with external services (e.g., third-party spaced-repetition engines, speech APIs) in v1; spaced-repetition reinforcement is part of the local learning loop.
 - Assessment results are advisory; users may override their assigned level if they disagree.
