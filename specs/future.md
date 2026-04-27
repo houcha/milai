@@ -20,7 +20,7 @@ User-facing interaction review and developer-facing LLM observability are both d
 
 Multi-session support is intentionally deferred until database-backed multi-user persistence. In v1/v2, the product keeps one persisted learning session per installation; adding multiple local sessions now would require session selection, naming, deletion, and migration mechanics before the durable user identity model exists.
 
-When multi-user support is introduced, model sessions as learning contexts owned by a user: one user can have many sessions, and each session owns its curriculum, progress, assessment state, and interaction log. This should come with auth, user profiles, session listing/resume UX, and a migration path from local single-session storage to a networked database (e.g., PostgreSQL). The `StorageClient` Protocol absorbs the backing-store change; add a separate interaction-log interface only once that future version needs it.
+When multi-user support is introduced, model sessions as learning contexts owned by a user: one user can have many sessions, and each session owns its target language, curriculum, progress, assessment state, and interaction log. This is when independent tracking for multiple target languages should be added, rather than making v1 carry parallel language tracks inside one local state file. This should come with auth, user profiles, session listing/resume UX, and a migration path from local single-session storage to a networked database (e.g., PostgreSQL). The `StorageClient` Protocol absorbs the backing-store change; add a separate interaction-log interface only once that future version needs it.
 
 ---
 

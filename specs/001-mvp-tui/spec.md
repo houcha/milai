@@ -13,6 +13,7 @@
 - Q: How is user identity and session state persisted across runs? -> A: Single user per installation; profile and progress are stored locally; no user selection prompt required.
 - Q: What is the expected behavior when the LLM is unavailable or errors mid-session? -> A: Surface a clear error message and offer a retry prompt; session state is preserved so no progress is lost on failure.
 - Q: What happens when the user completes the entire curriculum? -> A: Display a completion summary, then offer to generate additional advanced modules so the learner can continue without a hard stop.
+- Q: How should v1 handle an existing saved session on launch? -> A: Ask whether to continue the existing session or start a new one; starting a new session replaces the existing local learning context.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -75,6 +76,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - How does the system handle a user who tests at a very advanced level with no further curriculum needed?
 - What happens if the user provides contradictory feedback during curriculum review (e.g., "make it easier" and "skip beginner topics")?
 - How does the system handle a lesson deviation that goes significantly off-topic (e.g., the user starts discussing unrelated subjects)?
+- When a saved session exists, launch presents a simple choice to continue that session or start a new one; starting a new session replaces the previous local learning context.
 - When the user completes the entire curriculum, the system displays a completion summary and offers to generate additional advanced modules; the learner is never forced to a hard stop.
 - How does the system respond if the AI generates content the user finds inappropriate or incorrect?
 - When the LLM is unavailable or returns an error mid-session, the system displays a clear error message and prompts the user to retry; session state and progress are preserved so no data is lost.
@@ -93,15 +95,17 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **FR-008**: System MUST provide immediate, contextual feedback for each exercise response.
 - **FR-009**: System MUST allow users to deviate from a lesson into free-form conversation at any time, and return to the lesson afterward.
 - **FR-010**: System MUST allow users to make dynamic changes to the curriculum during a lesson (skip, add topic, adjust difficulty).
-- **FR-011**: System MUST persist user profile and progress to local storage on the host machine so the learner can resume where they left off across runs; a single profile is supported per installation.
+- **FR-011**: System MUST persist user profile and progress to local storage on the host machine so the learner can continue where they left off across runs; a single profile is supported per installation.
 - **FR-012**: System MUST allow users to resume or restart an incomplete skill assessment.
 - **FR-013**: When an LLM call fails, the system MUST display a clear error message, preserve current session state, and offer the user a retry option without data loss.
 - **FR-014**: When the user completes the final lesson of their curriculum, the system MUST display a completion summary and offer to generate additional advanced modules to continue learning.
 - **FR-015**: System MUST track learner strength by skill topic from assessment and exercise performance, then prioritize weaker or due topics for reinforcement in future lesson content.
+- **FR-016**: System MUST support only one active target language and one active curriculum for v1; when a saved session exists, launch MUST ask whether to continue it or start a new session rather than preserving multiple parallel language tracks.
+- **FR-017**: When the user starts a new session from launch, the system MUST begin onboarding for a fresh learning context that replaces the previous local profile, curriculum, and progress.
 
 ### Key Entities
 
-- **User Profile**: Represents the single learner on this installation: target language, native language, learning goal, fluency level, time preference; persisted locally.
+- **User Profile**: Represents the single learner on this installation: single active target language, native language, learning goal, fluency level, time preference; persisted locally.
 - **Assessment**: An AI-generated sequence of questions used to evaluate fluency; has a result (fluency level and rationale).
 - **Curriculum**: The confirmed learning roadmap for a user; contains an ordered list of modules.
 - **Module**: A thematic grouping of lessons (e.g., "Greetings & Introductions"); has a title, description, and ordered list of lessons.
@@ -118,7 +122,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **SC-002**: 90% of users report the generated curriculum feels relevant to their stated goal and level after the review phase.
 - **SC-003**: Users can complete a single lesson session, including at least one deviation and return, without losing progress.
 - **SC-004**: Dynamic curriculum changes requested during a lesson are reflected within the same session, with no restart required.
-- **SC-005**: User progress is preserved across sessions; returning users resume from their last checkpoint with no data loss.
+- **SC-005**: User progress is preserved across sessions; returning users can choose to continue from their last checkpoint with no data loss.
 - **SC-006**: 80% of users who complete the assessment proceed to confirm a curriculum without dropping off.
 - **SC-007**: The system responds to any user message (exercise answer, deviation, or feedback) within an acceptable time for a conversational interface.
 
@@ -128,7 +132,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - Voice, multimedia, and browser-based interaction are out of scope for v1.
 - All learning content (theory, exercises, feedback) is generated dynamically by the LLM; there is no pre-authored content library.
 - The system is not a general-purpose chatbot; deviations are contextually bounded to language learning topics.
-- A single user account corresponds to a single active curriculum per target language; multiple target languages may be tracked independently.
+- v1 supports one active target language and one active curriculum per installation. Independent tracking for multiple target languages is deferred until the product supports multiple learning sessions.
 - The system is single-user per installation; no login or account selection is required. Profile and progress are stored locally.
 - User authentication and account management (sign-up, login, password reset) are out of scope for v1.
 - The system does not integrate with external services (e.g., third-party spaced-repetition engines, speech APIs) in v1; spaced-repetition reinforcement is part of the local learning loop.

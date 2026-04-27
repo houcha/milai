@@ -120,3 +120,5 @@ class ScriptedMediator:
 | Tests | `ScriptedMediator` | `tests/fakes/mediator.py` |
 
 The concrete implementation is created at the top-level entrypoint (`src/milai/main.py`) and injected into the state handler constructors that need user I/O. No state handler knows which concrete implementation it is using. v2 does not need to preserve the Textual implementation if it is no longer useful.
+
+On launch, `src/milai/main.py` may also use `IOMediator.choose()` before the state machine starts to ask whether an existing saved session should be continued or replaced with a new onboarding flow. This is entrypoint orchestration, not a separate `AppState` variant.

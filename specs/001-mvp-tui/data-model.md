@@ -34,6 +34,13 @@ PersistedState
 
 `PersistedState` is the storage boundary for `StorageClient.load()` / `save()`. The state machine may work with `user` and `app` as separate in-memory values, but they are persisted and loaded as one atomic snapshot.
 
+On launch, the application calls `StorageClient.load()` before entering the state machine:
+
+- If no snapshot exists, the app starts from a fresh `OnboardingState`.
+- If a snapshot exists, the app asks whether to continue it or start a new session.
+- Continuing passes the loaded `PersistedState` into the state machine unchanged.
+- Starting a new session replaces the local learning context with a fresh `UserState` and `OnboardingState`; v1 does not preserve multiple local sessions or multiple target-language tracks.
+
 ---
 
 ## UserState
@@ -239,7 +246,7 @@ Durable chronological interaction logging is deferred to a future version if pro
 | LessonCompleteState | LessonState | Advance cursor; next lesson exists |
 | LessonCompleteState | CurriculumCompleteState | No more lessons in curriculum |
 | CurriculumCompleteState | CurriculumGenerationState | User requests extension modules |
-| CurriculumCompleteState | OnboardingState | User resets / changes language |
+| CurriculumCompleteState | OnboardingState | User starts a new local session after completion |
 
 ---
 

@@ -31,8 +31,8 @@ class StorageClient(Protocol):
 
     async def delete(self) -> None:
         """
-        Delete the persisted state (user-initiated reset). No-op if no state exists.
-        Raises StorageError on failure.
+        Delete the persisted state (user-initiated reset/start-new-session).
+        No-op if no state exists. Raises StorageError on failure.
         """
 ```
 
@@ -57,9 +57,9 @@ class StorageError(Exception):
 1. **`save` is atomic**: write to a temp file in the same directory, then `os.replace`. A crash mid-write must never leave the state file in a partially-written state.
 2. **`load` returns `None` (not raises) for a missing file**: callers treat `None` as "first run".
 3. **`load` raises `StorageError(corrupt=True)` for a present-but-invalid file**: callers handle this by offering the user a recovery prompt (backup + fresh start).
-4. **`delete` is a no-op for a missing file**: idempotent.
+4. **`delete` is a no-op for a missing file**: idempotent, so start-new-session handling can safely clear any existing snapshot before saving a fresh one.
 5. **All methods are `async`**: even though local file I/O is synchronous, the protocol is async so a future networked implementation (e.g., cloud sync in v3) is a drop-in.
-6. **`PersistedState` is the persistence unit**: workflow resume depends on persisting both `UserState` and `AppState` together after each transition.
+6. **`PersistedState` is the persistence unit**: workflow resume depends on persisting both `UserState` and `AppState` together after each transition. v1 has one active snapshot; starting a new session replaces that snapshot rather than creating a second persisted state.
 
 ---
 

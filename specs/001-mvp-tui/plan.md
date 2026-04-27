@@ -5,7 +5,7 @@
 
 ## Summary
 
-Build `milai`: a TUI-based, AI-native language learning application driven by a state machine that wraps an LLM. The TUI is temporary scaffolding for v1; all user-facing I/O is mediated through an `IOMediator` protocol so the learning flow can later run behind the v2 browser interface without importing web framework or browser transport details. All LLM calls go through an `LLMClient` protocol (LiteLLM-backed). State-specific prompt builders live under `src/milai/llm/prompts/` and are invoked only by their owning state handlers. A single `PersistedState` snapshot (`UserState` + `AppState`) is the canonical persisted source of truth, written atomically to `~/.milai/state.json` after every transition. A lightweight SRS scheduler reinforces weak skill topics by injecting them into lesson-generation and feedback prompts.
+Build `milai`: a TUI-based, AI-native language learning application driven by a state machine that wraps an LLM. The TUI is temporary scaffolding for v1; all user-facing I/O is mediated through an `IOMediator` protocol so the learning flow can later run behind the v2 browser interface without importing web framework or browser transport details. All LLM calls go through an `LLMClient` protocol (LiteLLM-backed). State-specific prompt builders live under `src/milai/llm/prompts/` and are invoked only by their owning state handlers. A single `PersistedState` snapshot (`UserState` + `AppState`) is the canonical persisted source of truth, written atomically to `~/.milai/state.json` after every transition. On launch, the entrypoint loads that snapshot; if one exists, it asks the learner whether to continue it or start a new session that replaces the local snapshot and begins onboarding. A lightweight SRS scheduler reinforces weak skill topics by injecting them into lesson-generation and feedback prompts.
 
 ## Technical Context
 
@@ -16,8 +16,8 @@ Build `milai`: a TUI-based, AI-native language learning application driven by a 
 **Target Platform**: Linux/macOS terminal (TUI); Docker + FastAPI in v2
 **Project Type**: CLI/TUI application
 **Performance Goals**: LLM response within user tolerance for conversational TUI (no hard latency SLA in v1); SRS scoring and state transitions are sub-millisecond
-**Constraints**: Single-user per installation; no external service dependencies beyond an LLM provider API; state file must survive crashes (atomic writes); prompt builders must be deterministic functions over explicit state/user inputs
-**Scale/Scope**: Single learner; curriculum of 3-20 modules; skills list grows to approximately 100 topics over time; total state file size under 1 MB; nine workflow states with five LLM-backed prompt families
+**Constraints**: Single-user per installation; one active saved learning session; no external service dependencies beyond an LLM provider API; state file must survive crashes (atomic writes); prompt builders must be deterministic functions over explicit state/user inputs
+**Scale/Scope**: Single learner; one active target language and curriculum; curriculum of 3-20 modules; skills list grows to approximately 100 topics over time; total state file size under 1 MB; nine workflow states with five LLM-backed prompt families
 
 ## Constitution Check
 
@@ -57,7 +57,7 @@ specs/001-mvp-tui/
 src/
 └── milai/
     ├── __init__.py
-    ├── main.py                      # entrypoint: loads config, builds LLM clients, wires state handlers, runs machine
+    ├── main.py                      # entrypoint: loads config/state, offers continue/start-new, wires handlers, runs machine
     ├── config.py                    # Config + LLMConfig + LLMProfilesConfig + StateConfig; loads ~/.milai/config.yaml with defaults
     │
     ├── state/
@@ -158,7 +158,7 @@ Full rationale in [research.md](research.md). Key decisions:
 |---|---|---|
 | Default LLM profile | `light` profile using `gemini/gemini-2.0-flash` | Good multilingual coverage and cost profile for structured pedagogical content |
 | LLM configurability | `~/.milai/config.yaml` with named `llm.profiles`, `llm.default_profile`, and top-level `states.<state>.llm` profile references; env vars for API keys only | Keeps shared model settings DRY and allows open-ended conversation to use a stronger model without making every structured call expensive |
-| Workflow architecture | Hand-rolled state machine; `AppState` discriminated union; one constructor-wired handler class per state; `match/case` dispatch | Clean domain/workflow separation; resume is simple; per-state dependencies are explicit |
+| Workflow architecture | Hand-rolled state machine; `AppState` discriminated union; one constructor-wired handler class per state; `match/case` dispatch; launch-level continue/start-new decision before state-machine entry | Clean domain/workflow separation; resume is simple; per-state dependencies are explicit; no extra workflow state is needed for session selection |
 | State prompts | Explicit prompt modules owned by LLM-backed state handlers; deterministic builders; tests before implementation | Keeps prompts reviewable, reusable across TUI/web adapters, and isolated from provider/config concerns |
 | Persistence format | JSON at `~/.milai/state.json` | Single-user, tiny dataset; human-readable; no migration complexity; atomic via `os.replace` |
 | Spaced repetition | Custom lightweight SM-2-inspired scheduler | Topic-level granularity; feeds LLM prompts rather than driving a separate review session |

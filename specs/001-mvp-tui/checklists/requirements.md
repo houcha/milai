@@ -36,3 +36,5 @@
 - The v1 scope is bounded to a text-based TUI, single-user local progress, dynamic AI-generated learning content, and no external service integrations.
 - No clarification markers remain.
 - 2026-04-27 validation update: added the local spaced-repetition reinforcement requirement.
+- 2026-04-27 validation update: constrained v1 to one active target language and one active curriculum per installation; independent multi-language tracking is deferred to multi-session support.
+- 2026-04-27 validation update: simplified launch behavior to continue the existing saved session or start a new one, with new sessions replacing the previous local learning context.
