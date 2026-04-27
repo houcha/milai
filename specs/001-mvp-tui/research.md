@@ -6,7 +6,7 @@
 
 ## Decision 1: LLM Model Selection
 
-**Decision**: Default model is `gemini/gemini-2.0-flash`; LLM parameters (model, temperature, top_p, max_tokens) are configured via `~/.milai/config.yaml`. API keys remain in environment variables exclusively (secrets must not be written to files).
+**Decision**: Default model profile is `light`, backed by `gemini/gemini-2.0-flash`. LLM parameters (model, temperature, top_p, max_tokens) are configured as named profiles under the `llm.profiles` section in `~/.milai/config.yaml`, with `llm.default_profile` selecting the fallback profile. State config may reference an LLM profile by name under `states.<state>.llm`, so user-facing conversational states can use a stronger model than structured content-generation states. API keys remain in environment variables exclusively (secrets must not be written to files).
 
 **Rationale**:
 
@@ -32,7 +32,9 @@ Models evaluated:
 
 **Why not the latest frontier model**: Frontier models (Opus, GPT-4o, Gemini Pro) are primarily trained and RLHF'd on coding, agent orchestration, and complex multi-step reasoning. These capabilities are irrelevant for generating pedagogically sound language exercises. The marginal quality gain does not justify a 5–15× cost increase per session.
 
-**Why Gemini 2.0 Flash specifically**: Google's training corpus includes the multilingual web at a scale no other provider matches (Google Translate, Search, YouTube subtitles across 100+ languages). The Flash tier is explicitly designed for high-throughput, low-latency tasks — exactly our pattern. Structured JSON output is reliable. For rare target languages (e.g., Swahili, Welsh, Tagalog), Gemini's multilingual coverage is materially better than alternatives.
+**Why Gemini 2.0 Flash specifically**: Google's training corpus includes the multilingual web at a scale no other provider matches (Google Translate, Search, YouTube subtitles across 100+ languages). The Flash tier is explicitly designed for high-throughput, low-latency tasks — exactly our structured content-generation pattern. Structured JSON output is reliable. For rare target languages (e.g., Swahili, Welsh, Tagalog), Gemini's multilingual coverage is materially better than alternatives.
+
+**Important qualification**: Free-form user-facing conversation has a different failure mode than theory/exercise generation. In deviation mode, the model must maintain tone, answer ambiguous learner questions, adapt explanations, and recover conversationally when the learner is confused. `gemini/gemini-2.0-flash` is a good default for structured assessment, curriculum, lesson, and feedback calls, but it may be too weak as the default for open-ended learner conversation. The architecture should therefore support routing conversational states to a stronger configured model without forcing all structured calls onto the expensive model.
 
 **Configuration**:
 
@@ -40,19 +42,51 @@ LLM parameters are split by concern:
 
 | Setting | Source | Reason |
 |---|---|---|
-| `model`, `temperature`, `top_p`, `max_tokens` | `~/.milai/config.yaml` | Non-secret; user may want to tune these; env vars become unwieldy for multiple parameters |
+| `llm.profiles.<profile>.*` | `~/.milai/config.yaml` | Non-secret named model profiles; user can tune a shared model choice in one place |
+| `llm.default_profile` | `~/.milai/config.yaml` | Global fallback profile for states that do not choose one |
+| `states.<state>.llm` | `~/.milai/config.yaml` | Optional per-state profile reference without coupling all state behavior to the LLM config section |
 | `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Environment variables | Secrets must never be written to files |
 
 `~/.milai/config.yaml` default:
 ```yaml
 llm:
-  model: gemini/gemini-2.0-flash
-  temperature: 0.7
-  top_p: 0.95
-  max_tokens: 1024
+  default_profile: light
+  profiles:
+    light:
+      model: gemini/gemini-2.0-flash
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 1024
+states: {}
 ```
 
-Config is loaded once at startup into a `Config` dataclass. Missing file = use defaults. Missing keys = use per-key defaults. The `LiteLLMClient` receives a `LLMConfig` value object at construction; it does not read files or env vars directly (follows Principle V). Any LiteLLM-compatible model string is valid.
+Optional stronger model for user-facing conversation:
+
+```yaml
+llm:
+  default_profile: light
+  profiles:
+    light:
+      model: gemini/gemini-2.0-flash
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 1024
+    heavy:
+      model: openai/gpt-4o-mini
+      temperature: 0.8
+      top_p: 0.95
+      max_tokens: 1536
+
+states:
+  deviation:
+    llm: heavy
+```
+
+The initial v1 default config leaves `states` empty to keep setup simple. Recommended documented override: route `deviation` to a stronger conversational model profile when users notice shallow or brittle answers. State `llm` values must reference a key in `llm.profiles`; invalid profile names fail config validation at startup.
+
+Config is loaded once at startup into a `Config` dataclass containing `llm: LLMProfilesConfig` and `states: dict[str, StateConfig]`. Missing file = use defaults. Missing keys = use per-key defaults. `StateConfig` initially contains only `llm: str | None`, but it is the intended place for future state-specific knobs such as deviation turn limits, retry behavior, or review thresholds.
+
+The config loader validates profile references at startup. The entrypoint constructs one `LiteLLMClient` per configured profile, each with a single resolved `LLMConfig`. When constructing each state handler, the entrypoint chooses the handler's profile from `states.<state>.llm` or falls back to `llm.default_profile`, then passes the corresponding client into that handler's constructor. This keeps `LLMClient` unaware of app states, profile names, and routing tables while still allowing state-scoped model selection. The client does not read files or env vars directly (follows Principle V). Any LiteLLM-compatible model string is valid.
 
 **Alternatives considered**: FSRS-style model-specific fine-tuning was considered but rejected (out of scope; LLM is the content engine, not a classifier).
 
@@ -60,7 +94,7 @@ Config is loaded once at startup into a `Config` dataclass. Missing file = use d
 
 ## Decision 2: Workflow Architecture — State Machine
 
-**Decision**: Hand-rolled state machine with `AppState` as a discriminated union of state variants, each carrying its own payload. Per-state handler functions. No external state machine library.
+**Decision**: Hand-rolled state machine with `AppState` as a discriminated union of state variants, each carrying its own payload. One constructor-wired handler class per state. No external state machine library.
 
 **Evaluation of alternatives**:
 
@@ -85,19 +119,30 @@ Each user action publishes an event; handlers subscribe. Decoupled but:
 
 **Option C — State machine with discriminated union (selected)**
 
-Each `AppState` variant maps to a handler coroutine. The machine holds `AppState` and `UserState` as independent structures — `AppState` is workflow state (where we are + transient context); `UserState` is domain data (what the user knows). Transition = replace `AppState` with the new variant. Persistence = serialise both separately under two top-level keys in `state.json`.
+Each `AppState` variant maps to a handler class with a `step()` coroutine. The machine holds `AppState` and `UserState` as independent structures — `AppState` is workflow state (where we are + transient context); `UserState` is domain data (what the user knows). Transition = replace `AppState` with the new variant. Persistence = serialise both separately under two top-level keys in `state.json`.
+
+Handler instances are composed at startup. Each handler receives only the dependencies it needs, typically `IOMediator`, the `LLMClient` selected for that state, and optionally that state's `StateConfig`. A handler does not load config, resolve model profiles, import LiteLLM, or save state.
 
 Benefits:
 - **Resume is trivial**: deserialise `AppState` + `UserState`, dispatch handler for the current variant
 - **LLM retry is local**: each handler catches `LLMError`, shows retry prompt, loops — no re-entry complexity
 - **DEVIATION carries its own payload**: `DeviationState` holds the context window directly — no separate nullable field, no risk of the buffer persisting outside DEVIATION
-- **New states are additive**: add a union variant + handler, no existing code changes
-- **Testable in isolation**: each handler is a pure function `(AppState, UserState, IOMediator, LLMClient) → (AppState, UserState)`
+- **New states are additive**: add a union variant + handler class + dispatch branch + startup wiring
+- **Testable in isolation**: instantiate a handler with fake `IOMediator` and fake `LLMClient`, then call `step(state, user)`
 - **`UserState` stays clean**: no workflow fields contaminate the domain model
+- **LLM routing stays simple**: profile selection happens once in `main.py`, not inside the LLM client or at every call site
 
 **Verdict**: State machine is correct. The user's intuition is validated by the resume and deviation requirements, both of which are genuinely difficult in alternatives.
 
-**Dispatch mechanism**: `match/case` in `machine.py`. Each `case StateVariant():` branch calls the corresponding handler function and narrows the type for `ty` — no casts needed. The full graph topology is visible in one ~20-line function.
+**Dispatch mechanism**: `match/case` in `machine.py`. Each `case StateVariant():` branch calls the corresponding handler instance, e.g. `handlers.deviation.step(app, user)`, and narrows the type for `ty` — no casts needed. The full graph topology is visible in one readable dispatch function.
+
+**Handler class guardrails**:
+
+- `AppState` and `UserState` models remain pure Pydantic data; they do not contain behavior.
+- Handler classes coordinate one workflow step; they do not perform persistence or own serialization.
+- `StorageClient` is used only by the machine loop, after a handler returns the next `(AppState, UserState)`.
+- Prompt construction stays in `src/milai/llm/prompts/`; handlers call prompt builders rather than embedding large prompt strings.
+- Concrete provider details stay in `LiteLLMClient`; handlers depend only on `LLMClient`.
 
 **Why no library or decorator pattern** (`transitions`, `statemachine`, hand-rolled `@machine.node()`): Our state graph has 9 states. A library or decorator abstraction imposes indirection for no gain at this scale. `match/case` already gives you the explicit node list in one readable place. YAGNI applies — the hand-rolled version is ~20 lines and requires zero infrastructure.
 

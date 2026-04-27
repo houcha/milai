@@ -90,8 +90,10 @@ class LLMParseError(LLMError):
 2. **`complete` MUST raise `LLMParseError` (not return `None`) if the response fails schema validation**: callers depend on receiving a typed object or an exception — never an untyped partial result.
 3. **`chat` MUST return a non-empty string**: if the model returns an empty response, raise `LLMError`.
 4. **No retry logic inside the implementation**: retries are the caller's responsibility (state machine handlers). The implementation makes exactly one attempt per call.
-5. **No state stored in the client**: the client is stateless; all context is in the `messages` list. The same instance may be reused across all state handlers.
-6. **Model and API key are resolved at construction time**, not per call. The concrete implementation reads `MILAI_MODEL` and the appropriate provider API key from environment variables once, at startup.
+5. **No conversation state stored in the client**: all prompt context is in the `messages` list. A client instance stores only its resolved model profile configuration and may be reused by any handlers assigned to that profile.
+6. **API keys are resolved by the provider layer from environment variables only**: secrets never appear in config files or persisted state.
+7. **Each client instance represents exactly one resolved LLM profile**: model, temperature, top_p, and max_tokens are fixed at construction time. The client does not know about app states, profile names, or routing tables.
+8. **Profile selection happens outside `LLMClient`**: the entrypoint builds one `LLMClient` per configured profile, chooses the profile for each state from config, and passes the resolved client into that state's handler constructor. Profile references are validated at startup.
 
 ---
 
@@ -105,7 +107,7 @@ from milai.config import LLMConfig
 class LiteLLMClient:
     """
     Concrete LLMClient backed by LiteLLM.
-    Receives a fully-resolved LLMConfig (model, temperature, top_p, max_tokens).
+    Receives one fully-resolved LLMConfig for a single profile.
     API keys are resolved by LiteLLM from environment variables automatically.
     """
     def __init__(self, config: LLMConfig) -> None:

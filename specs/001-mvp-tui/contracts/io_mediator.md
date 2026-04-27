@@ -119,4 +119,4 @@ class ScriptedMediator:
 | v2 Web product UI | `ApiMediator` (future) | `src/milai/io/web/mediator.py` |
 | Tests | `ScriptedMediator` | `tests/fakes/mediator.py` |
 
-The concrete implementation is injected at the top-level entrypoint (`src/milai/main.py`) and passed into the `run()` loop alongside `LLMClient` and `StorageClient`. No state handler knows which implementation it is using. v2 does not need to preserve the Textual implementation if it is no longer useful.
+The concrete implementation is created at the top-level entrypoint (`src/milai/main.py`) and injected into the state handler constructors that need user I/O. No state handler knows which concrete implementation it is using. v2 does not need to preserve the Textual implementation if it is no longer useful.

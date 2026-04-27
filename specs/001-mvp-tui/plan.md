@@ -63,16 +63,16 @@ specs/001-mvp-tui/
 src/
 └── milai/
     ├── __init__.py
-    ├── main.py                      # entrypoint: loads config, resolves API keys from env, wires dependencies, runs machine
-    ├── config.py                    # Config + LLMConfig dataclasses; loads ~/.milai/config.yaml with defaults
+    ├── main.py                      # entrypoint: loads config, builds LLM clients, wires state handlers, runs machine
+    ├── config.py                    # Config + LLMConfig + LLMProfilesConfig + StateConfig dataclasses; loads ~/.milai/config.yaml with defaults
     │
     ├── state/
     │   ├── __init__.py
-    │   ├── machine.py               # run() loop: match/case dispatch → call handler → save PersistedState
+    │   ├── machine.py               # run() loop: match/case dispatch → handler.step() → save PersistedState
     │   ├── variants.py              # AppState discriminated union (Pydantic); all state variant models
     │   └── handlers/
     │       ├── __init__.py
-    │       ├── onboarding.py        # async def step(state: OnboardingState, ...) -> tuple[AppState, UserState]
+    │       ├── onboarding.py        # class OnboardingHandler: async def step(...) -> tuple[AppState, UserState]
     │       ├── assessment.py
     │       ├── assessment_review.py
     │       ├── curriculum_gen.py
@@ -153,12 +153,13 @@ Full rationale in [research.md](research.md). Key decisions:
 
 | Decision | Choice | Key reason |
 |---|---|---|
-| Default LLM model | `gemini/gemini-2.0-flash` | Best multilingual coverage; Flash tier optimised for efficiency, not complex reasoning; most competitive cost |
-| LLM configurability | `~/.milai/config.yaml` for model/temperature/top_p/max_tokens; env vars for API keys only | Multiple parameters are unwieldy as env vars; secrets must not be in files |
-| Workflow architecture | Hand-rolled state machine; `AppState` discriminated union; `match/case` dispatch; `UserState`/`AppState` serialised separately | Clean domain/workflow separation; no impossible states; resume trivial; `match/case` is the full topology in ~20 lines — no abstractions needed at 9 states |
+| Default LLM profile | `light` profile using `gemini/gemini-2.0-flash` | Best multilingual coverage; Flash tier optimised for efficiency, not complex reasoning; most competitive cost |
+| LLM configurability | `~/.milai/config.yaml` with named `llm.profiles`, `llm.default_profile`, and top-level `states.<state>.llm` profile references; env vars for API keys only | Keeps shared model settings DRY and state config extensible; content generation and user-facing conversation have different quality/cost needs; secrets must not be in files |
+| Workflow architecture | Hand-rolled state machine; `AppState` discriminated union; one constructor-wired handler class per state; `match/case` dispatch; `UserState`/`AppState` serialised separately | Clean domain/workflow separation; no impossible states; resume trivial; per-state dependencies are explicit without extra lookup layers |
 | Persistence format | JSON at `~/.milai/state.json` | Single-user, tiny dataset; human-readable; no migration complexity; atomic via `os.replace` |
 | Spaced repetition | Custom lightweight (SM-2-inspired) | Topic-level granularity; feeds LLM prompts rather than driving a separate review session |
 | Context management | Stateless per call; deviation capped at 10 exchanges | Predictable token budget; no cross-state context accumulation |
+| Model routing | Default `gemini/gemini-2.0-flash` for structured pedagogical content; configurable stronger model for conversational states | Gemini Flash is cost-effective for theory/exercises, but free-form learner conversation needs better instruction following and conversational quality |
 | Sub-agents | None in v1 | All LLM calls are single-turn; curriculum generated in one structured call for coherence |
 | Structured LLM output | LiteLLM JSON mode + Pydantic | Provider-agnostic; type-safe; `instructor` available as drop-in if needed |
 

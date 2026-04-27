@@ -29,10 +29,14 @@ To customise the model or generation parameters, edit (or create) `~/.milai/conf
 
 ```yaml
 llm:
-  model: gemini/gemini-2.0-flash   # any LiteLLM-compatible model string
-  temperature: 0.7
-  top_p: 0.95
-  max_tokens: 1024
+  default_profile: light
+  profiles:
+    light:
+      model: gemini/gemini-2.0-flash   # any LiteLLM-compatible model string
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 1024
+states: {}
 ```
 
 All keys are optional — missing values fall back to the defaults shown above. To use a different provider:
@@ -40,13 +44,39 @@ All keys are optional — missing values fall back to the defaults shown above. 
 ```yaml
 # OpenAI
 llm:
-  model: openai/gpt-4o-mini
+  profiles:
+    light:
+      model: openai/gpt-4o-mini
 # requires: export OPENAI_API_KEY="..."
 
 # Anthropic
 llm:
-  model: anthropic/claude-haiku-4-5
+  profiles:
+    light:
+      model: anthropic/claude-haiku-4-5
 # requires: export ANTHROPIC_API_KEY="..."
+```
+
+You can also route specific app states to a different model. This is useful when keeping structured lesson generation on a cheap multilingual model while using a stronger conversational model for open-ended learner questions:
+
+```yaml
+llm:
+  default_profile: light
+  profiles:
+    light:
+      model: gemini/gemini-2.0-flash
+      temperature: 0.7
+      top_p: 0.95
+      max_tokens: 1024
+    heavy:
+      model: openai/gpt-4o-mini
+      temperature: 0.8
+      top_p: 0.95
+      max_tokens: 1536
+
+states:
+  deviation:
+    llm: heavy
 ```
 
 ---
@@ -108,17 +138,19 @@ See [plan.md](plan.md) for the full annotated project layout.
 
 | Key | Default | Description |
 |---|---|---|
-| `llm.model` | `gemini/gemini-2.0-flash` | Any LiteLLM-compatible model string |
-| `llm.temperature` | `0.7` | Sampling temperature |
-| `llm.top_p` | `0.95` | Nucleus sampling threshold |
-| `llm.max_tokens` | `1024` | Max tokens per LLM response |
+| `llm.default_profile` | `light` | Fallback LLM profile for states without an override |
+| `llm.profiles.<profile>.model` | `gemini/gemini-2.0-flash` for `light` | Any LiteLLM-compatible model string |
+| `llm.profiles.<profile>.temperature` | `0.7` for `light` | Sampling temperature |
+| `llm.profiles.<profile>.top_p` | `0.95` for `light` | Nucleus sampling threshold |
+| `llm.profiles.<profile>.max_tokens` | `1024` for `light` | Max tokens per LLM response |
+| `states.<state>.llm` | unset | Optional LLM profile name for a state such as `deviation` |
 | `storage.path` | `~/.milai/state.json` | Override state file location |
 
 ### Environment variables — API keys only
 
 | Variable | Required for |
 |---|---|
-| `GEMINI_API_KEY` | Default model (`gemini/gemini-2.0-flash`) |
+| `GEMINI_API_KEY` | Default `light` profile (`gemini/gemini-2.0-flash`) |
 | `OPENAI_API_KEY` | OpenAI models |
 | `ANTHROPIC_API_KEY` | Anthropic models |
 
