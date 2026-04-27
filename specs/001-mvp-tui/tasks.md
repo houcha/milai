@@ -16,10 +16,10 @@
 
 **Purpose**: Establish the Python package, dependency, and test layout needed by all feature work.
 
-- [ ] T001 Update runtime dependencies and the `milai` console script in `pyproject.toml`
-- [ ] T002 [P] Create source package directories and package markers under `src/milai/__init__.py`
-- [ ] T003 [P] Create test package directories and fake package marker under `tests/fakes/__init__.py`
-- [ ] T004 [P] Add initial usage, configuration, and QA command notes to `README.md`
+- [X] T001 Update runtime dependencies and the `milai` console script in `pyproject.toml`
+- [X] T002 [P] Create source package directories and package markers under `src/milai/__init__.py`
+- [X] T003 [P] Create test package directories and fake package marker under `tests/fakes/__init__.py`
+- [X] T004 [P] Add initial usage, configuration, and QA command notes to `README.md`
 
 ---
 

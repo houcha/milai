@@ -234,3 +234,11 @@ __marimo__/
 
 # Codex
 .codex
+
+# Universal local files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

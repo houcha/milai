@@ -14,19 +14,33 @@ select = [
 # [tool.ruff.lint.pydocstyle]
 # convention = "google"
 
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "milai"
 version = "0.1.0"
 description = "AI-Native Adaptive Language Tutor"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "litellm>=1.80.9",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
+    "textual>=8.2.4",
+]
+
+[project.scripts]
+milai = "milai.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [dependency-groups]
 dev = [
     "prek>=0.3.10",
     "pytest>=9.0.3",
     "ruff>=0.15.11",
-    "textual>=8.2.4",
     "ty>=0.0.32",
 ]
