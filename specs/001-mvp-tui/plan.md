@@ -15,7 +15,7 @@ Build `milai`: a TUI-based, AI-native language learning application driven by a 
 **Testing**: `pytest` (test runner), `ty` (type checker), `ruff` (lint + format), `prek` (pre-commit runner)
 **Target Platform**: Linux/macOS terminal (TUI); Docker + FastAPI in v2
 **Project Type**: CLI/TUI application
-**Performance Goals**: LLM response within user tolerance for conversational TUI (no hard latency SLA in v1); SRS scoring and state transitions are sub-millisecond
+**Performance Goals**: User-facing LLM-backed responses complete within one minute for exercise answers, deviations, and curriculum feedback; local SRS scoring and state transitions should remain simple in-memory operations with no dedicated benchmarking requirement for v1
 **Constraints**: Single-user per installation; one active saved learning session; no external service dependencies beyond an LLM provider API; state file must survive crashes (atomic writes); prompt builders must be deterministic functions over explicit state/user inputs
 **Scale/Scope**: Single learner; one active target language and curriculum; curriculum of 3-20 modules; skills list grows to approximately 100 topics over time; total state file size under 1 MB; nine workflow states with five LLM-backed prompt families
 

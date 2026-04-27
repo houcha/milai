@@ -124,7 +124,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **SC-004**: Dynamic curriculum changes requested during a lesson are reflected within the same session, with no restart required.
 - **SC-005**: User progress is preserved across sessions; returning users can choose to continue from their last checkpoint with no data loss.
 - **SC-006**: 80% of users who complete the assessment proceed to confirm a curriculum without dropping off.
-- **SC-007**: The system responds to any user message (exercise answer, deviation, or feedback) within an acceptable time for a conversational interface.
+- **SC-007**: The system responds to any user message (exercise answer, deviation, or feedback) within one minute for a conversational interface.
 
 ## Assumptions
 
