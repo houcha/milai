@@ -250,3 +250,43 @@ Sub-agents become relevant in v2 if: (a) full curriculum generation exceeds mode
 **Rationale**: LiteLLM's `completion()` with `response_format={"type": "json_object"}` works across all major providers. Pydantic `model_validate_json()` parses and validates the response. If a provider doesn't support JSON mode reliably, `instructor` (which wraps LiteLLM and adds retry-on-parse-failure) can be dropped in at the `LLMClient` implementation layer without changing any call sites, because all call sites go through the `LLMClient` protocol.
 
 Start with plain LiteLLM + Pydantic validation. Add `instructor` as a concrete implementation detail if parse reliability is a problem in practice.
+
+---
+
+## Decision 8: Handler-Owned Prompt Builders
+
+**Decision**: Every LLM-backed state handler owns its prompt interaction contract. The actual prompt builders remain pure functions under `src/milai/llm/prompts/`, and handlers call those builders before passing the returned `list[Message]` to `LLMClient.complete()` or `LLMClient.chat()`. Structured prompt modules also own the Pydantic response models used for validation.
+
+This deliberately does not put prompt logic on persisted `AppState` variants. `AppState` remains serializable workflow data only; handler classes are the ownership boundary for LLM calls, prompt selection, retries, and transitions.
+
+**Prompt functions by state**:
+
+| App state | Prompt owner | Purpose |
+|---|---|---|
+| `AssessmentState` | `prompts.assessment` | Generate adaptive questions and derive fluency results |
+| `CurriculumGenerationState` | `prompts.curriculum` | Generate the initial roadmap |
+| `CurriculumReviewState` | `prompts.curriculum` | Adjust the roadmap from user feedback |
+| `LessonState` | `prompts.lesson`, `prompts.feedback` | Generate lesson content, apply dynamic changes, and evaluate answers |
+| `DeviationState` | `prompts.deviation` | Run bounded free-form learner conversation |
+| `CurriculumCompleteState` | `prompts.curriculum` | Generate optional advanced extension modules |
+
+`OnboardingState`, `AssessmentReviewState`, and `LessonCompleteState` use `IOMediator` only and must not call `LLMClient`.
+
+**Rationale**:
+
+Prompts are core product logic, not incidental strings. Keeping prompt selection handler-owned while keeping builders deterministic makes them:
+
+- testable without network calls
+- portable across the v1 TUI and future web adapter
+- reviewable in code review as contracts for model behavior
+- independent from provider configuration and API-key handling
+- compatible with the state-specific LLM routing already chosen in Decision 1
+
+The selected design avoids a parallel state-to-prompt registry for v1. A registry would add indirection and create a second mapping that can drift from the state-to-handler dispatch. Plain modules and functions are enough: the app maps `AppState` variants to handlers, and each handler invokes only the prompt builders it needs. Some handlers may use multiple builders (`LessonState` uses lesson generation, dynamic-change, and feedback prompts), so a single `prompt_builder` method per state variant would be too narrow.
+
+**Alternatives considered**:
+
+- **Prompt methods on persisted `AppState` variants**: rejected because persistence/domain models should stay pure data. Adding LLM prompt behavior there would couple serialization shape to LLM infrastructure and make state snapshots harder to reason about.
+- **Inline prompt strings in handlers**: rejected because handlers would mix state transition logic, UI control flow, and prompt construction, making prompts harder to test and review.
+- **Central prompt registry keyed by state name**: rejected as premature abstraction and a source of parallel-list drift; `match/case` state dispatch already provides explicit topology.
+- **Provider-specific prompt adapters**: rejected because provider details belong in `LLMClient`; prompt builders must return provider-neutral `Message` values.
