@@ -72,8 +72,6 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 
 ### Edge Cases
 
-- What happens when the user's target language is unsupported or obscure?
-- How does the system handle a user who tests at a very advanced level with no further curriculum needed?
 - What happens if the user provides contradictory feedback during curriculum review (e.g., "make it easier" and "skip beginner topics")?
 - How does the system handle a lesson deviation that goes significantly off-topic (e.g., the user starts discussing unrelated subjects)?
 - When a saved session exists, launch presents a simple choice to continue that session or start a new one; starting a new session replaces the previous local learning context.
