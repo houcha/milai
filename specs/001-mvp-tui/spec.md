@@ -86,7 +86,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **FR-001**: System MUST allow a user to specify a target language and optional learning preferences during onboarding (goal, native language, available time per day).
 - **FR-002**: System MUST generate an adaptive skill assessment of 5-10 minutes, covering vocabulary, grammar, and comprehension at multiple difficulty levels.
 - **FR-003**: System MUST produce a fluency profile from assessment results, assigning the user a level and brief rationale.
-- **FR-004**: System MUST generate a personalized curriculum roadmap (modules -> lessons -> theory/exercises) based on the fluency profile.
+- **FR-004**: System MUST generate a personalized curriculum roadmap based on the fluency profile, containing ordered modules and lesson topics only; lesson theory and exercises are generated on demand when the user starts a lesson.
 - **FR-005**: System MUST allow the user to review, reorder, remove, and provide free-text feedback on the generated curriculum before confirming it.
 - **FR-006**: System MUST regenerate or adjust curriculum modules in response to user feedback during the review phase.
 - **FR-007**: System MUST present lesson content (theory and exercises) in a sequential, interactive format within a lesson session.
