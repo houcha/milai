@@ -31,41 +31,41 @@
 
 ### Foundational Tests
 
-- [ ] T005 [P] Add IOMediator protocol conformance tests in `tests/contract/test_io_mediator.py`
-- [ ] T006 [P] Add LLMClient protocol timeout and error handling contract tests in `tests/contract/test_llm_contract.py`
-- [ ] T007 [P] Add StorageClient atomic load/save/delete contract tests in `tests/contract/test_storage_contract.py`
-- [ ] T008 [P] Add state prompt builder contract tests in `tests/contract/test_state_prompts_contract.py`
-- [ ] T009 [P] Add persisted model invariant and serialization tests in `tests/unit/test_models.py`
-- [ ] T010 [P] Add SRS scheduler scoring and update tests in `tests/unit/test_srs.py`
-- [ ] T011 [P] Add state machine persistence/dispatch tests in `tests/unit/test_state_machine.py`
-- [ ] T012 [P] Add config loading and profile routing tests in `tests/unit/test_config.py`
-- [ ] T013 [P] Add LiteLLM client parse/error/timeout wrapping tests in `tests/integration/test_llm_client.py`
-- [ ] T014 [P] Add local storage integration tests using `tmp_path` in `tests/integration/test_storage.py`
+- [X] T005 [P] Add IOMediator protocol conformance tests in `tests/contract/test_io_mediator.py`
+- [X] T006 [P] Add LLMClient protocol timeout and error handling contract tests in `tests/contract/test_llm_contract.py`
+- [X] T007 [P] Add StorageClient atomic load/save/delete contract tests in `tests/contract/test_storage_contract.py`
+- [X] T008 [P] Add state prompt builder contract tests in `tests/contract/test_state_prompts_contract.py`
+- [X] T009 [P] Add persisted model invariant and serialization tests in `tests/unit/test_models.py`
+- [X] T010 [P] Add SRS scheduler scoring and update tests in `tests/unit/test_srs.py`
+- [X] T011 [P] Add state machine persistence/dispatch tests in `tests/unit/test_state_machine.py`
+- [X] T012 [P] Add config loading and profile routing tests in `tests/unit/test_config.py`
+- [X] T013 [P] Add LiteLLM client parse/error/timeout wrapping tests in `tests/integration/test_llm_client.py`
+- [X] T014 [P] Add local storage integration tests using `tmp_path` in `tests/integration/test_storage.py`
 
 ### Foundational Implementation
 
-- [ ] T015 [P] Implement user-facing content and choice types in `src/milai/io/types.py`
-- [ ] T016 [P] Implement provider-neutral LLM message types in `src/milai/llm/types.py`
-- [ ] T017 [P] Implement LLM exception hierarchy in `src/milai/llm/errors.py`
-- [ ] T018 [P] Implement storage exception hierarchy in `src/milai/storage/errors.py`
-- [ ] T019 [P] Implement assessment, curriculum, module, lesson, and exercise models in `src/milai/models/curriculum.py`
-- [ ] T020 [P] Implement assessment question model in `src/milai/models/assessment.py`
-- [ ] T021 Implement UserState, UserProfile, and Skill models in `src/milai/models/user_state.py`
-- [ ] T022 Implement PersistedState snapshot model in `src/milai/models/state.py`
-- [ ] T023 Implement AppState discriminated union variants and transition payload models in `src/milai/state/variants.py`
-- [ ] T024 [P] Implement IOMediator protocol in `src/milai/io/mediator.py`
-- [ ] T025 [P] Implement LLMClient protocol in `src/milai/llm/client.py`
-- [ ] T026 [P] Implement StorageClient protocol in `src/milai/storage/client.py`
-- [ ] T027 [P] Implement ScriptedMediator test double in `tests/fakes/mediator.py`
-- [ ] T028 [P] Implement ScriptedLLMClient test double in `tests/fakes/llm_client.py`
-- [ ] T029 [P] Implement InMemoryStorage test double in `tests/fakes/storage_client.py`
-- [ ] T030 Implement LocalStorage with atomic JSON writes in `src/milai/storage/local.py`
-- [ ] T031 Implement SRS update, due, and top-review functions in `src/milai/srs/scheduler.py`
-- [ ] T032 Implement YAML config defaults and state LLM profile validation in `src/milai/config.py`
-- [ ] T033 Implement LiteLLMClient structured and chat calls with one-minute user-facing timeout handling in `src/milai/llm/litellm_client.py`
-- [ ] T034 Implement state machine dispatch, transition persistence, and retry-safe save loop in `src/milai/state/machine.py`
-- [ ] T035 Implement minimal TextualMediator adapter for mediator methods in `src/milai/io/tui/app.py`
-- [ ] T036 Implement application entrypoint wiring for config, storage, mediators, clients, and handlers in `src/milai/main.py`
+- [X] T015 [P] Implement user-facing content and choice types in `src/milai/io/types.py`
+- [X] T016 [P] Implement provider-neutral LLM message types in `src/milai/llm/types.py`
+- [X] T017 [P] Implement LLM exception hierarchy in `src/milai/llm/errors.py`
+- [X] T018 [P] Implement storage exception hierarchy in `src/milai/storage/errors.py`
+- [X] T019 [P] Implement assessment, curriculum, module, lesson, and exercise models in `src/milai/models/curriculum.py`
+- [X] T020 [P] Implement assessment question model in `src/milai/models/assessment.py`
+- [X] T021 Implement UserState, UserProfile, and Skill models in `src/milai/models/user_state.py`
+- [X] T022 Implement PersistedState snapshot model in `src/milai/models/state.py`
+- [X] T023 Implement AppState discriminated union variants and transition payload models in `src/milai/state/variants.py`
+- [X] T024 [P] Implement IOMediator protocol in `src/milai/io/mediator.py`
+- [X] T025 [P] Implement LLMClient protocol in `src/milai/llm/client.py`
+- [X] T026 [P] Implement StorageClient protocol in `src/milai/storage/client.py`
+- [X] T027 [P] Implement ScriptedMediator test double in `tests/fakes/mediator.py`
+- [X] T028 [P] Implement ScriptedLLMClient test double in `tests/fakes/llm_client.py`
+- [X] T029 [P] Implement InMemoryStorage test double in `tests/fakes/storage_client.py`
+- [X] T030 Implement LocalStorage with atomic JSON writes in `src/milai/storage/local.py`
+- [X] T031 Implement SRS update, due, and top-review functions in `src/milai/srs/scheduler.py`
+- [X] T032 Implement YAML config defaults and state LLM profile validation in `src/milai/config.py`
+- [X] T033 Implement LiteLLMClient structured and chat calls with one-minute user-facing timeout handling in `src/milai/llm/litellm_client.py`
+- [X] T034 Implement state machine dispatch, transition persistence, and retry-safe save loop in `src/milai/state/machine.py`
+- [X] T035 Implement minimal TextualMediator adapter for mediator methods in `src/milai/io/tui/app.py`
+- [X] T036 Implement application entrypoint wiring for config, storage, mediators, clients, and handlers in `src/milai/main.py`
 
 **Checkpoint**: Protocols, models, storage, configuration, fakes, and machine loop are ready for story work.
 
