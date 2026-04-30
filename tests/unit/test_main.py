@@ -32,7 +32,7 @@ def test_missing_default_config_uses_defaults(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(
         main_module, "DEFAULT_CONFIG_PATH", tmp_path / "missing-config.yaml"
     )
-    monkeypatch.setattr(main_module, "TextualMediator", DummyMediator)
+    monkeypatch.setattr(main_module, "TuiMediator", DummyMediator)
     monkeypatch.setattr(main_module, "StateMachine", DummyStateMachine)
     monkeypatch.setattr(
         main_module,

@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from milai.config import Config, load_config
-from milai.io.tui.app import TextualMediator
+from milai.io.tui.app import TuiMediator
 from milai.llm.litellm_client import LiteLLMClient
 from milai.state.machine import StateMachine
 from milai.storage.local import LocalStorage
@@ -42,7 +42,7 @@ async def run(argv: list[str] | None = None) -> None:
         config = Config()
 
     storage = LocalStorage(config.storage_path)
-    mediator = TextualMediator()
+    mediator = TuiMediator()
 
     if args.reset and await mediator.confirm(
         "Delete the saved session and start fresh?"

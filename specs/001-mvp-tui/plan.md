@@ -5,12 +5,12 @@
 
 ## Summary
 
-Build `milai`: a TUI-based, AI-native language learning application driven by a state machine that wraps an LLM. The TUI is temporary scaffolding for v1; all user-facing I/O is mediated through an `IOMediator` protocol so the learning flow can later run behind the v2 browser interface without importing web framework or browser transport details. All LLM calls go through an `LLMClient` protocol (LiteLLM-backed). State-specific prompt builders live under `src/milai/llm/prompts/` and are invoked only by their owning state handlers. A single `PersistedState` snapshot (`UserState` + `AppState`) is the canonical persisted source of truth, written atomically to `~/.milai/state.json` after every transition. On launch, the entrypoint loads that snapshot; if one exists, it asks the learner whether to continue it or start a new session that replaces the local snapshot and begins onboarding. A lightweight SRS scheduler reinforces weak skill topics by injecting them into lesson-generation and feedback prompts.
+Build `milai`: a terminal TUI-based, AI-native language learning application driven by a state machine that wraps an LLM. The TUI is temporary scaffolding for v1; all user-facing I/O is mediated through an `IOMediator` protocol so the learning flow can later run behind the v2 browser interface without importing web framework or browser transport details. All LLM calls go through an `LLMClient` protocol (LiteLLM-backed). State-specific prompt builders live under `src/milai/llm/prompts/` and are invoked only by their owning state handlers. A single `PersistedState` snapshot (`UserState` + `AppState`) is the canonical persisted source of truth, written atomically to `~/.milai/state.json` after every transition. On launch, the entrypoint loads that snapshot; if one exists, it asks the learner whether to continue it or start a new session that replaces the local snapshot and begins onboarding. A lightweight SRS scheduler reinforces weak skill topics by injecting them into lesson-generation and feedback prompts.
 
 ## Technical Context
 
 **Language/Version**: Python 3.12
-**Primary Dependencies**: `textual>=8.2.4` (TUI), `litellm` (provider-agnostic LLM), `pydantic` (data model + structured LLM output), `pyyaml` (config file parsing)
+**Primary Dependencies**: `litellm` (provider-agnostic LLM), `pydantic` (data model + structured LLM output), `pyyaml` (config file parsing)
 **Storage**: Local JSON file at `~/.milai/state.json` containing `PersistedState`; atomic writes via `tempfile` + `os.replace`
 **Testing**: `pytest` (test runner), `ty` (type checker), `ruff` (lint + format), `prek` (pre-commit runner)
 **Target Platform**: Linux/macOS terminal (TUI); Docker + FastAPI in v2
@@ -89,7 +89,7 @@ src/
     │   ├── types.py                 # RichContent, Choice, ContentKind
     │   └── tui/
     │       ├── __init__.py
-    │       └── app.py               # TextualMediator: Textual implementation of IOMediator
+    │       └── app.py               # TuiMediator: terminal implementation of IOMediator
     │
     ├── llm/
     │   ├── __init__.py
@@ -144,7 +144,7 @@ tests/
     └── test_storage_contract.py
 ```
 
-**Structure Decision**: Single-project layout using the `src/` package layout. `src/milai/` is the source package; `tests/` mirrors its structure. The `io/tui/` subdirectory isolates Textual for v1 only. State handlers own workflow behavior and call prompt builders from `llm/prompts/`; prompt builders are deterministic and contain no I/O, storage, provider calls, or config lookup. Three-tier test organisation: unit (fast, no I/O), integration (file system + optional real LLM), contract (Protocol and prompt-shape conformance).
+**Structure Decision**: Single-project layout using the `src/` package layout. `src/milai/` is the source package; `tests/` mirrors its structure. The `io/tui/` subdirectory isolates terminal presentation for v1 only. State handlers own workflow behavior and call prompt builders from `llm/prompts/`; prompt builders are deterministic and contain no I/O, storage, provider calls, or config lookup. Three-tier test organisation: unit (fast, no I/O), integration (file system + optional real LLM), contract (Protocol and prompt-shape conformance).
 
 ## Complexity Tracking
 

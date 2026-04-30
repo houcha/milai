@@ -5,7 +5,7 @@
 
 ## Summary
 
-Add the browser UI as the product interface without coupling the learning engine to web transport concerns. The selected implementation is a single Python web process built on FastAPI + Uvicorn, serving a small static frontend (HTML/CSS/JS with Alpine.js and Marked.js) and a WebSocket endpoint that backs `ApiMediator`. The existing state machine, handlers, SRS, and provider interfaces remain web-framework independent; v2 may remove or deprecate the temporary Textual TUI.
+Add the browser UI as the product interface without coupling the learning engine to web transport concerns. The selected implementation is a single Python web process built on FastAPI + Uvicorn, serving a small static frontend (HTML/CSS/JS with Alpine.js and Marked.js) and a WebSocket endpoint that backs `ApiMediator`. The existing state machine, handlers, SRS, and provider interfaces remain web-framework independent; v2 may remove or deprecate the temporary terminal TUI.
 
 The key architectural choice is to use FastAPI directly rather than Streamlit or Gradio. This feature needs explicit control over WebSocket lifecycle, persistent session cookies, reconnect behavior, and a thin translation layer from interaction-boundary calls to browser messages. FastAPI fits that shape directly. Streamlit and Gradio are productive when the framework owns the app flow, but here the app flow is already owned by milai's state machine.
 
@@ -98,7 +98,7 @@ tests/
 | Browser transport | WebSocket | Bidirectional by design; simpler than SSE + extra POST endpoints |
 | Session persistence | Persistent cookie + file-backed `PersistedState` snapshot + in-memory registry | Matches resume/reconnect requirements without introducing accounts or a DB |
 | Deployment | Single Docker image running Uvicorn | Simplest deployment shape for self-hosted single-user app |
-| TUI lifecycle | Remove or deprecate `TextualMediator` in v2 | The TUI was scaffolding; v2 should optimize around the browser product UI |
+| TUI lifecycle | Remove or deprecate `TuiMediator` in v2 | The TUI was scaffolding; v2 should optimize around the browser product UI |
 
 ## Phase Outputs
 

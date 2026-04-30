@@ -5,8 +5,8 @@ import asyncio
 from milai.io.types import Choice, ContentKind, RichContent
 
 
-class TextualMediator:
-    """Small async mediator shim; richer Textual rendering comes in story work."""
+class TuiMediator:
+    """Small async mediator shim; richer terminal rendering comes in story work."""
 
     async def show(self, content: RichContent) -> None:
         prefix = "# " if content.kind is ContentKind.HEADER else ""

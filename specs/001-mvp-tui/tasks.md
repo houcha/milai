@@ -64,7 +64,7 @@
 - [X] T032 Implement YAML config defaults and state LLM profile validation in `src/milai/config.py`
 - [X] T033 Implement LiteLLMClient structured and chat calls with one-minute user-facing timeout handling in `src/milai/llm/litellm_client.py`
 - [X] T034 Implement state machine dispatch, transition persistence, and retry-safe save loop in `src/milai/state/machine.py`
-- [X] T035 Implement minimal TextualMediator adapter for mediator methods in `src/milai/io/tui/app.py`
+- [X] T035 Implement minimal TuiMediator adapter for mediator methods in `src/milai/io/tui/app.py`
 - [X] T036 Implement application entrypoint wiring for config, storage, mediators, clients, and handlers in `src/milai/main.py`
 
 **Checkpoint**: Protocols, models, storage, configuration, fakes, and machine loop are ready for story work.
@@ -97,7 +97,7 @@
 - [ ] T049 [US1] Implement confirmed start-new replacement of profile, curriculum, progress, and app state in `src/milai/main.py`
 - [ ] T050 [US1] Wire onboarding, assessment, and assessment review handlers into startup dependencies in `src/milai/main.py`
 - [ ] T051 [US1] Wire US1 transitions into the machine dispatch in `src/milai/state/machine.py`
-- [ ] T052 [US1] Add TextualMediator rendering for onboarding, assessment choices, and fluency review in `src/milai/io/tui/app.py`
+- [ ] T052 [US1] Add TuiMediator rendering for onboarding, assessment choices, and fluency review in `src/milai/io/tui/app.py`
 
 **Checkpoint**: User Story 1 can be completed and tested without curriculum or lesson functionality.
 

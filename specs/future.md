@@ -44,7 +44,7 @@ The v1 TUI uses a single generic interaction layout: a transcript surface plus o
 
 A product UI may be easier to reason about as **state-specific UI snapshots**: assessment, curriculum review, lesson, feedback, deviation handling, and completion can each have their own view structure and local UI logic. This keeps "where the learner is" visually explicit and puts state-specific presentation decisions in one place instead of encoding the whole product as a chat-like stream of generic interactions.
 
-The transition should preserve the core boundary: workflow state and domain logic must remain independent of Textual/FastAPI/browser APIs. A future implementation can introduce a renderer/controller registry parallel to the existing handler registry:
+The transition should preserve the core boundary: workflow state and domain logic must remain independent of terminal UI, FastAPI, or browser APIs. A future implementation can introduce a renderer/controller registry parallel to the existing handler registry:
 
 ```text
 AppState variant -> StateHandler

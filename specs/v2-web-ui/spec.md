@@ -7,9 +7,9 @@
 
 ## Context
 
-v1 (`v1-mvp-tui`) used a TUI as temporary scaffolding to validate the learning flow quickly. v2 makes the browser UI the product interface. The `IOMediator` protocol remains useful, but its purpose is no longer long-term multi-UI support; it is the interaction boundary that keeps browser transport details (WebSocket request IDs, cookies, reconnects, frontend state) out of the state machine and learning handlers.
+v1 (`v1-mvp-tui`) used a terminal TUI as temporary scaffolding to validate the learning flow quickly. v2 makes the browser UI the product interface. The `IOMediator` protocol remains useful, but its purpose is no longer long-term multi-UI support; it is the interaction boundary that keeps browser transport details (WebSocket request IDs, cookies, reconnects, frontend state) out of the state machine and learning handlers.
 
-The v2 migration may remove or deprecate the Textual TUI implementation. The state machine, handlers, data model, LLM client, storage client, and SRS subsystem should remain independent of FastAPI/WebSocket/browser APIs, but they are not required to preserve TUI behavior.
+The v2 migration may remove or deprecate the terminal TUI implementation. The state machine, handlers, data model, LLM client, storage client, and SRS subsystem should remain independent of FastAPI/WebSocket/browser APIs, but they are not required to preserve TUI behavior.
 
 ## Clarifications
 
@@ -79,7 +79,7 @@ The entire application — backend + frontend static assets — ships as a singl
 - **FR-006**: The application MUST be packaged as a Docker image; state MUST persist to a mounted volume (`/data` inside the container).
 - **FR-007**: `ApiMediator` MUST satisfy the narrow interaction contract (`show`, `prompt`, `choose`, `confirm`, `show_error`, `clear`) so learning handlers can be tested without a browser.
 - **FR-008**: Only one active WebSocket session per session ID is permitted. A second connection with the same session ID MUST receive a `session_conflict` message and be closed.
-- **FR-009**: The v2 acceptance scope MUST NOT require preserving terminal UI behavior; the v1 Textual TUI may be removed or left as an unsupported development aid.
+- **FR-009**: The v2 acceptance scope MUST NOT require preserving terminal UI behavior; the v1 terminal TUI may be removed or left as an unsupported development aid.
 
 ### Non-Functional Requirements
 

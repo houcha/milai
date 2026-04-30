@@ -1,1 +1,1 @@
-"""Textual TUI adapter."""
+"""Terminal TUI adapter."""

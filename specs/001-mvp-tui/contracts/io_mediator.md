@@ -2,7 +2,7 @@
 
 **File**: `src/milai/io/mediator.py`
 **Type**: Python `Protocol` (structural subtyping)
-**Purpose**: Decouple all user-facing input/output from the state machine and LLM logic. The Textual TUI is the temporary v1 implementation; the v2 browser adapter is expected to become the product implementation. Nothing in `src/milai/state/`, `src/milai/llm/`, or `src/milai/srs/` may import Textual, FastAPI, WebSocket, cookie, or browser-specific APIs directly.
+**Purpose**: Decouple all user-facing input/output from the state machine and LLM logic. The terminal TUI is the temporary v1 implementation; the v2 browser adapter is expected to become the product implementation. Nothing in `src/milai/state/`, `src/milai/llm/`, or `src/milai/srs/` may import terminal UI, FastAPI, WebSocket, cookie, or browser-specific APIs directly.
 
 ---
 
@@ -115,10 +115,10 @@ class ScriptedMediator:
 
 | Version | Implementation class | Location |
 |---|---|---|
-| v1 TUI scaffolding | `TextualMediator` | `src/milai/io/tui/app.py` |
+| v1 TUI scaffolding | `TuiMediator` | `src/milai/io/tui/app.py` |
 | v2 Web product UI | `ApiMediator` (future) | `src/milai/io/web/mediator.py` |
 | Tests | `ScriptedMediator` | `tests/fakes/mediator.py` |
 
-The concrete implementation is created at the top-level entrypoint (`src/milai/main.py`) and injected into the state handler constructors that need user I/O. No state handler knows which concrete implementation it is using. v2 does not need to preserve the Textual implementation if it is no longer useful.
+The concrete implementation is created at the top-level entrypoint (`src/milai/main.py`) and injected into the state handler constructors that need user I/O. No state handler knows which concrete implementation it is using. v2 does not need to preserve the terminal implementation if it is no longer useful.
 
 On launch, `src/milai/main.py` may also use `IOMediator.choose()` before the state machine starts to ask whether an existing saved session should be continued or replaced with a new onboarding flow. This is entrypoint orchestration, not a separate `AppState` variant.
