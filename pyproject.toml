@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "milai"
 version = "0.1.0"
-description = "AI-Native Adaptive Language Tutor"
+description = "AI language tutor with personalized curriculum and adaptive feedback"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
