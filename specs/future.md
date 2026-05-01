@@ -28,6 +28,18 @@ The corpus should be ingested into citable sections with metadata such as langua
 
 ---
 
+## Adaptive Assessment Batching
+
+The v1 assessment may use a fixed question batch to keep the MVP fast, cheap, and simple. A future version should revisit assessment adaptivity once the end-to-end learning loop is stable.
+
+Prefer **level-gated batching** over one LLM call per question. For example, generate a short batch for an initial CEFR band, collect answers, then use a structured evaluation to decide whether to stop, ask a confirming batch, or advance to the next band. This preserves the main benefit of adaptivity - avoiding wasted C1 questions for a B1 learner or excessive A1 questions for an advanced learner - while keeping latency and cost bounded.
+
+The assessment state will likely need to track the current target level, completed level batches, and pass/borderline/fail decisions. The final fluency estimate should consider all answered batches and the highest confidently passed boundary rather than treating a single fixed batch as the full placement signal.
+
+When this state shape appears, split the current assessment workflow into separate generation and evaluation responsibilities. Question generation should own the prompt/schema for producing the next level batch, while answer evaluation should own the prompt/schema for scoring an answered batch and deciding whether to advance, confirm, or finish. Keep `AssessmentReviewHandler` focused on user confirmation or override of the final fluency estimate.
+
+---
+
 ## LLM Telemetry
 
 User-facing interaction review and developer-facing LLM observability are both deferred beyond v1. Developer-facing observability includes prompt traces, latency, token cost per call, and eval scores.
