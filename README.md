@@ -27,7 +27,7 @@ llm:
   default_profile: light
   profiles:
     light:
-      model: gemini/gemini-2.0-flash
+      model: gemini/gemma-4-31b-it
       temperature: 0.7
       top_p: 0.95
       max_tokens: 1024
