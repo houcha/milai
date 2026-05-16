@@ -45,7 +45,11 @@ def test_question_prompt_includes_profile_prior_answers_and_schema_context() -> 
                 {
                     "text": "Say hello",
                     "difficulty": "beginner",
-                }
+                },
+                {
+                    "text": "Say goodbye",
+                    "difficulty": "beginner",
+                },
             ]
         }
     )

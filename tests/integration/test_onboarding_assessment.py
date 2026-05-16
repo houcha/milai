@@ -27,6 +27,7 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
             "20",
             "avoid=grammar jargon",
             "morning answer",
+            "night answer",
             True,
         ]
     )
@@ -36,7 +37,10 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
                 questions=[
                     AssessmentQuestion(
                         text="Translate: good morning",
-                    )
+                    ),
+                    AssessmentQuestion(
+                        text="Translate: good night",
+                    ),
                 ]
             ),
             FluencyResult(fluency_level="A1", rationale="Ready for basics."),
@@ -52,7 +56,7 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
         },
     )
 
-    asyncio.run(machine.run(max_steps=5))
+    asyncio.run(machine.run(max_steps=6))
 
     saved = asyncio.run(storage.load())
     assert saved is not None
@@ -61,3 +65,4 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
     assert saved.user.skills == []
     assert isinstance(saved.app, CurriculumGenerationState)
     assert saved.app.assessment_questions[0].user_answer == "morning answer"
+    assert saved.app.assessment_questions[1].user_answer == "night answer"

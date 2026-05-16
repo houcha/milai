@@ -7,9 +7,16 @@ from milai.models.assessment import AssessmentQuestion
 from milai.models.user_state import UserState
 from milai.state.variants import AssessmentState
 
+ASSESSMENT_QUESTION_BATCH_SIZE = 2
+
 
 class AssessmentQuestionBatch(BaseModel):
-    questions: list[AssessmentQuestion] = Field(min_length=1)
+    # Gemini structured output fails with `500 - Internal error` if min_length > 1
+    # and max_length is not specified, so set both to the same value.
+    questions: list[AssessmentQuestion] = Field(
+        min_length=ASSESSMENT_QUESTION_BATCH_SIZE,
+        max_length=ASSESSMENT_QUESTION_BATCH_SIZE,
+    )
 
 
 class FluencyResult(BaseModel):
