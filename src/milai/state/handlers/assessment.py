@@ -5,6 +5,8 @@ from milai.io.types import ContentKind, RichContent
 from milai.llm.client import LLMClient
 from milai.llm.errors import LLMError
 from milai.llm.prompts.assessment import (
+    MAX_ASSESSMENT_QUESTIONS,
+    MIN_ASSESSMENT_QUESTIONS,
     AssessmentQuestionBatch,
     FluencyResult,
     build_fluency_prompt,
@@ -37,22 +39,51 @@ class AssessmentHandler:
             return state, updated_user
 
         fluency = await self._calculate_fluency(state, updated_user)
-        return (
-            AssessmentReviewState(
-                fluency_level=fluency.fluency_level,
-                fluency_rationale=fluency.rationale,
-                assessment_questions=state.questions,
-            ),
+        if self._should_stop_assessment(state, fluency):
+            return self._to_review_state(state, fluency), updated_user
+
+        follow_up_questions = await self._generate_questions(
+            state,
             updated_user,
+            follow_up_guidance=fluency.follow_up_guidance,
+        )
+        state.questions.extend(follow_up_questions)
+        return state, updated_user
+
+    def _should_stop_assessment(
+        self, state: AssessmentState, fluency: FluencyResult
+    ) -> bool:
+        answered_count = len(state.questions)
+        if answered_count >= MAX_ASSESSMENT_QUESTIONS:
+            return True
+        return (
+            answered_count >= MIN_ASSESSMENT_QUESTIONS and fluency.confidence == "high"
+        )
+
+    def _to_review_state(
+        self, state: AssessmentState, fluency: FluencyResult
+    ) -> AssessmentReviewState:
+        return AssessmentReviewState(
+            fluency_level=fluency.fluency_level,
+            fluency_rationale=fluency.rationale,
+            assessment_questions=state.questions,
         )
 
     async def _generate_questions(
-        self, state: AssessmentState, user: UserState
+        self,
+        state: AssessmentState,
+        user: UserState,
+        *,
+        follow_up_guidance: str | None = None,
     ) -> list[AssessmentQuestion]:
         while True:
             try:
                 batch = await self._llm.complete(
-                    build_question_prompt(state, user),
+                    build_question_prompt(
+                        state,
+                        user,
+                        follow_up_guidance=follow_up_guidance,
+                    ),
                     response_model=AssessmentQuestionBatch,
                 )
                 return batch.questions

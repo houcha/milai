@@ -38,6 +38,8 @@ def test_question_prompt_includes_profile_assessment_hist_and_schema_context() -
     assert "travel" in rendered
     assert "grammar jargon" in rendered
     assert "ticket answer" in rendered
+    assert "Current question index" not in rendered
+    assert "Follow-up guidance" in rendered
     assert "difficulty" in rendered.lower()
     assert AssessmentQuestionBatch.model_validate(
         {
@@ -75,5 +77,10 @@ def test_fluency_prompt_includes_answered_questions_and_validates_result() -> No
     assert "French" in rendered
     assert "intro answer" in rendered
     assert FluencyResult.model_validate(
-        {"fluency_level": "A1", "rationale": "Short but correct."}
+        {
+            "fluency_level": "A1",
+            "rationale": "Short but correct.",
+            "confidence": "high",
+            "follow_up_guidance": "No follow-up needed.",
+        }
     )

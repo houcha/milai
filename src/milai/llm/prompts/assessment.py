@@ -1,5 +1,7 @@
 """Assessment prompt builders and response schemas."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from milai.llm.types import Message, Role
@@ -8,6 +10,8 @@ from milai.models.user_state import UserState
 from milai.state.variants import AssessmentState
 
 ASSESSMENT_QUESTION_BATCH_SIZE = 2
+MIN_ASSESSMENT_QUESTIONS = 6
+MAX_ASSESSMENT_QUESTIONS = 10
 
 
 class AssessmentQuestionBatch(BaseModel):
@@ -22,11 +26,15 @@ class AssessmentQuestionBatch(BaseModel):
 class FluencyResult(BaseModel):
     fluency_level: str
     rationale: str
+    confidence: Literal["low", "medium", "high"]
+    follow_up_guidance: str
 
 
 def build_question_prompt(
     state: AssessmentState,
     user: UserState,
+    *,
+    follow_up_guidance: str | None = None,
 ) -> list[Message]:
     profile = user.profile
     assessment_history = [
@@ -34,6 +42,7 @@ def build_question_prompt(
         for question in state.questions
         if question.user_answer
     ]
+    guidance = follow_up_guidance or "none"
     return [
         Message(
             role=Role.SYSTEM,
@@ -50,6 +59,7 @@ def build_question_prompt(
                 f"Goal: {profile.learning_goal}. "
                 f"Teaching preferences: {profile.preferences}. "
                 f"Assessment history: {assessment_history or 'none'}. "
+                f"Follow-up guidance: {guidance}. "
                 "Generate adaptive questions with difficulty."
             ),
         ),
@@ -68,7 +78,12 @@ def build_fluency_prompt(
     return [
         Message(
             role=Role.SYSTEM,
-            content="You estimate language fluency and return structured JSON.",
+            content=(
+                "You estimate language fluency and return structured JSON. "
+                "Use confidence to indicate how reliable the estimate is, and "
+                "follow_up_guidance to describe what the next assessment batch "
+                "should probe if more evidence is needed."
+            ),
         ),
         Message(
             role=Role.USER,

@@ -28,6 +28,10 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
             "avoid=grammar jargon",
             "morning answer",
             "night answer",
+            "thanks answer",
+            "please answer",
+            "ticket answer",
+            "hotel answer",
             True,
         ]
     )
@@ -43,7 +47,44 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
                     ),
                 ]
             ),
-            FluencyResult(fluency_level="A1", rationale="Ready for basics."),
+            FluencyResult(
+                fluency_level="A1",
+                rationale="Early evidence.",
+                confidence="high",
+                follow_up_guidance="Probe polite phrases.",
+            ),
+            AssessmentQuestionBatch(
+                questions=[
+                    AssessmentQuestion(
+                        text="Say thanks",
+                    ),
+                    AssessmentQuestion(
+                        text="Say please",
+                    ),
+                ]
+            ),
+            FluencyResult(
+                fluency_level="A1",
+                rationale="More evidence.",
+                confidence="high",
+                follow_up_guidance="Probe travel needs.",
+            ),
+            AssessmentQuestionBatch(
+                questions=[
+                    AssessmentQuestion(
+                        text="Ask for a ticket",
+                    ),
+                    AssessmentQuestion(
+                        text="Ask for a hotel",
+                    ),
+                ]
+            ),
+            FluencyResult(
+                fluency_level="A1",
+                rationale="Ready for basics.",
+                confidence="high",
+                follow_up_guidance="No follow-up needed.",
+            ),
         ]
     )
     storage = InMemoryStorage()
@@ -56,7 +97,7 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
         },
     )
 
-    asyncio.run(machine.run(max_steps=6))
+    asyncio.run(machine.run(max_steps=12))
 
     saved = asyncio.run(storage.load())
     assert saved is not None
@@ -66,3 +107,7 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
     assert isinstance(saved.app, CurriculumGenerationState)
     assert saved.app.assessment_questions[0].user_answer == "morning answer"
     assert saved.app.assessment_questions[1].user_answer == "night answer"
+    assert saved.app.assessment_questions[2].user_answer == "thanks answer"
+    assert saved.app.assessment_questions[3].user_answer == "please answer"
+    assert saved.app.assessment_questions[4].user_answer == "ticket answer"
+    assert saved.app.assessment_questions[5].user_answer == "hotel answer"
