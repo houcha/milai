@@ -162,6 +162,14 @@ CurriculumCompleteState   → show summary, offer extension
 
 ---
 
+**Assessment topic inference boundary**:
+
+`AssessmentQuestion` deliberately does not include `expected_topics`. Early versions considered asking the assessment prompt to label each question with the skill topics it probes, then using those labels to seed initial `Skill` records. That was rejected because per-question labels would be produced before the model has seen the learner's answers, and each generated question could name overlapping concepts differently (`travel greetings`, `greetings`, `basic greetings`, etc.). Normalizing those labels across a batch would either require brittle string rules or a second model pass, and the result would still be tied to question intent rather than demonstrated learner performance.
+
+Instead, assessment stores only durable evidence: question text, difficulty, and the learner's answer. After the user confirms the fluency snapshot, the completed assessment questions are carried into `CurriculumGenerationState`. Curriculum generation then infers initial skill topics once, in the same pass that designs the roadmap, with access to the full answer set and the confirmed profile. This keeps topic normalization at the point where durable `Skill.topic` records are created and avoids persisting throwaway assessment labels.
+
+---
+
 ## Decision 3: Local Storage Format
 
 **Decision**: Single JSON file at `~/.milai/state.json`; atomic writes via `tempfile` + `os.replace`.

@@ -75,29 +75,29 @@
 
 **Goal**: A new or returning learner can provide language preferences, complete or resume an adaptive assessment, and receive a fluency snapshot.
 
-**Independent Test**: Run the onboarding/assessment integration test with scripted mediator and LLM responses; verify a profile, answered assessment questions, skills, and confirmed fluency level are persisted.
+**Independent Test**: Run the onboarding/assessment integration test with scripted mediator and LLM responses; verify a profile, answered assessment questions, confirmed fluency level, and assessment evidence for curriculum generation are persisted.
 
 ### Tests for User Story 1
 
-- [ ] T037 [P] [US1] Add onboarding handler unit tests for required and optional preferences in `tests/unit/test_onboarding_handler.py`
-- [ ] T038 [P] [US1] Add assessment prompt unit tests for question and fluency prompts in `tests/unit/test_assessment_prompts.py`
-- [ ] T039 [P] [US1] Add assessment handler unit tests for answer capture, resume, fluency calculation, LLM retry, and timeout no-data-loss behavior in `tests/unit/test_assessment_handler.py`
-- [ ] T040 [P] [US1] Add assessment review handler unit tests for confirm and override flows in `tests/unit/test_assessment_review_handler.py`
-- [ ] T041 [P] [US1] Add end-to-end onboarding-to-assessment integration test in `tests/integration/test_onboarding_assessment.py`
-- [ ] T042 [P] [US1] Add saved-session launch choice tests for continue versus start-new in `tests/integration/test_startup_session_choice.py`
-- [ ] T043 [P] [US1] Add confirmed replacement tests asserting previous profile, curriculum, and progress are cleared before fresh onboarding in `tests/integration/test_startup_session_choice.py`
+- [X] T037 [P] [US1] Add onboarding handler unit tests for required and optional preferences in `tests/unit/test_onboarding_handler.py`
+- [X] T038 [P] [US1] Add assessment prompt unit tests for question and fluency prompts without per-question skill topics in `tests/unit/test_assessment_prompts.py`
+- [X] T039 [P] [US1] Add assessment handler unit tests for answer capture, resume, fluency calculation, assessment evidence carry-forward, LLM retry, and timeout no-data-loss behavior in `tests/unit/test_assessment_handler.py`
+- [X] T040 [P] [US1] Add assessment review handler unit tests for confirm and override flows in `tests/unit/test_assessment_review_handler.py`
+- [X] T041 [P] [US1] Add end-to-end onboarding-to-assessment integration test that persists confirmed fluency and assessment evidence, not inferred skills, in `tests/integration/test_onboarding_assessment.py`
+- [X] T042 [P] [US1] Add saved-session launch choice tests for continue versus start-new in `tests/integration/test_startup_session_choice.py`
+- [X] T043 [P] [US1] Add confirmed replacement tests asserting previous profile, curriculum, and progress are cleared before fresh onboarding in `tests/integration/test_startup_session_choice.py`
 
 ### Implementation for User Story 1
 
-- [ ] T044 [US1] Implement OnboardingHandler profile collection and defaults in `src/milai/state/handlers/onboarding.py`
-- [ ] T045 [US1] Implement assessment prompt schemas and builders in `src/milai/llm/prompts/assessment.py`
-- [ ] T046 [US1] Implement AssessmentHandler question generation, answer persistence, fluency result, retry prompts, and timeout no-data-loss handling in `src/milai/state/handlers/assessment.py`
-- [ ] T047 [US1] Implement AssessmentReviewHandler fluency confirmation and override in `src/milai/state/handlers/assessment_review.py`
-- [ ] T048 [US1] Implement saved-session continue/start-new launch choice in `src/milai/main.py`
-- [ ] T049 [US1] Implement confirmed start-new replacement of profile, curriculum, progress, and app state in `src/milai/main.py`
-- [ ] T050 [US1] Wire onboarding, assessment, and assessment review handlers into startup dependencies in `src/milai/main.py`
-- [ ] T051 [US1] Wire US1 transitions into the machine dispatch in `src/milai/state/machine.py`
-- [ ] T052 [US1] Add TuiMediator rendering for onboarding, assessment choices, and fluency review in `src/milai/io/tui/app.py`
+- [X] T044 [US1] Implement OnboardingHandler profile collection and defaults in `src/milai/state/handlers/onboarding.py`
+- [X] T045 [US1] Implement assessment prompt schemas and builders without per-question expected topics in `src/milai/llm/prompts/assessment.py`
+- [X] T046 [US1] Implement AssessmentHandler question generation, answer persistence, fluency result, assessment evidence carry-forward, retry prompts, and timeout no-data-loss handling in `src/milai/state/handlers/assessment.py`
+- [X] T047 [US1] Implement AssessmentReviewHandler fluency confirmation and override in `src/milai/state/handlers/assessment_review.py`
+- [X] T048 [US1] Implement saved-session continue/start-new launch choice in `src/milai/main.py`
+- [X] T049 [US1] Implement confirmed start-new replacement of profile, curriculum, progress, and app state in `src/milai/main.py`
+- [X] T050 [US1] Wire onboarding, assessment, and assessment review handlers into startup dependencies in `src/milai/main.py`
+- [X] T051 [US1] Wire US1 transitions into the machine dispatch in `src/milai/state/machine.py`
+- [X] T052 [US1] Add TuiMediator rendering for onboarding, assessment choices, and fluency review in `src/milai/io/tui/app.py`
 
 **Checkpoint**: User Story 1 can be completed and tested without curriculum or lesson functionality.
 
@@ -107,11 +107,11 @@
 
 **Goal**: From a confirmed fluency profile, the app generates a structured curriculum and lets the learner reorder, remove, adjust, and confirm modules.
 
-**Independent Test**: Run the curriculum review integration test with a synthetic profile and scripted curriculum responses; verify edited and confirmed curriculum state persists before lessons start.
+**Independent Test**: Run the curriculum review integration test with a synthetic profile, completed assessment evidence, and scripted curriculum responses; verify inferred initial skills plus edited and confirmed curriculum state persist before lessons start.
 
 ### Tests for User Story 2
 
-- [ ] T053 [P] [US2] Add curriculum prompt unit tests for generation and adjustment prompts in `tests/unit/test_curriculum_prompts.py`
+- [ ] T053 [P] [US2] Add curriculum prompt unit tests for generation-time initial skill inference from assessment answers and adjustment prompts in `tests/unit/test_curriculum_prompts.py`
 - [ ] T054 [P] [US2] Add curriculum generation handler unit tests in `tests/unit/test_curriculum_generation_handler.py`
 - [ ] T055 [P] [US2] Add curriculum generation LLM failure tests for retry and no-data-loss behavior in `tests/unit/test_curriculum_generation_handler.py`
 - [ ] T056 [P] [US2] Add curriculum review handler unit tests for reorder, remove, feedback, confirm, retry, and timeout no-data-loss flows in `tests/unit/test_curriculum_review_handler.py`
@@ -119,8 +119,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T058 [US2] Implement curriculum generation and adjustment schemas and builders in `src/milai/llm/prompts/curriculum.py`
-- [ ] T059 [US2] Implement CurriculumGenerationHandler structured LLM call and curriculum draft persistence in `src/milai/state/handlers/curriculum_gen.py`
+- [ ] T058 [US2] Implement curriculum generation and adjustment schemas and builders, including inferred initial skills in `src/milai/llm/prompts/curriculum.py`
+- [ ] T059 [US2] Implement CurriculumGenerationHandler structured LLM call, inferred initial skill persistence, and curriculum draft persistence in `src/milai/state/handlers/curriculum_gen.py`
 - [ ] T060 [US2] Implement CurriculumReviewHandler confirm, reorder, remove, feedback adjustment, retry, and timeout no-data-loss loop in `src/milai/state/handlers/curriculum_review.py`
 - [ ] T061 [US2] Add curriculum review menu rendering and module selection support in `src/milai/io/tui/app.py`
 - [ ] T062 [US2] Wire curriculum generation and review handlers into startup dependencies in `src/milai/main.py`
@@ -198,8 +198,8 @@
 
 ### User Story Dependencies
 
-- **US1 - Onboarding and Skill Assessment**: No dependency on US2 or US3; can be validated with scripted mediator and LLM responses.
-- **US2 - Curriculum Generation and Review**: Can be tested independently using a synthetic `UserState` with confirmed fluency; product flow uses US1 output.
+- **US1 - Onboarding and Skill Assessment**: No dependency on US2 or US3; can be validated with scripted mediator and LLM responses, and carries completed assessment evidence forward.
+- **US2 - Curriculum Generation and Review**: Can be tested independently using a synthetic `UserState` with confirmed fluency plus completed assessment evidence; product flow uses US1 output.
 - **US3 - Learning Loop**: Can be tested independently using a synthetic confirmed curriculum; product flow uses US2 output.
 
 ### Within Each User Story

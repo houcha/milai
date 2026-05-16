@@ -36,9 +36,9 @@ Structured prompt modules define the Pydantic model passed to `LLMClient.complet
 
 | App state | Module | Builder | LLM method | Response model | Required context |
 |---|---|---|---|---|---|
-| `AssessmentState` | `assessment.py` | `build_question_prompt` | `complete` | `AssessmentQuestionBatch` | profile, prior answers, current difficulty, assessed skill topics |
-| `AssessmentState` | `assessment.py` | `build_fluency_prompt` | `complete` | `FluencyResult` | profile, completed assessment answers, assessed skill topics |
-| `CurriculumGenerationState` | `curriculum.py` | `build_generation_prompt` | `complete` | `CurriculumDraft` | profile, fluency level, learning goal, available time, initial skills |
+| `AssessmentState` | `assessment.py` | `build_question_prompt` | `complete` | `AssessmentQuestionBatch` | profile, prior answers, current difficulty |
+| `AssessmentState` | `assessment.py` | `build_fluency_prompt` | `complete` | `FluencyResult` | profile, completed assessment answers |
+| `CurriculumGenerationState` | `curriculum.py` | `build_generation_prompt` | `complete` | `CurriculumDraft` | profile, fluency level, learning goal, available time, completed assessment answers, inferred initial skills |
 | `CurriculumReviewState` | `curriculum.py` | `build_adjustment_prompt` | `complete` | `CurriculumDraft` | current curriculum, user free-text feedback, removed/reordered modules |
 | `LessonState` | `lesson.py` | `build_lesson_prompt` | `complete` | `LessonContent` | active lesson/topic, profile, curriculum position, top SRS review skills |
 | `LessonState` | `feedback.py` | `build_feedback_prompt` | `complete` | `ExerciseFeedback` | exercise, user answer, expected topics, profile, current lesson context |
@@ -78,8 +78,8 @@ States without entries in this table must not call `LLMClient`.
 
 Unit prompt tests verify state-specific behavior:
 
-- `test_assessment_prompts.py`: assessment questions include target language, prior answers, difficulty, and skill-topic expectations
-- `test_curriculum_prompts.py`: generation, adjustment, and extension prompts include profile, fluency, curriculum context, and user feedback where applicable
+- `test_assessment_prompts.py`: assessment questions include target language, prior answers, and difficulty
+- `test_curriculum_prompts.py`: generation, adjustment, and extension prompts include profile, fluency, completed assessment answers for initial skill inference, curriculum context, and user feedback where applicable
 - `test_lesson_prompts.py`: lesson and dynamic-change prompts include curriculum position, requested change, and top review skills
 - `test_feedback_prompts.py`: feedback prompts include exercise text, answer, expected skill topics, and contextual explanation requirements
 - `test_deviation_prompts.py`: chat prompts include bounded context window, lesson-return behavior, and off-topic guardrails

@@ -97,7 +97,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **FR-012**: System MUST allow users to resume or restart an incomplete skill assessment.
 - **FR-013**: When an LLM call fails, the system MUST display a clear error message, preserve current session state, and offer the user a retry option without data loss.
 - **FR-014**: When the user completes the final lesson of their curriculum, the system MUST display a completion summary and offer to generate additional advanced modules to continue learning.
-- **FR-015**: System MUST track learner strength by skill topic from assessment and exercise performance, then prioritize weaker or due topics for reinforcement in future lesson content.
+- **FR-015**: System MUST infer initial learner skill topics from the completed assessment during curriculum generation, update learner strength from exercise performance, and prioritize weaker or due topics for reinforcement in future lesson content.
 - **FR-016**: System MUST support only one active target language and one active curriculum for v1; when a saved session exists, launch MUST ask whether to continue it or start a new session rather than preserving multiple parallel language tracks.
 - **FR-017**: When the user starts a new session from launch, the system MUST begin onboarding for a fresh learning context that replaces the previous local profile, curriculum, and progress.
 
@@ -109,7 +109,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **Module**: A thematic grouping of lessons (e.g., "Greetings & Introductions"); has a title, description, and ordered list of lessons.
 - **Lesson**: A single learning unit within a module; contains theory content and a set of exercises.
 - **Exercise**: An individual practice item (e.g., translation, fill-in-the-blank, multiple choice) with an expected response and feedback.
-- **Skill Topic**: A language-learning concept or ability (e.g., articles, past tense, travel phrases) with learner-specific strength and review priority derived from assessment and exercise outcomes.
+- **Skill Topic**: A language-learning concept or ability (e.g., articles, past tense, travel phrases) with learner-specific strength and review priority initially inferred from the completed assessment at curriculum-generation time and then updated from exercise outcomes.
 - **Session**: A single continuous interaction between the user and the system; records progress made and deviations taken.
 
 ## Success Criteria *(mandatory)*

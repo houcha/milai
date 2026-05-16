@@ -55,6 +55,7 @@ UserState
 **Invariants**:
 - `curriculum` is `None` only while the workflow is in ONBOARDING, ASSESSMENT, ASSESSMENT_REVIEW, or CURRICULUM_GENERATION.
 - `skills` entries are unique by `topic` (normalised to lowercase).
+- Initial skills are inferred during curriculum generation from completed assessment answers, not attached to individual assessment questions.
 
 ---
 
@@ -68,7 +69,7 @@ Each variant has a `type` literal discriminator field for Pydantic serialisation
 OnboardingState          { type: "onboarding" }
 AssessmentState          { type: "assessment",        ...payload }
 AssessmentReviewState    { type: "assessment_review", ...payload }
-CurriculumGenerationState{ type: "curriculum_gen" }
+CurriculumGenerationState{ type: "curriculum_gen",    ...payload }
 CurriculumReviewState    { type: "curriculum_review" }
 LessonState              { type: "lesson" }
 DeviationState           { type: "deviation",         ...payload }
@@ -89,10 +90,19 @@ Resumption: if `current_idx > 0`, the state machine offers to resume from that q
 
 ```
 ├── fluency_level: str                   # e.g. "A2", "Intermediate" — pending user confirmation
-└── fluency_rationale: str               # LLM explanation shown to the user
+├── fluency_rationale: str               # LLM explanation shown to the user
+└── assessment_questions: list[AssessmentQuestion]  # completed evidence carried into curriculum generation
 ```
 
-Once the user confirms (or overrides), `fluency_level` is written to `UserProfile.fluency_level` and the state transitions to `CurriculumGenerationState`. The payload is consumed and does not persist beyond this state.
+Once the user confirms (or overrides), `fluency_level` is written to `UserProfile.fluency_level` and the state transitions to `CurriculumGenerationState`. Completed assessment questions are carried forward so curriculum generation can infer durable skill topics from the full answer set.
+
+### CurriculumGenerationState payload
+
+```
+└── assessment_questions: list[AssessmentQuestion]  # completed assessment evidence used to infer initial skills
+```
+
+The curriculum-generation prompt consumes the confirmed profile and completed assessment answers. It returns both the curriculum draft and initial `Skill` entries inferred at curriculum-level granularity.
 
 ### DeviationState payload
 
@@ -114,7 +124,6 @@ Once the user confirms (or overrides), `fluency_level` is written to `UserProfil
 ```
 AssessmentQuestion
 ├── text: str                            # the question text shown to the user
-├── expected_topics: list[str]           # topics this question probes (used to seed initial skills)
 ├── user_answer: str | None             # None until answered
 └── difficulty: str                      # "beginner" | "intermediate" | "advanced"
 ```
@@ -220,7 +229,7 @@ The `confirmed` flag previously on `Curriculum` is removed — an unconfirmed cu
 
 v1 does not maintain a separate chronological event store or interaction-record model layer. Interaction details needed for resume are owned by the existing snapshot models:
 
-- Assessment answers live on `AssessmentQuestion.user_answer` while assessment is in progress.
+- Assessment answers live on `AssessmentQuestion.user_answer` while assessment is in progress, then move through assessment review into curriculum generation for initial skill inference.
 - Lesson attempts update the active `Exercise` fields (`user_answer`, `feedback`, `is_correct`) and the relevant `Skill` records.
 - Deviation exchanges live in `DeviationState.context_window` only while the user is in deviation mode.
 - Curriculum review changes update the active `Curriculum` directly before confirmation.
