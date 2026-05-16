@@ -33,7 +33,7 @@ class LiteLLMClient:
                 top_p=self._config.top_p,
                 max_tokens=self._config.max_tokens,
                 timeout=DEFAULT_TIMEOUT_SECONDS,
-                response_format={"type": "json_object"},
+                response_format=response_model,
             )
             raw = _extract_content(response)
         except LLMError:

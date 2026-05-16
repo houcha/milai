@@ -35,7 +35,7 @@ def test_litellm_client_parses_structured_json(monkeypatch) -> None:
 
     assert result == ToyResponse(answer="hola")
     assert calls[0]["model"] == "test-model"
-    assert calls[0]["response_format"] == {"type": "json_object"}
+    assert calls[0]["response_format"] is ToyResponse
 
 
 def test_litellm_client_wraps_parse_and_provider_errors(monkeypatch) -> None:
