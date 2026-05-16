@@ -22,6 +22,19 @@ def test_missing_default_config_uses_defaults(monkeypatch, tmp_path) -> None:
     class DummyMediator:
         pass
 
+    class DummyStorage:
+        def __init__(self, path) -> None:
+            self.path = path
+
+        async def load(self):
+            return None
+
+        async def save(self, state) -> None:
+            self.state = state
+
+        async def delete(self) -> None:
+            pass
+
     class DummyStateMachine:
         def __init__(self, *args, **kwargs) -> None:
             pass
@@ -33,6 +46,7 @@ def test_missing_default_config_uses_defaults(monkeypatch, tmp_path) -> None:
         main_module, "DEFAULT_CONFIG_PATH", tmp_path / "missing-config.yaml"
     )
     monkeypatch.setattr(main_module, "TuiMediator", DummyMediator)
+    monkeypatch.setattr(main_module, "LocalStorage", DummyStorage)
     monkeypatch.setattr(main_module, "StateMachine", DummyStateMachine)
     monkeypatch.setattr(
         main_module,

@@ -2,11 +2,10 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class AssessmentQuestion(BaseModel):
     text: str
-    expected_topics: list[str] = Field(default_factory=list)
     user_answer: str | None = None
     difficulty: Literal["beginner", "intermediate", "advanced"] = "beginner"

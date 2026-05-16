@@ -22,10 +22,12 @@ class AssessmentReviewState(BaseModel):
     type: Literal["assessment_review"] = "assessment_review"
     fluency_level: str
     fluency_rationale: str = ""
+    assessment_questions: list[AssessmentQuestion] = Field(default_factory=list)
 
 
 class CurriculumGenerationState(BaseModel):
     type: Literal["curriculum_gen"] = "curriculum_gen"
+    assessment_questions: list[AssessmentQuestion] = Field(default_factory=list)
 
 
 class CurriculumReviewState(BaseModel):

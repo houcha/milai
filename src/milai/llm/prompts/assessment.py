@@ -23,7 +23,7 @@ def build_question_prompt(
 ) -> list[Message]:
     profile = user.profile
     prior_answers = [
-        f"{question.text}: {question.user_answer}"
+        f"{question.difficulty} question: {question.text}: {question.user_answer}"
         for question in state.questions
         if question.user_answer
     ]
@@ -43,7 +43,8 @@ def build_question_prompt(
                 f"Goal: {profile.learning_goal}. "
                 f"Teaching preferences: {profile.preferences}. "
                 f"Current question index: {state.current_idx}. "
-                f"Prior answers: {prior_answers or 'none'}."
+                f"Prior answers: {prior_answers or 'none'}. "
+                "Generate adaptive questions with difficulty."
             ),
         ),
     ]
@@ -54,7 +55,7 @@ def build_fluency_prompt(
     user: UserState,
 ) -> list[Message]:
     answered = [
-        f"{question.difficulty} - {question.text}: {question.user_answer}"
+        f"{question.difficulty} question: {question.text}: {question.user_answer}"
         for question in state.questions
         if question.user_answer
     ]

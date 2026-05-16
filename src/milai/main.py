@@ -3,12 +3,34 @@
 import argparse
 import asyncio
 import logging
+from collections.abc import Mapping
 from pathlib import Path
 
 from milai.config import Config, load_config
+from milai.io.mediator import IOMediator
 from milai.io.tui.app import TuiMediator
+from milai.io.types import Choice, RichContent
+from milai.llm.client import LLMClient
 from milai.llm.litellm_client import LiteLLMClient
-from milai.state.machine import StateMachine
+from milai.models.state import PersistedState
+from milai.models.user_state import UserState
+from milai.state.handlers.assessment import AssessmentHandler
+from milai.state.handlers.assessment_review import AssessmentReviewHandler
+from milai.state.handlers.onboarding import OnboardingHandler
+from milai.state.machine import HandlerMap, StateMachine, StepResult
+from milai.state.variants import (
+    AppState,
+    AssessmentReviewState,
+    AssessmentState,
+    CurriculumCompleteState,
+    CurriculumGenerationState,
+    CurriculumReviewState,
+    DeviationState,
+    LessonCompleteState,
+    LessonState,
+    OnboardingState,
+)
+from milai.storage.client import StorageClient
 from milai.storage.local import LocalStorage
 
 logger = logging.getLogger(__name__)
@@ -49,11 +71,97 @@ async def run(argv: list[str] | None = None) -> None:
     ):
         await storage.delete()
 
-    _clients = {
+    await prepare_launch_snapshot(storage, mediator)
+
+    clients = {
         name: LiteLLMClient(profile) for name, profile in config.llm.profiles.items()
     }
-    machine = StateMachine(storage=storage, handlers={})
+    machine = StateMachine(
+        storage=storage,
+        handlers=build_handler_map(config=config, mediator=mediator, clients=clients),
+    )
     await machine.run()
+
+
+async def prepare_launch_snapshot(
+    storage: StorageClient, mediator: IOMediator
+) -> PersistedState:
+    saved = await storage.load()
+    if saved is None:
+        return _fresh_snapshot()
+
+    choice = await mediator.choose(
+        "Saved session found",
+        [
+            Choice(
+                label="Continue",
+                value="continue",
+                description="Resume the saved learning session",
+            ),
+            Choice(
+                label="Start new",
+                value="start_new",
+                description="Replace the saved session",
+            ),
+        ],
+    )
+    if choice.value == "continue":
+        return saved
+
+    await storage.delete()
+    fresh = _fresh_snapshot()
+    await storage.save(fresh)
+    return fresh
+
+
+def build_handler_map(
+    *,
+    config: Config,
+    mediator: IOMediator,
+    clients: Mapping[str, LLMClient],
+) -> HandlerMap:
+    assessment_client = _client_for_state(
+        config=config, clients=clients, state_name="assessment"
+    )
+    pending = PendingHandler(mediator)
+    return {
+        OnboardingState: OnboardingHandler(mediator),
+        AssessmentState: AssessmentHandler(mediator, assessment_client),
+        AssessmentReviewState: AssessmentReviewHandler(mediator),
+        CurriculumGenerationState: pending,
+        CurriculumReviewState: pending,
+        LessonState: pending,
+        DeviationState: pending,
+        LessonCompleteState: pending,
+        CurriculumCompleteState: pending,
+    }
+
+
+class PendingHandler:
+    def __init__(self, mediator: IOMediator) -> None:
+        self._mediator = mediator
+
+    async def step(self, app: AppState, user: UserState) -> StepResult:
+        await self._mediator.show(
+            RichContent(f"The {app.type!r} workflow is not implemented yet.")
+        )
+        return None
+
+
+def _client_for_state(
+    *, config: Config, clients: Mapping[str, LLMClient], state_name: str
+) -> LLMClient:
+    state_profile = config.states.get(state_name)
+    profile_name = (
+        state_profile.llm
+        if state_profile is not None and state_profile.llm is not None
+        else config.llm.default_profile
+    )
+    return clients[profile_name]
+
+
+def _fresh_snapshot() -> PersistedState:
+    return PersistedState(user=UserState(), app=OnboardingState())
 
 
 def main() -> None:

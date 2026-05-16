@@ -1,6 +1,6 @@
 """Curriculum prompt builders and response schemas."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from milai.llm.types import Message, Role
 from milai.models.curriculum import Curriculum
@@ -14,23 +14,33 @@ from milai.state.variants import (
 
 class CurriculumDraft(BaseModel):
     curriculum: Curriculum
+    initial_skills: list[Skill] = Field(default_factory=list)
 
 
 def build_generation_prompt(
     state: CurriculumGenerationState,
     user: UserState,
 ) -> list[Message]:
-    _ = state
+    assessment_answers = [
+        (f"{question.difficulty} question: {question.text}: {question.user_answer}")
+        for question in state.assessment_questions
+        if question.user_answer
+    ]
     return [
         Message(
             role=Role.SYSTEM,
-            content="Create a language-learning curriculum as JSON.",
+            content=(
+                "Create a language-learning curriculum as JSON. "
+                "Infer exact initial skill topics from the completed assessment "
+                "answers and include them as initial_skills."
+            ),
         ),
         Message(
             role=Role.USER,
             content=(
                 f"Profile: {user.profile.model_dump()}. "
-                f"Initial skills: {[skill.model_dump() for skill in user.skills]}."
+                f"Completed assessment answers: {assessment_answers or 'none'}. "
+                f"Existing skills: {[skill.model_dump() for skill in user.skills]}."
             ),
         ),
     ]
