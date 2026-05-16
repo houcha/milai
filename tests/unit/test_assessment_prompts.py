@@ -9,7 +9,7 @@ from milai.models.user_state import UserProfile, UserState
 from milai.state.variants import AssessmentState
 
 
-def test_question_prompt_includes_profile_prior_answers_and_schema_context() -> None:
+def test_question_prompt_includes_profile_assessment_hist_and_schema_context() -> None:
     user = UserState(
         profile=UserProfile(
             target_language="Spanish",

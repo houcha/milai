@@ -29,7 +29,7 @@ def build_question_prompt(
     user: UserState,
 ) -> list[Message]:
     profile = user.profile
-    prior_answers = [
+    assessment_history = [
         f"{question.difficulty} question: {question.text}: {question.user_answer}"
         for question in state.questions
         if question.user_answer
@@ -49,8 +49,7 @@ def build_question_prompt(
                 f"Native language: {profile.native_language}. "
                 f"Goal: {profile.learning_goal}. "
                 f"Teaching preferences: {profile.preferences}. "
-                f"Current question index: {state.current_idx}. "
-                f"Prior answers: {prior_answers or 'none'}. "
+                f"Assessment history: {assessment_history or 'none'}. "
                 "Generate adaptive questions with difficulty."
             ),
         ),
