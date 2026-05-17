@@ -36,6 +36,56 @@ def test_litellm_client_parses_structured_json(monkeypatch) -> None:
     assert result == ToyResponse(answer="hola")
     assert calls[0]["model"] == "test-model"
     assert calls[0]["response_format"] is ToyResponse
+    assert calls[0]["reasoning_effort"] == "none"
+    assert calls[0]["allowed_openai_params"] == ["reasoning_effort"]
+
+
+def test_litellm_client_omits_reasoning_effort_when_configured_none(
+    monkeypatch,
+) -> None:
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = []
+
+    async def fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return {"choices": [{"message": {"content": "hola"}}]}
+
+    monkeypatch.setattr(
+        "milai.llm.litellm_client.litellm.acompletion", fake_acompletion
+    )
+    client = LiteLLMClient(LLMConfig(model="test-model", reasoning_effort=None))
+
+    result = asyncio.run(client.chat([Message(role=Role.USER, content="hello")]))
+
+    assert result == "hola"
+    assert "reasoning_effort" not in calls[0]
+    assert "allowed_openai_params" not in calls[0]
+
+
+def test_litellm_client_respects_explicit_reasoning_effort(monkeypatch) -> None:
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = []
+
+    async def fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return {"choices": [{"message": {"content": "hola"}}]}
+
+    monkeypatch.setattr(
+        "milai.llm.litellm_client.litellm.acompletion", fake_acompletion
+    )
+    client = LiteLLMClient(LLMConfig(model="test-model", reasoning_effort="minimal"))
+
+    result = asyncio.run(client.chat([Message(role=Role.USER, content="hello")]))
+
+    assert result == "hola"
+    assert calls[0]["reasoning_effort"] == "minimal"
+    assert calls[0]["allowed_openai_params"] == ["reasoning_effort"]
 
 
 def test_litellm_client_wraps_parse_and_provider_errors(monkeypatch) -> None:

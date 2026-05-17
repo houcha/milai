@@ -26,16 +26,7 @@ class LiteLLMClient:
         response_model: type[T],
     ) -> T:
         try:
-            response = await litellm.acompletion(
-                model=self._config.model,
-                messages=_to_provider_messages(messages),
-                temperature=self._config.temperature,
-                top_p=self._config.top_p,
-                max_tokens=self._config.max_tokens,
-                timeout=DEFAULT_TIMEOUT_SECONDS,
-                response_format=response_model,
-            )
-            raw = _extract_content(response)
+            raw = await self._acompletion(messages, response_format=response_model)
         except LLMError:
             raise
         except Exception as exc:
@@ -48,15 +39,7 @@ class LiteLLMClient:
 
     async def chat(self, messages: list[Message]) -> str:
         try:
-            response = await litellm.acompletion(
-                model=self._config.model,
-                messages=_to_provider_messages(messages),
-                temperature=self._config.temperature,
-                top_p=self._config.top_p,
-                max_tokens=self._config.max_tokens,
-                timeout=DEFAULT_TIMEOUT_SECONDS,
-            )
-            content = _extract_content(response).strip()
+            content = (await self._acompletion(messages)).strip()
         except LLMError:
             raise
         except Exception as exc:
@@ -65,20 +48,28 @@ class LiteLLMClient:
             raise LLMError("empty chat response")
         return content
 
-
-def _to_provider_messages(messages: list[Message]) -> list[dict[str, str]]:
-    return [
-        {"role": message.role.value, "content": message.content} for message in messages
-    ]
-
-
-def _extract_content(response: Any) -> str:
-    try:
-        choice = response["choices"][0]
-        message = choice["message"]
-        content = message["content"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise LLMError("provider response did not include message content") from exc
-    if not isinstance(content, str):
-        raise LLMError("provider response content was not text")
-    return content
+    async def _acompletion(self, messages: list[Message], **kwargs: Any) -> str:
+        if self._config.reasoning_effort is not None:
+            kwargs["reasoning_effort"] = self._config.reasoning_effort
+            kwargs["allowed_openai_params"] = ["reasoning_effort"]
+        response = await litellm.acompletion(
+            model=self._config.model,
+            messages=[
+                {"role": message.role.value, "content": message.content}
+                for message in messages
+            ],
+            temperature=self._config.temperature,
+            top_p=self._config.top_p,
+            max_tokens=self._config.max_tokens,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+            **kwargs,
+        )
+        try:
+            choice = response["choices"][0]
+            message = choice["message"]
+            content = message["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LLMError("provider response did not include message content") from exc
+        if not isinstance(content, str):
+            raise LLMError("provider response content was not text")
+        return content

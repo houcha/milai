@@ -31,8 +31,12 @@ llm:
       temperature: 0.7
       top_p: 0.95
       max_tokens: 1024
+      reasoning_effort: none
 states: {}
 ```
+
+`reasoning_effort` is passed through to LiteLLM when set. The default `none`
+value disables thinking for faster responses.
 
 API keys stay in environment variables and should not be written into config
 files.

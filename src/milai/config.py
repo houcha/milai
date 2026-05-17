@@ -14,6 +14,7 @@ class LLMConfig(BaseModel):
     temperature: float = 0.7
     top_p: float = 0.95
     max_tokens: int = 1024
+    reasoning_effort: str | None = "none"
 
 
 class LLMProfilesConfig(BaseModel):
