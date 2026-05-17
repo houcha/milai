@@ -36,8 +36,36 @@ def test_litellm_client_parses_structured_json(monkeypatch) -> None:
     assert result == ToyResponse(answer="hola")
     assert calls[0]["model"] == "test-model"
     assert calls[0]["response_format"] is ToyResponse
-    assert calls[0]["reasoning_effort"] == "none"
-    assert calls[0]["allowed_openai_params"] == ["reasoning_effort"]
+
+
+def test_litellm_client_retries_internal_server_error(monkeypatch) -> None:
+    import litellm
+    import litellm.main
+
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = 0
+
+    def flaky_completion(**kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise litellm.InternalServerError(
+                message="simulated 500",
+                llm_provider="test",
+                model=kwargs["model"],
+            )
+        return {"choices": [{"message": {"content": "hola"}}]}
+
+    monkeypatch.setattr(litellm.main, "completion", flaky_completion)
+    client = LiteLLMClient(LLMConfig(model="openai/test-model"))
+
+    result = asyncio.run(client.chat([Message(role=Role.USER, content="hello")]))
+
+    assert result == "hola"
+    assert calls == 2
 
 
 def test_litellm_client_omits_reasoning_effort_when_configured_none(

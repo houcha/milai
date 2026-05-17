@@ -11,6 +11,9 @@ from milai.llm.types import Message
 
 T = TypeVar("T", bound=BaseModel)
 DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_NUM_RETRIES = 5
+
+litellm.suppress_debug_info = True  # ty: ignore[invalid-assignment]
 
 
 class LiteLLMClient:
@@ -62,6 +65,7 @@ class LiteLLMClient:
             top_p=self._config.top_p,
             max_tokens=self._config.max_tokens,
             timeout=DEFAULT_TIMEOUT_SECONDS,
+            num_retries=DEFAULT_NUM_RETRIES,
             **kwargs,
         )
         try:
