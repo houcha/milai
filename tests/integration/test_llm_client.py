@@ -93,6 +93,36 @@ def test_litellm_client_omits_reasoning_effort_when_configured_none(
     assert "allowed_openai_params" not in calls[0]
 
 
+def test_litellm_client_allows_per_call_options(monkeypatch) -> None:
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = []
+
+    async def fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return {"choices": [{"message": {"content": '{"answer":"hola"}'}}]}
+
+    monkeypatch.setattr(
+        "milai.llm.litellm_client.litellm.acompletion", fake_acompletion
+    )
+    client = LiteLLMClient(LLMConfig(model="test-model"))
+
+    result = asyncio.run(
+        client.complete(
+            [Message(role=Role.USER, content="hello")],
+            response_model=ToyResponse,
+            timeout=180,
+            num_retries=1,
+        )
+    )
+
+    assert result == ToyResponse(answer="hola")
+    assert calls[0]["timeout"] == 180
+    assert calls[0]["num_retries"] == 1
+
+
 def test_litellm_client_respects_explicit_reasoning_effort(monkeypatch) -> None:
     from milai.config import LLMConfig
     from milai.llm.litellm_client import LiteLLMClient

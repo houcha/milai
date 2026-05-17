@@ -1,6 +1,6 @@
 """Protocol for provider-neutral LLM calls."""
 
-from typing import Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
@@ -15,8 +15,9 @@ class LLMClient(Protocol):
         messages: list[Message],
         *,
         response_model: type[T],
+        **kwargs: Any,
     ) -> T:
         """Return a structured response validated by response_model."""
 
-    async def chat(self, messages: list[Message]) -> str:
+    async def chat(self, messages: list[Message], **kwargs: Any) -> str:
         """Return free-form assistant text."""

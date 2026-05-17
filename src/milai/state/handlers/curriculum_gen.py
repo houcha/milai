@@ -14,6 +14,8 @@ from milai.state.variants import (
     CurriculumReviewState,
 )
 
+CURRICULUM_GENERATION_TIMEOUT_SECONDS = 180
+
 
 class CurriculumGenerationHandler:
     def __init__(self, mediator: IOMediator, llm: LLMClient) -> None:
@@ -45,6 +47,7 @@ class CurriculumGenerationHandler:
                 return await self._llm.complete(
                     build_generation_prompt(state, user),
                     response_model=CurriculumDraft,
+                    timeout=CURRICULUM_GENERATION_TIMEOUT_SECONDS,
                 )
             except LLMError as exc:
                 if not await self._handle_llm_error(exc):
