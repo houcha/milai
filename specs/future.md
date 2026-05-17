@@ -40,6 +40,26 @@ When this state shape appears, split the current assessment workflow into separa
 
 ---
 
+## Assessment Planning Confirmation
+
+Before starting assessment, the system should draft a compact assessment plan from onboarding inputs and ask the user to confirm or revise it. This is distinct from teaching preferences: preferences are blank-input and often sparse, while a drafted plan is easier for users to validate.
+
+The goal is to prevent the model from silently expanding vague goals like "tourism" into incorrect assumptions about which skills matter. For example, the model might assume travel learning should prioritize speaking and listening, but a specific learner might mostly need reading for signs, menus, museums, or transit information. The assessment should collect evidence against confirmed priorities instead of hidden assumptions.
+
+Proposed future flow:
+
+```text
+onboarding -> assessment planning -> plan review -> assessment -> assessment review -> curriculum generation
+```
+
+Onboarding captures what the user knows how to say.
+Assessment planning turns that into explicit assumptions.
+User confirmation prevents the model from silently optimizing for the wrong goal.
+Assessment collects evidence against confirmed priorities.
+Curriculum generation uses confirmed priorities + observed skill estimates.
+
+---
+
 ## LLM Telemetry
 
 User-facing interaction review and developer-facing LLM observability are both deferred beyond v1. Developer-facing observability includes prompt traces, latency, token cost per call, and eval scores.
