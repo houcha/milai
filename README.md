@@ -27,7 +27,7 @@ llm:
   default_profile: light
   profiles:
     light:
-      model: gemini/gemma-4-31b-it
+      model: gemini/gemini-3.1-flash-lite
 states: {}
 ```
 

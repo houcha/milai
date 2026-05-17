@@ -10,7 +10,7 @@ DEFAULT_STORAGE_PATH = Path.home() / ".milai" / "state.json"
 
 
 class LLMConfig(BaseModel):
-    model: str = "gemini/gemma-4-31b-it"
+    model: str = "gemini/gemini-3.1-flash-lite"
     temperature: float | None = None
     top_p: float | None = None
     max_tokens: int | None = None

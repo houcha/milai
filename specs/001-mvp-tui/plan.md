@@ -156,7 +156,7 @@ Full rationale in [research.md](research.md). Key decisions:
 
 | Decision | Choice | Key reason |
 |---|---|---|
-| Default LLM profile | `light` profile using `gemini/gemini-2.0-flash` | Good multilingual coverage and cost profile for structured pedagogical content |
+| Default LLM profile | `light` profile using `gemini/gemini-3.1-flash-lite` | Good multilingual coverage and cost profile for structured pedagogical content |
 | LLM configurability | `~/.milai/config.yaml` with named `llm.profiles`, `llm.default_profile`, and top-level `states.<state>.llm` profile references; env vars for API keys only | Keeps shared model settings DRY and allows open-ended conversation to use a stronger model without making every structured call expensive |
 | Workflow architecture | Hand-rolled state machine; `AppState` discriminated union; one constructor-wired handler class per state; `match/case` dispatch; launch-level continue/start-new decision before state-machine entry | Clean domain/workflow separation; resume is simple; per-state dependencies are explicit; no extra workflow state is needed for session selection |
 | State prompts | Explicit prompt modules owned by LLM-backed state handlers; deterministic builders; tests before implementation | Keeps prompts reviewable, reusable across TUI/web adapters, and isolated from provider/config concerns |

@@ -32,7 +32,7 @@ llm:
   default_profile: light
   profiles:
     light:
-      model: gemini/gemini-2.0-flash   # any LiteLLM-compatible model string
+      model: gemini/gemini-3.1-flash-lite   # any LiteLLM-compatible model string
 states: {}
 ```
 
@@ -61,7 +61,7 @@ llm:
   default_profile: light
   profiles:
     light:
-      model: gemini/gemini-2.0-flash
+      model: gemini/gemini-3.1-flash-lite
     heavy:
       model: openai/gpt-4o-mini
       temperature: 0.8
@@ -133,7 +133,7 @@ See [plan.md](plan.md) for the full annotated project layout.
 | Key | Default | Description |
 |---|---|---|
 | `llm.default_profile` | `light` | Fallback LLM profile for states without an override |
-| `llm.profiles.<profile>.model` | `gemini/gemini-2.0-flash` for `light` | Any LiteLLM-compatible model string |
+| `llm.profiles.<profile>.model` | `gemini/gemini-3.1-flash-lite` for `light` | Any LiteLLM-compatible model string |
 | `llm.profiles.<profile>.temperature` | unset | Optional sampling temperature; omitted values use model/provider defaults |
 | `llm.profiles.<profile>.top_p` | unset | Optional nucleus sampling threshold; omitted values use model/provider defaults |
 | `llm.profiles.<profile>.max_tokens` | unset | Optional max tokens per LLM response; omitted values use model/provider defaults |
@@ -144,7 +144,7 @@ See [plan.md](plan.md) for the full annotated project layout.
 
 | Variable | Required for |
 |---|---|
-| `GEMINI_API_KEY` | Default `light` profile (`gemini/gemini-2.0-flash`) |
+| `GEMINI_API_KEY` | Default `light` profile (`gemini/gemini-3.1-flash-lite`) |
 | `OPENAI_API_KEY` | OpenAI models |
 | `ANTHROPIC_API_KEY` | Anthropic models |
 
