@@ -55,19 +55,13 @@ class LiteLLMClient:
         return content
 
     async def _acompletion(self, messages: list[Message], **kwargs: Any) -> str:
-        if self._config.reasoning_effort is not None:
-            kwargs["reasoning_effort"] = self._config.reasoning_effort
-            kwargs["allowed_openai_params"] = ["reasoning_effort"]
         completion_kwargs: dict[str, Any] = {
-            "temperature": self._config.temperature,
-            "top_p": self._config.top_p,
-            "max_tokens": self._config.max_tokens,
             "timeout": DEFAULT_TIMEOUT_SECONDS,
             "num_retries": DEFAULT_NUM_RETRIES,
         }
+        completion_kwargs.update(self._config.model_dump(exclude_none=True))
         completion_kwargs.update(kwargs)
         response = await litellm.acompletion(
-            model=self._config.model,
             messages=[
                 {"role": message.role.value, "content": message.content}
                 for message in messages

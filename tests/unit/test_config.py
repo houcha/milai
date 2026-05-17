@@ -33,8 +33,10 @@ states:
 
     assert config.llm.default_profile == "light"
     assert config.llm.profiles["light"].model == "openai/gpt-4o-mini"
-    assert config.llm.profiles["light"].max_tokens == 1024
-    assert config.llm.profiles["light"].reasoning_effort == "none"
+    assert config.llm.profiles["light"].temperature is None
+    assert config.llm.profiles["light"].top_p is None
+    assert config.llm.profiles["light"].max_tokens is None
+    assert config.llm.profiles["light"].reasoning_effort is None
     assert config.llm.profiles["heavy"].temperature == 0.2
     assert config.states["deviation"].llm == "heavy"
 

@@ -6,7 +6,7 @@
 
 ## Decision 1: LLM Model Selection
 
-**Decision**: Default model profile is `light`, backed by `gemini/gemini-2.0-flash`. LLM parameters (model, temperature, top_p, max_tokens) are configured as named profiles under the `llm.profiles` section in `~/.milai/config.yaml`, with `llm.default_profile` selecting the fallback profile. State config may reference an LLM profile by name under `states.<state>.llm`, so user-facing conversational states can use a stronger model than structured content-generation states. API keys remain in environment variables exclusively (secrets must not be written to files).
+**Decision**: Default model profile is `light`, backed by `gemini/gemini-2.0-flash`. The model is configured as a named profile under the `llm.profiles` section in `~/.milai/config.yaml`, with `llm.default_profile` selecting the fallback profile. Optional generation parameters such as temperature, top_p, and max_tokens are only sent when explicitly configured so provider/model defaults remain in effect after model changes. State config may reference an LLM profile by name under `states.<state>.llm`, so user-facing conversational states can use a stronger model than structured content-generation states. API keys remain in environment variables exclusively (secrets must not be written to files).
 
 **Rationale**:
 
@@ -54,9 +54,6 @@ llm:
   profiles:
     light:
       model: gemini/gemini-2.0-flash
-      temperature: 0.7
-      top_p: 0.95
-      max_tokens: 1024
 states: {}
 ```
 
@@ -68,9 +65,6 @@ llm:
   profiles:
     light:
       model: gemini/gemini-2.0-flash
-      temperature: 0.7
-      top_p: 0.95
-      max_tokens: 1024
     heavy:
       model: openai/gpt-4o-mini
       temperature: 0.8

@@ -92,7 +92,7 @@ class LLMParseError(LLMError):
 4. **No retry logic inside the implementation**: retries are the caller's responsibility (state machine handlers). The implementation makes exactly one attempt per call.
 5. **No conversation state stored in the client**: all prompt context is in the `messages` list. A client instance stores only its resolved model profile configuration and may be reused by any handlers assigned to that profile.
 6. **API keys are resolved by the provider layer from environment variables only**: secrets never appear in config files or persisted state.
-7. **Each client instance represents exactly one resolved LLM profile**: model, temperature, top_p, and max_tokens are fixed at construction time. The client does not know about app states, profile names, or routing tables.
+7. **Each client instance represents exactly one resolved LLM profile**: the model is fixed at construction time, and optional generation parameters such as temperature, top_p, and max_tokens are sent only when configured. The client does not know about app states, profile names, or routing tables.
 8. **Profile selection happens outside `LLMClient`**: the entrypoint builds one `LLMClient` per configured profile, chooses the profile for each state from config, and passes the resolved client into that state's handler constructor. Profile references are validated at startup.
 
 ---

@@ -33,13 +33,10 @@ llm:
   profiles:
     light:
       model: gemini/gemini-2.0-flash   # any LiteLLM-compatible model string
-      temperature: 0.7
-      top_p: 0.95
-      max_tokens: 1024
 states: {}
 ```
 
-All keys are optional — missing values fall back to the defaults shown above. To use a different provider:
+Generation parameters such as `temperature`, `top_p`, and `max_tokens` are optional. When omitted, LiteLLM/provider defaults for the selected model are used. To use a different provider:
 
 ```yaml
 # OpenAI
@@ -65,9 +62,6 @@ llm:
   profiles:
     light:
       model: gemini/gemini-2.0-flash
-      temperature: 0.7
-      top_p: 0.95
-      max_tokens: 1024
     heavy:
       model: openai/gpt-4o-mini
       temperature: 0.8
@@ -140,9 +134,9 @@ See [plan.md](plan.md) for the full annotated project layout.
 |---|---|---|
 | `llm.default_profile` | `light` | Fallback LLM profile for states without an override |
 | `llm.profiles.<profile>.model` | `gemini/gemini-2.0-flash` for `light` | Any LiteLLM-compatible model string |
-| `llm.profiles.<profile>.temperature` | `0.7` for `light` | Sampling temperature |
-| `llm.profiles.<profile>.top_p` | `0.95` for `light` | Nucleus sampling threshold |
-| `llm.profiles.<profile>.max_tokens` | `1024` for `light` | Max tokens per LLM response |
+| `llm.profiles.<profile>.temperature` | unset | Optional sampling temperature; omitted values use model/provider defaults |
+| `llm.profiles.<profile>.top_p` | unset | Optional nucleus sampling threshold; omitted values use model/provider defaults |
+| `llm.profiles.<profile>.max_tokens` | unset | Optional max tokens per LLM response; omitted values use model/provider defaults |
 | `states.<state>.llm` | unset | Optional LLM profile name for a state such as `deviation` |
 | `storage.path` | `~/.milai/state.json` | Override state file location |
 
