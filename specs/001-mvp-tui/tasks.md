@@ -105,26 +105,26 @@
 
 ## Phase 4: User Story 2 - Curriculum Generation and Review (Priority: P2)
 
-**Goal**: From a confirmed fluency profile, the app generates a structured curriculum and lets the learner reorder, remove, adjust, and confirm modules.
+**Goal**: From a confirmed fluency profile, the app generates a structured curriculum and lets the learner request revisions through free-text feedback before confirming modules.
 
 **Independent Test**: Run the curriculum review integration test with a synthetic profile, completed assessment evidence, and scripted curriculum responses; verify inferred initial skills plus edited and confirmed curriculum state persist before lessons start.
 
 ### Tests for User Story 2
 
-- [ ] T053 [P] [US2] Add curriculum prompt unit tests for generation-time initial skill inference from assessment answers and adjustment prompts in `tests/unit/test_curriculum_prompts.py`
-- [ ] T054 [P] [US2] Add curriculum generation handler unit tests in `tests/unit/test_curriculum_generation_handler.py`
-- [ ] T055 [P] [US2] Add curriculum generation LLM failure tests for retry and no-data-loss behavior in `tests/unit/test_curriculum_generation_handler.py`
-- [ ] T056 [P] [US2] Add curriculum review handler unit tests for reorder, remove, feedback, confirm, retry, and timeout no-data-loss flows in `tests/unit/test_curriculum_review_handler.py`
-- [ ] T057 [P] [US2] Add curriculum review integration test in `tests/integration/test_curriculum_review.py`
+- [X] T053 [P] [US2] Add curriculum prompt unit tests for generation-time initial skill inference from assessment answers and adjustment prompts in `tests/unit/test_curriculum_prompts.py`
+- [X] T054 [P] [US2] Add curriculum generation handler unit tests in `tests/unit/test_curriculum_generation_handler.py`
+- [X] T055 [P] [US2] Add curriculum generation LLM failure tests for retry and no-data-loss behavior in `tests/unit/test_curriculum_generation_handler.py`
+- [X] T056 [P] [US2] Add curriculum review handler unit tests for free-text revision requests, confirm, retry, and timeout no-data-loss flows in `tests/unit/test_curriculum_review_handler.py`
+- [X] T057 [P] [US2] Add curriculum review integration test in `tests/integration/test_curriculum_review.py`
 
 ### Implementation for User Story 2
 
-- [ ] T058 [US2] Implement curriculum generation and adjustment schemas and builders, including inferred initial skills in `src/milai/llm/prompts/curriculum.py`
-- [ ] T059 [US2] Implement CurriculumGenerationHandler structured LLM call, inferred initial skill persistence, and curriculum draft persistence in `src/milai/state/handlers/curriculum_gen.py`
-- [ ] T060 [US2] Implement CurriculumReviewHandler confirm, reorder, remove, feedback adjustment, retry, and timeout no-data-loss loop in `src/milai/state/handlers/curriculum_review.py`
-- [ ] T061 [US2] Add curriculum review menu rendering and module selection support in `src/milai/io/tui/app.py`
-- [ ] T062 [US2] Wire curriculum generation and review handlers into startup dependencies in `src/milai/main.py`
-- [ ] T063 [US2] Wire US2 transitions into the machine dispatch in `src/milai/state/machine.py`
+- [X] T058 [US2] Implement curriculum generation and adjustment schemas and builders, including inferred initial skills in `src/milai/llm/prompts/curriculum.py`
+- [X] T059 [US2] Implement CurriculumGenerationHandler structured LLM call, inferred initial skill persistence, and curriculum draft persistence in `src/milai/state/handlers/curriculum_gen.py`
+- [X] T060 [US2] Implement CurriculumReviewHandler confirm, free-text feedback adjustment, retry, and timeout no-data-loss loop in `src/milai/state/handlers/curriculum_review.py`
+- [X] T061 [US2] Add curriculum review menu rendering and free-form revision support in `src/milai/io/tui/app.py`
+- [X] T062 [US2] Wire curriculum generation and review handlers into startup dependencies in `src/milai/main.py`
+- [X] T063 [US2] Wire US2 transitions into the machine dispatch in `src/milai/state/machine.py`
 
 **Checkpoint**: User Story 2 can generate, edit, and confirm a curriculum independently from the learning loop.
 
@@ -239,7 +239,7 @@ Task: "Add confirmed replacement tests asserting previous profile, curriculum, a
 Task: "Add curriculum prompt unit tests for generation and adjustment prompts in tests/unit/test_curriculum_prompts.py"
 Task: "Add curriculum generation handler unit tests in tests/unit/test_curriculum_generation_handler.py"
 Task: "Add curriculum generation LLM failure tests for retry and no-data-loss behavior in tests/unit/test_curriculum_generation_handler.py"
-Task: "Add curriculum review handler unit tests for reorder, remove, feedback, confirm, retry, and timeout no-data-loss flows in tests/unit/test_curriculum_review_handler.py"
+Task: "Add curriculum review handler unit tests for free-text revision requests, confirm, retry, and timeout no-data-loss flows in tests/unit/test_curriculum_review_handler.py"
 Task: "Add curriculum review integration test in tests/integration/test_curriculum_review.py"
 ```
 

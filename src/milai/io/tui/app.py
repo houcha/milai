@@ -9,6 +9,9 @@ class TuiMediator:
     """Small async mediator shim; richer terminal rendering comes in story work."""
 
     async def show(self, content: RichContent) -> None:
+        if content.kind is ContentKind.PROGRESS and content.total:
+            print(f"[{content.current}/{content.total}] {content.text}")
+            return
         prefix = "# " if content.kind is ContentKind.HEADER else ""
         print(f"{prefix}{content.text}")
 

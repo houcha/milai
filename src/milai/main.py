@@ -16,6 +16,8 @@ from milai.models.state import PersistedState
 from milai.models.user_state import UserState
 from milai.state.handlers.assessment import AssessmentHandler
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
+from milai.state.handlers.curriculum_gen import CurriculumGenerationHandler
+from milai.state.handlers.curriculum_review import CurriculumReviewHandler
 from milai.state.handlers.onboarding import OnboardingHandler
 from milai.state.machine import HandlerMap, StateMachine, StepResult
 from milai.state.variants import (
@@ -123,13 +125,25 @@ def build_handler_map(
     assessment_client = _client_for_state(
         config=config, clients=clients, state_name="assessment"
     )
+    curriculum_generation_client = _client_for_state(
+        config=config, clients=clients, state_name="curriculum_gen"
+    )
+    curriculum_review_client = _client_for_state(
+        config=config, clients=clients, state_name="curriculum_review"
+    )
     pending = PendingHandler(mediator)
     return {
         OnboardingState: OnboardingHandler(mediator),
         AssessmentState: AssessmentHandler(mediator, assessment_client),
         AssessmentReviewState: AssessmentReviewHandler(mediator),
-        CurriculumGenerationState: pending,
-        CurriculumReviewState: pending,
+        CurriculumGenerationState: CurriculumGenerationHandler(
+            mediator,
+            curriculum_generation_client,
+        ),
+        CurriculumReviewState: CurriculumReviewHandler(
+            mediator,
+            curriculum_review_client,
+        ),
         LessonState: pending,
         DeviationState: pending,
         LessonCompleteState: pending,

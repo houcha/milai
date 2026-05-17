@@ -26,9 +26,9 @@ class Module(BaseModel):
     title: str
     description: str = ""
     current_lesson_idx: NonNegativeInt = 0
-    lessons: list[Lesson] = Field(default_factory=list)
+    lessons: list[Lesson] = Field(min_length=1)
 
 
 class Curriculum(BaseModel):
     current_module_idx: NonNegativeInt = 0
-    modules: list[Module] = Field(default_factory=list)
+    modules: list[Module] = Field(min_length=1)

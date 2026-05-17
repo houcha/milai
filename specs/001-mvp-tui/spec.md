@@ -36,17 +36,17 @@ A new user launches the application in a terminal and specifies their target lan
 
 ### User Story 2 - Curriculum Generation and Review (Priority: P2)
 
-Based on the fluency profile, the AI generates a personalized learning roadmap: a set of ordered modules, each containing lessons with theory and exercises. The user can review the roadmap, reorder or remove modules, adjust scope or focus, and provide free-text feedback before committing to it.
+Based on the fluency profile, the AI generates a personalized learning roadmap: a set of ordered modules, each containing lesson topics. The user can review the roadmap and provide free-text feedback to request changes such as reordering modules, removing modules, or adjusting scope and focus before committing to it.
 
 **Why this priority**: The roadmap is the backbone of the learning experience. Human-in-the-loop review ensures the learner feels ownership and the plan matches their actual goals.
 
-**Independent Test**: Can be fully tested by generating a curriculum from a synthetic user profile and verifying that the user can edit, reorder, and confirm modules before any lessons are started.
+**Independent Test**: Can be fully tested by generating a curriculum from a synthetic user profile and verifying that the user can request revisions through free-text feedback and confirm the adjusted roadmap before any lessons are started.
 
 **Acceptance Scenarios**:
 
 1. **Given** a completed fluency profile, **When** the user requests curriculum generation, **Then** the system produces a structured roadmap with at least 3 modules, each with a title, description, and list of lesson topics.
-2. **Given** a generated roadmap, **When** the user reorders modules or removes one, **Then** the roadmap reflects those changes and the AI acknowledges the modification.
-3. **Given** a generated roadmap, **When** the user provides free-text feedback (e.g., "focus more on spoken conversation"), **Then** the AI regenerates or adjusts affected modules accordingly.
+2. **Given** a generated roadmap, **When** the user provides free-text feedback requesting changes (e.g., "move travel first and remove hotel vocabulary"), **Then** the AI regenerates or adjusts affected modules accordingly.
+3. **Given** a generated roadmap, **When** the user provides free-text feedback about scope or focus (e.g., "focus more on spoken conversation"), **Then** the AI regenerates or adjusts affected modules accordingly.
 4. **Given** a user who is satisfied with the roadmap, **When** they confirm it, **Then** the curriculum is saved as the user's active learning plan.
 
 ---
@@ -87,7 +87,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **FR-002**: System MUST generate an adaptive skill assessment of 5-10 minutes, covering vocabulary, grammar, and comprehension at multiple difficulty levels.
 - **FR-003**: System MUST produce a fluency profile from assessment results, assigning the user a level and brief rationale.
 - **FR-004**: System MUST generate a personalized curriculum roadmap based on the fluency profile, containing ordered modules and lesson topics only; lesson theory and exercises are generated on demand when the user starts a lesson.
-- **FR-005**: System MUST allow the user to review, reorder, remove, and provide free-text feedback on the generated curriculum before confirming it.
+- **FR-005**: System MUST allow the user to review the generated curriculum and provide free-text feedback to request reordering, removal, scope, or focus changes before confirming it.
 - **FR-006**: System MUST regenerate or adjust curriculum modules in response to user feedback during the review phase.
 - **FR-007**: System MUST present lesson content (theory and exercises) in a sequential, interactive format within a lesson session.
 - **FR-008**: System MUST provide immediate, contextual feedback for each exercise response.
