@@ -95,10 +95,10 @@ class AssessmentHandler:
         question = state.questions[state.current_idx]
         await self._mediator.show(
             RichContent(
-                f"Question {state.current_idx + 1} of {len(state.questions)}",
+                f"Question {state.current_idx + 1}",
                 kind=ContentKind.PROGRESS,
                 current=state.current_idx + 1,
-                total=len(state.questions),
+                total=0,
             )
         )
         question.user_answer = await self._mediator.prompt(question.text)
