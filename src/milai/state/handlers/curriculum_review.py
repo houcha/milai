@@ -48,13 +48,18 @@ class CurriculumReviewHandler:
         await self._mediator.clear()
         await self._mediator.show(RichContent("Curriculum", kind=ContentKind.HEADER))
         for index, module in enumerate(curriculum.modules, start=1):
-            lessons = (
-                ", ".join(lesson.title for lesson in module.lessons) or "No lessons"
-            )
-            description = f" - {module.description}" if module.description else ""
-            await self._mediator.show(
-                RichContent(f"{index}. {module.title}{description}\n   {lessons}")
-            )
+            lines = [f"{index}. {module.title}"]
+            if module.description:
+                lines.append(f"   Goal: {module.description}")
+                lines.append("")
+            if module.lessons:
+                lines.extend(
+                    f"   {index}.{lesson_index} {lesson.title}"
+                    for lesson_index, lesson in enumerate(module.lessons, start=1)
+                )
+            else:
+                lines.append("   No lessons")
+            await self._mediator.show(RichContent("\n".join(lines)))
 
     async def _adjust_draft(
         self,

@@ -17,6 +17,14 @@ class CurriculumDraft(BaseModel):
     initial_skills: list[Skill] = Field(default_factory=list)
 
 
+CURRICULUM_DISPLAY_STYLE = (
+    "Use short module titles, usually 1-4 words. Put explanatory detail in "
+    "Module.description, not Module.title. Treat Module.description as the "
+    "module goal. Use concise, specific lesson titles that are individually "
+    "scannable in a numbered curriculum review."
+)
+
+
 def build_generation_prompt(
     state: CurriculumGenerationState,
     user: UserState,
@@ -49,7 +57,8 @@ def build_generation_prompt(
                 f"Teaching preferences: {user.profile.preferences}. "
                 f"Completed assessment answers: {assessment_answers or 'none'}. "
                 "Create 3 to 20 modules with concise lesson placeholders that can "
-                "later be expanded into full lessons."
+                "later be expanded into full lessons. "
+                f"{CURRICULUM_DISPLAY_STYLE}"
             ),
         ),
     ]
@@ -77,7 +86,8 @@ def build_adjustment_prompt(
             content=(
                 f"Profile: {user.profile.model_dump()}. "
                 f"Current curriculum: {user.curriculum}. "
-                f"Learner feedback: {feedback}."
+                f"Learner feedback: {feedback}. "
+                f"{CURRICULUM_DISPLAY_STYLE}"
             ),
         ),
     ]
@@ -98,7 +108,8 @@ def build_extension_prompt(
             content=(
                 f"Profile: {user.profile.model_dump()}. "
                 f"Completed curriculum: {user.curriculum}. "
-                f"Skill strengths: {[skill.model_dump() for skill in skills]}."
+                f"Skill strengths: {[skill.model_dump() for skill in skills]}. "
+                f"{CURRICULUM_DISPLAY_STYLE}"
             ),
         ),
     ]
