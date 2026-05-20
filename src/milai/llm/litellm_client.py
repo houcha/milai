@@ -27,11 +27,11 @@ class LiteLLMClient:
         messages: list[Message],
         *,
         response_model: type[T],
-        **kwargs: Any,
+        **litellm_kwargs: Any,
     ) -> T:
         try:
             raw = await self._acompletion(
-                messages, response_format=response_model, **kwargs
+                messages, response_format=response_model, **litellm_kwargs
             )
         except LLMError:
             raise
@@ -43,9 +43,9 @@ class LiteLLMClient:
         except ValidationError as exc:
             raise LLMParseError(str(exc), raw_response=raw) from exc
 
-    async def chat(self, messages: list[Message], **kwargs: Any) -> str:
+    async def chat(self, messages: list[Message], **litellm_kwargs: Any) -> str:
         try:
-            content = (await self._acompletion(messages, **kwargs)).strip()
+            content = (await self._acompletion(messages, **litellm_kwargs)).strip()
         except LLMError:
             raise
         except Exception as exc:
@@ -54,13 +54,13 @@ class LiteLLMClient:
             raise LLMError("empty chat response")
         return content
 
-    async def _acompletion(self, messages: list[Message], **kwargs: Any) -> str:
+    async def _acompletion(self, messages: list[Message], **litellm_kwargs: Any) -> str:
         completion_kwargs: dict[str, Any] = {
             "timeout": DEFAULT_TIMEOUT_SECONDS,
             "num_retries": DEFAULT_NUM_RETRIES,
         }
         completion_kwargs.update(self._config.model_dump(exclude_none=True))
-        completion_kwargs.update(kwargs)
+        completion_kwargs.update(litellm_kwargs)
         response = await litellm.acompletion(
             messages=[
                 {"role": message.role.value, "content": message.content}
