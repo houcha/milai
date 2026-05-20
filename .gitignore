@@ -217,13 +217,28 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-########
-## AI ##
-########
+# Specify
+# Ignore noisy files with dates and pointers 
+.specify/feature.json
+.specify/init-options.json
+.specify/workflows/workflow-registry.json
+.specify/integrations/*.manifest.json
+.specify/extensions/.registry
+.specify/integration.json
 
-# Ignore all contents of the .claude directory
+# Ignore all contents of the .claude directory, since it can contain sensitive info
 .claude/**/*
-
 # But DO track the skill definitions (the SDLC blueprints)
 !.claude/*.md
 !.claude/skills/
+
+# Codex
+.codex
+
+# Universal local files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
