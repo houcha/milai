@@ -98,7 +98,10 @@ State is saved automatically to `~/.milai/state.json`. Close and reopen to resum
 uv run milai --reset
 ```
 
-Deletes `~/.milai/state.json` and starts fresh. A backup prompt is shown before deletion.
+Asks for confirmation, deletes `~/.milai/state.json` if confirmed, and starts
+fresh. If the saved state file is corrupt, milai reports the recovery issue on
+launch and asks whether to delete the corrupt file and replace it with a fresh
+onboarding snapshot.
 
 ---
 
@@ -109,10 +112,19 @@ Deletes `~/.milai/state.json` and starts fresh. A backup prompt is shown before 
 uv run pytest
 
 # Unit only
-uv run pytest tests/unit/
+uv run pytest tests/unit
 
 # Contract tests (verify IOMediator / LLMClient / StorageClient implementations)
-uv run pytest tests/contract/
+uv run pytest tests/contract
+
+# Integration tests
+uv run pytest tests/integration
+
+# Concise type-check
+just type-check-concise
+
+# Pre-commit hooks
+prek run
 
 # Full QA (format + lint + type-check + tests)
 just qa

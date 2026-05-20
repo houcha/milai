@@ -39,6 +39,7 @@ from milai.state.variants import (
     OnboardingState,
 )
 from milai.storage.client import StorageClient
+from milai.storage.errors import StorageError
 from milai.storage.local import LocalStorage
 
 logger = logging.getLogger(__name__)
@@ -74,10 +75,8 @@ async def run(argv: list[str] | None = None) -> None:
     storage = LocalStorage(config.storage_path)
     mediator = TuiMediator()
 
-    if args.reset and await mediator.confirm(
-        "Delete the saved session and start fresh?"
-    ):
-        await storage.delete()
+    if args.reset:
+        await maybe_reset_saved_session(storage, mediator)
 
     await prepare_launch_snapshot(storage, mediator)
 
@@ -94,7 +93,24 @@ async def run(argv: list[str] | None = None) -> None:
 async def prepare_launch_snapshot(
     storage: StorageClient, mediator: IOMediator
 ) -> PersistedState:
-    saved = await storage.load()
+    try:
+        saved = await storage.load()
+    except StorageError as exc:
+        if not exc.corrupt:
+            raise
+        await mediator.show_error(
+            "Saved session could not be loaded. The state file appears corrupt."
+        )
+        should_replace = await mediator.confirm(
+            "Delete the corrupt saved session and start fresh?"
+        )
+        if not should_replace:
+            raise
+        await storage.delete()
+        fresh = _fresh_snapshot()
+        await storage.save(fresh)
+        return fresh
+
     if saved is None:
         return _fresh_snapshot()
 
@@ -120,6 +136,15 @@ async def prepare_launch_snapshot(
     fresh = _fresh_snapshot()
     await storage.save(fresh)
     return fresh
+
+
+async def maybe_reset_saved_session(
+    storage: StorageClient, mediator: IOMediator
+) -> bool:
+    if not await mediator.confirm("Delete the saved session and start fresh?"):
+        return False
+    await storage.delete()
+    return True
 
 
 def build_handler_map(

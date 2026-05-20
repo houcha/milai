@@ -169,19 +169,19 @@
 
 **Purpose**: Documentation, package exports, validation, and final quality checks across all stories.
 
-- [ ] T083 [P] Export public model symbols for tests and handlers in `src/milai/models/__init__.py`
-- [ ] T084 [P] Export public state variant symbols in `src/milai/state/__init__.py`
-- [ ] T085 [P] Export prompt modules and response models in `src/milai/llm/prompts/__init__.py`
-- [ ] T086 [P] Update setup, configuration, reset, and testing documentation in `README.md`
-- [ ] T087 [P] Align quickstart commands and configuration details with implementation in `specs/001-mvp-tui/quickstart.md`
-- [ ] T088 [P] Add corrupt state recovery and reset confirmation tests in `tests/integration/test_startup_recovery.py`
-- [ ] T089 Implement corrupt state recovery and reset confirmation behavior in `src/milai/main.py`
-- [ ] T090 Run `uv run pytest tests/unit` and fix failures in `tests/unit/test_state_machine.py`
-- [ ] T091 Run `uv run pytest tests/contract` and fix failures in `tests/contract/test_state_prompts_contract.py`
-- [ ] T092 Run `uv run pytest tests/integration` and fix failures in `tests/integration/test_learning_loop.py`
-- [ ] T093 Run `just type-check-concise` and fix typing issues in `src/milai/state/machine.py`
-- [ ] T094 Run `prek run` and fix hook issues in `pyproject.toml`
-- [ ] T095 Run `just qa` and fix final QA failures in `pyproject.toml`
+- [X] T083 [P] Export public model symbols for tests and handlers in `src/milai/models/__init__.py`
+- [X] T084 [P] Export public state variant symbols in `src/milai/state/__init__.py`
+- [X] T085 [P] Export prompt modules and response models in `src/milai/llm/prompts/__init__.py`
+- [X] T086 [P] Update setup, configuration, reset, and testing documentation in `README.md`
+- [X] T087 [P] Align quickstart commands and configuration details with implementation in `specs/001-mvp-tui/quickstart.md`
+- [X] T088 [P] Add corrupt state recovery and reset confirmation tests in `tests/integration/test_startup_recovery.py`
+- [X] T089 Implement corrupt state recovery and reset confirmation behavior in `src/milai/main.py`
+- [X] T090 Run `uv run pytest tests/unit` and fix failures in `tests/unit/test_state_machine.py`
+- [X] T091 Run `uv run pytest tests/contract` and fix failures in `tests/contract/test_state_prompts_contract.py`
+- [X] T092 Run `uv run pytest tests/integration` and fix failures in `tests/integration/test_learning_loop.py`
+- [X] T093 Run `just type-check-concise` and fix typing issues in `src/milai/state/machine.py`
+- [X] T094 Run `prek run` and fix hook issues in `pyproject.toml`
+- [X] T095 Run `just qa` and fix final QA failures in `pyproject.toml`
 
 ---
 
