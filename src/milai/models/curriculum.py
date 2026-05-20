@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, NonNegativeInt
+from pydantic import BaseModel, Field, NonNegativeInt, field_validator
 
 
 class Exercise(BaseModel):
@@ -13,6 +13,21 @@ class Exercise(BaseModel):
     feedback: str | None = None
     is_correct: bool | None = None
     skill_topics: list[str] = Field(default_factory=list)
+
+
+class ExerciseEvaluation(BaseModel):
+    feedback: str
+    is_correct: bool | None = None
+    skill_topics: list[str] = Field(default_factory=list)
+
+    @field_validator("skill_topics")
+    @classmethod
+    def normalize_topics(cls, value: list[str]) -> list[str]:
+        return [
+            normalized
+            for topic in value
+            if (normalized := " ".join(topic.strip().lower().split()))
+        ]
 
 
 class Lesson(BaseModel):

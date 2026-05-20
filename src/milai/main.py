@@ -9,19 +9,23 @@ from pathlib import Path
 from milai.config import Config, load_config
 from milai.io.mediator import IOMediator
 from milai.io.tui.app import TuiMediator
-from milai.io.types import Choice, RichContent
+from milai.io.types import Choice
 from milai.llm.client import LLMClient
+from milai.llm.lesson_service import LessonLLM
 from milai.llm.litellm_client import LiteLLMClient
 from milai.models.state import PersistedState
 from milai.models.user_state import UserState
 from milai.state.handlers.assessment import AssessmentHandler
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
+from milai.state.handlers.curriculum_complete import CurriculumCompleteHandler
 from milai.state.handlers.curriculum_gen import CurriculumGenerationHandler
 from milai.state.handlers.curriculum_review import CurriculumReviewHandler
+from milai.state.handlers.deviation import DeviationHandler
+from milai.state.handlers.lesson import LessonHandler
+from milai.state.handlers.lesson_complete import LessonCompleteHandler
 from milai.state.handlers.onboarding import OnboardingHandler
-from milai.state.machine import HandlerMap, StateMachine, StepResult
+from milai.state.machine import HandlerMap, StateMachine
 from milai.state.variants import (
-    AppState,
     AssessmentReviewState,
     AssessmentState,
     CurriculumCompleteState,
@@ -131,7 +135,15 @@ def build_handler_map(
     curriculum_review_client = _client_for_state(
         config=config, clients=clients, state_name="curriculum_review"
     )
-    pending = PendingHandler(mediator)
+    lesson_client = _client_for_state(
+        config=config, clients=clients, state_name="lesson"
+    )
+    deviation_client = _client_for_state(
+        config=config, clients=clients, state_name="deviation"
+    )
+    curriculum_complete_client = _client_for_state(
+        config=config, clients=clients, state_name="curriculum_complete"
+    )
     return {
         OnboardingState: OnboardingHandler(mediator),
         AssessmentState: AssessmentHandler(mediator, assessment_client),
@@ -144,22 +156,14 @@ def build_handler_map(
             mediator,
             curriculum_review_client,
         ),
-        LessonState: pending,
-        DeviationState: pending,
-        LessonCompleteState: pending,
-        CurriculumCompleteState: pending,
+        LessonState: LessonHandler(mediator, LessonLLM(lesson_client)),
+        DeviationState: DeviationHandler(mediator, deviation_client),
+        LessonCompleteState: LessonCompleteHandler(mediator),
+        CurriculumCompleteState: CurriculumCompleteHandler(
+            mediator,
+            curriculum_complete_client,
+        ),
     }
-
-
-class PendingHandler:
-    def __init__(self, mediator: IOMediator) -> None:
-        self._mediator = mediator
-
-    async def step(self, app: AppState, user: UserState) -> StepResult:
-        await self._mediator.show(
-            RichContent(f"The {app.type!r} workflow is not implemented yet.")
-        )
-        return None
 
 
 def _client_for_state(

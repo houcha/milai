@@ -13,9 +13,6 @@ PROMPT_CONTRACT = [
     ("milai.llm.prompts.curriculum", "build_generation_prompt", "CurriculumDraft"),
     ("milai.llm.prompts.curriculum", "build_adjustment_prompt", "CurriculumDraft"),
     ("milai.llm.prompts.curriculum", "build_extension_prompt", "CurriculumDraft"),
-    ("milai.llm.prompts.lesson", "build_lesson_prompt", "LessonContent"),
-    ("milai.llm.prompts.lesson", "build_dynamic_change_prompt", "LessonContent"),
-    ("milai.llm.prompts.feedback", "build_feedback_prompt", "ExerciseFeedback"),
     ("milai.llm.prompts.deviation", "build_chat_prompt", None),
 ]
 

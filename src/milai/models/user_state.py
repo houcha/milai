@@ -32,8 +32,7 @@ class Skill(BaseModel):
     def normalize_topic(cls, value: str) -> str:
         normalized = " ".join(value.strip().lower().split())
         if not normalized:
-            msg = "topic must not be empty"
-            raise ValueError(msg)
+            raise ValueError("topic must not be empty")
         return normalized
 
 
@@ -49,8 +48,7 @@ class UserState(BaseModel):
     def require_unique_skill_topics(cls, value: list[Skill]) -> list[Skill]:
         topics = [skill.topic for skill in value]
         if len(set(topics)) != len(topics):
-            msg = "skill topics must be unique"
-            raise ValueError(msg)
+            raise ValueError("skill topics must be unique")
         return value
 
 

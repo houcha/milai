@@ -138,28 +138,28 @@
 
 ### Tests for User Story 3
 
-- [ ] T064 [P] [US3] Add lesson prompt unit tests for lesson content and dynamic change prompts in `tests/unit/test_lesson_prompts.py`
-- [ ] T065 [P] [US3] Add feedback prompt unit tests in `tests/unit/test_feedback_prompts.py`
-- [ ] T066 [P] [US3] Add deviation prompt unit tests for context window and off-topic boundaries in `tests/unit/test_deviation_prompts.py`
-- [ ] T067 [P] [US3] Add lesson handler unit tests for theory, exercises, feedback, feedback timeout no-data-loss behavior, dynamic changes, and SRS updates in `tests/unit/test_lesson_handler.py`
-- [ ] T068 [P] [US3] Add deviation handler unit tests for chat, capped context, retry, timeout no-data-loss behavior, and return-to-lesson behavior in `tests/unit/test_deviation_handler.py`
-- [ ] T069 [P] [US3] Add lesson and curriculum completion handler unit tests in `tests/unit/test_completion_handlers.py`
-- [ ] T070 [P] [US3] Add curriculum completion extension LLM failure tests for retry and no-data-loss behavior in `tests/unit/test_completion_handlers.py`
-- [ ] T071 [P] [US3] Add end-to-end learning loop integration test in `tests/integration/test_learning_loop.py`
+- [X] T064 [P] [US3] Add lesson prompt unit tests for lesson content and dynamic change prompts in `tests/unit/test_lesson_prompts.py`
+- [X] T065 [P] [US3] Add feedback prompt unit tests in `tests/unit/test_feedback_prompts.py`
+- [X] T066 [P] [US3] Add deviation prompt unit tests for context window and off-topic boundaries in `tests/unit/test_deviation_prompts.py`
+- [X] T067 [P] [US3] Add lesson handler unit tests for theory, exercises, feedback, feedback timeout no-data-loss behavior, dynamic changes, and SRS updates in `tests/unit/test_lesson_handler.py`
+- [X] T068 [P] [US3] Add deviation handler unit tests for chat, capped context, retry, timeout no-data-loss behavior, and return-to-lesson behavior in `tests/unit/test_deviation_handler.py`
+- [X] T069 [P] [US3] Add lesson and curriculum completion handler unit tests in `tests/unit/test_completion_handlers.py`
+- [X] T070 [P] [US3] Add curriculum completion extension LLM failure tests for retry and no-data-loss behavior in `tests/unit/test_completion_handlers.py`
+- [X] T071 [P] [US3] Add end-to-end learning loop integration test in `tests/integration/test_learning_loop.py`
 
 ### Implementation for User Story 3
 
-- [ ] T072 [US3] Implement lesson content and dynamic change schemas and builders in `src/milai/llm/prompts/lesson.py`
-- [ ] T073 [US3] Implement exercise feedback schema and builder in `src/milai/llm/prompts/feedback.py`
-- [ ] T074 [US3] Implement bounded deviation chat prompt builder in `src/milai/llm/prompts/deviation.py`
-- [ ] T075 [US3] Implement LessonHandler theory display, exercise loop, feedback calls, feedback timeout no-data-loss handling, dynamic changes, and retry prompts in `src/milai/state/handlers/lesson.py`
-- [ ] T076 [US3] Integrate SRS skill updates and review-skill injection in `src/milai/state/handlers/lesson.py`
-- [ ] T077 [US3] Implement DeviationHandler chat loop, timeout no-data-loss handling, capped context window, and return transition in `src/milai/state/handlers/deviation.py`
-- [ ] T078 [US3] Implement LessonCompleteHandler cursor advancement and progress summary in `src/milai/state/handlers/lesson_complete.py`
-- [ ] T079 [US3] Implement CurriculumCompleteHandler summary, and extension-module generation in `src/milai/state/handlers/curriculum_complete.py`
-- [ ] T080 [US3] Add lesson, exercise, deviation, and completion rendering support in `src/milai/io/tui/app.py`
-- [ ] T081 [US3] Wire lesson, deviation, and completion handlers into startup dependencies in `src/milai/main.py`
-- [ ] T082 [US3] Wire US3 transitions into the machine dispatch in `src/milai/state/machine.py`
+- [X] T072 [US3] Implement lesson content and dynamic change schemas and prompts inside `src/milai/llm/lesson_service.py`
+- [X] T073 [US3] Implement exercise feedback schema and prompt inside `src/milai/llm/lesson_service.py`
+- [X] T074 [US3] Implement bounded deviation chat prompt builder in `src/milai/llm/prompts/deviation.py`
+- [X] T075 [US3] Implement LessonHandler theory display, exercise loop, feedback calls, feedback timeout no-data-loss handling, dynamic changes, and retry prompts in `src/milai/state/handlers/lesson.py`
+- [X] T076 [US3] Integrate SRS skill updates and review-skill injection in `src/milai/state/handlers/lesson.py`
+- [X] T077 [US3] Implement DeviationHandler chat loop, timeout no-data-loss handling, capped context window, and return transition in `src/milai/state/handlers/deviation.py`
+- [X] T078 [US3] Implement LessonCompleteHandler cursor advancement and progress summary in `src/milai/state/handlers/lesson_complete.py`
+- [X] T079 [US3] Implement CurriculumCompleteHandler summary, and extension-module generation in `src/milai/state/handlers/curriculum_complete.py`
+- [X] T080 [US3] Add lesson, exercise, deviation, and completion rendering support in `src/milai/io/tui/app.py`
+- [X] T081 [US3] Wire lesson, deviation, and completion handlers into startup dependencies in `src/milai/main.py`
+- [X] T082 [US3] Wire US3 transitions into the machine dispatch in `src/milai/state/machine.py`
 
 **Checkpoint**: All user stories are independently functional and the MVP learning loop is complete.
 

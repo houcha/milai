@@ -53,3 +53,20 @@ def test_persisted_state_serializes_and_restores_discriminated_app_state() -> No
     restored = PersistedState.model_validate_json(assessment.model_dump_json())
     assert isinstance(restored.app, AssessmentState)
     assert restored.app.current_idx == 2
+
+
+def test_placeholder_lesson_is_valid_by_default() -> None:
+    from milai.models.curriculum import Lesson
+
+    lesson = Lesson(title="Greetings")
+
+    assert lesson.title == "Greetings"
+    assert lesson.theory == ""
+    assert lesson.exercises == []
+
+
+def test_module_requires_lessons() -> None:
+    from milai.models.curriculum import Module
+
+    with pytest.raises(ValidationError):
+        Module(title="Basics", lessons=[])

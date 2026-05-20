@@ -40,9 +40,9 @@ Structured prompt modules define the Pydantic model passed to `LLMClient.complet
 | `AssessmentState` | `assessment.py` | `build_fluency_prompt` | `complete` | `FluencyResult` | profile, completed assessment answers |
 | `CurriculumGenerationState` | `curriculum.py` | `build_generation_prompt` | `complete` | `CurriculumDraft` | profile, fluency level, learning goal, available time, completed assessment answers, inferred initial skills |
 | `CurriculumReviewState` | `curriculum.py` | `build_adjustment_prompt` | `complete` | `CurriculumDraft` | current curriculum, user free-text feedback, removed/reordered modules |
-| `LessonState` | `lesson.py` | `build_lesson_prompt` | `complete` | `LessonContent` | active lesson/topic, profile, curriculum position, top SRS review skills |
-| `LessonState` | `feedback.py` | `build_feedback_prompt` | `complete` | `ExerciseFeedback` | exercise, user answer, expected topics, profile, current lesson context |
-| `LessonState` | `lesson.py` | `build_dynamic_change_prompt` | `complete` | `LessonContent` or `CurriculumPatch` | current lesson, requested skip/add-topic/difficulty change, curriculum cursor |
+| `LessonState` | `lesson_service.py` | `LessonLLM.generate_lesson_content` | `complete` | `Lesson` | active lesson/topic, profile, curriculum position, top SRS review skills |
+| `LessonState` | `lesson_service.py` | `LessonLLM.evaluate_answer` | `complete` | `ExerciseEvaluation` | exercise, user answer, expected topics, profile, current lesson context |
+| `LessonState` | `lesson_service.py` | `LessonLLM.change_lesson` | `complete` | `Lesson` | current lesson, requested skip/add-topic/difficulty change, curriculum cursor |
 | `DeviationState` | `deviation.py` | `build_chat_prompt` | `chat` | raw assistant text | lesson context, profile, bounded context window, off-topic boundary instructions |
 | `CurriculumCompleteState` | `curriculum.py` | `build_extension_prompt` | `complete` | `CurriculumDraft` | completed curriculum summary, skill strengths, learner goal |
 

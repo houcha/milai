@@ -71,7 +71,7 @@ src/
     │       ├── assessment_review.py # user confirmation/override only, no LLM prompt
     │       ├── curriculum_gen.py    # owns initial curriculum prompt
     │       ├── curriculum_review.py # owns curriculum adjustment prompt
-    │       ├── lesson.py            # owns lesson-generation, dynamic-change, and feedback prompts
+    │       ├── lesson.py            # owns lesson workflow, retry UI, and state mutation
     │       ├── deviation.py         # owns free-form conversational prompt
     │       ├── lesson_complete.py   # user progress display only, no LLM prompt
     │       └── curriculum_complete.py # owns extension-module prompt when learner continues
@@ -97,13 +97,12 @@ src/
     │   ├── litellm_client.py        # LiteLLMClient: wraps litellm.acompletion
     │   ├── errors.py                # LLMError, LLMParseError
     │   ├── types.py                 # Message, Role
+    │   ├── lesson_service.py        # lesson-generation, exercise, dynamic-change, and feedback LLM service
     │   └── prompts/
     │       ├── __init__.py
     │       ├── common.py            # shared prompt fragments after DRY threshold is met
     │       ├── assessment.py        # assessment question + fluency result schemas/prompts
     │       ├── curriculum.py        # initial generation, review adjustment, extension-module schemas/prompts
-    │       ├── lesson.py            # lesson content + dynamic-change schemas/prompts
-    │       ├── feedback.py          # exercise feedback schema/prompt
     │       └── deviation.py         # bounded conversational prompt
     │
     ├── storage/
