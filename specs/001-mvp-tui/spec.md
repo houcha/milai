@@ -44,7 +44,7 @@ Based on the fluency profile, the AI generates a personalized learning roadmap: 
 
 **Acceptance Scenarios**:
 
-1. **Given** a completed fluency profile, **When** the user requests curriculum generation, **Then** the system produces a structured roadmap with at least 3 modules, each with a title, description, and list of lesson topics.
+1. **Given** a completed fluency profile, **When** the user requests curriculum generation, **Then** the system produces a structured roadmap with at least 3 modules, each with a title and list of lesson topics.
 2. **Given** a generated roadmap, **When** the user provides free-text feedback requesting changes (e.g., "move travel first and remove hotel vocabulary"), **Then** the AI regenerates or adjusts affected modules accordingly.
 3. **Given** a generated roadmap, **When** the user provides free-text feedback about scope or focus (e.g., "focus more on spoken conversation"), **Then** the AI regenerates or adjusts affected modules accordingly.
 4. **Given** a user who is satisfied with the roadmap, **When** they confirm it, **Then** the curriculum is saved as the user's active learning plan.
@@ -106,7 +106,7 @@ The user follows their active curriculum lesson by lesson. Within a lesson, they
 - **User Profile**: Represents the single learner on this installation: single active target language, native language, learning goal, fluency level, time preference; persisted locally.
 - **Assessment**: An AI-generated sequence of questions used to evaluate fluency; has a result (fluency level and rationale).
 - **Curriculum**: The confirmed learning roadmap for a user; contains an ordered list of modules.
-- **Module**: A thematic grouping of lessons (e.g., "Greetings & Introductions"); has a title, description, and ordered list of lessons.
+- **Module**: A thematic grouping of lessons (e.g., "Greetings & Introductions"); has a title and ordered list of lessons.
 - **Lesson**: A single learning unit within a module; contains theory content and a set of exercises.
 - **Exercise**: An individual practice item (e.g., translation, fill-in-the-blank, multiple choice) with an expected response and feedback.
 - **Skill Topic**: A language-learning concept or ability (e.g., articles, past tense, travel phrases) with learner-specific strength and review priority initially inferred from the completed assessment at curriculum-generation time and then updated from exercise outcomes.

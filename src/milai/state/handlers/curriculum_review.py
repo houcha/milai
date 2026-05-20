@@ -49,9 +49,6 @@ class CurriculumReviewHandler:
         await self._mediator.show(RichContent("Curriculum", kind=ContentKind.HEADER))
         for index, module in enumerate(curriculum.modules, start=1):
             lines = [f"{index}. {module.title}"]
-            if module.description:
-                lines.append(f"   Goal: {module.description}")
-                lines.append("")
             if module.lessons:
                 lines.extend(
                     f"   {index}.{lesson_index} {lesson.title}"

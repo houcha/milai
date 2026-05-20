@@ -195,7 +195,6 @@ Curriculum
 ```
 Module
 ├── title: str
-├── description: str
 ├── current_lesson_idx: int              # pointer to active lesson within this module
 └── lessons: list[Lesson]
 ```

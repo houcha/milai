@@ -18,10 +18,9 @@ class CurriculumDraft(BaseModel):
 
 
 CURRICULUM_DISPLAY_STYLE = (
-    "Use short module titles, usually 1-4 words. Put explanatory detail in "
-    "Module.description, not Module.title. Treat Module.description as the "
-    "module goal. Use concise, specific lesson titles that are individually "
-    "scannable in a numbered curriculum review."
+    "Use concise, specific module titles and scannable lesson titles. Do not "
+    "rely on a separate module goal or description; module titles and lesson "
+    "titles are the curriculum structure shown to the learner."
 )
 
 

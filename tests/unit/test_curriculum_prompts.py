@@ -82,7 +82,9 @@ def test_curriculum_draft_rejects_malformed_llm_response() -> None:
     with pytest.raises(ValidationError):
         CurriculumDraft.model_validate(
             {
-                "curriculum": {"modules": [{"description": "Missing title"}]},
+                "curriculum": {
+                    "modules": [{"lessons": [{"title": "Missing module title"}]}]
+                },
                 "initial_skills": [{"topic": ""}],
             }
         )
@@ -96,3 +98,12 @@ def test_curriculum_draft_requires_usable_module_and_lesson_structure() -> None:
         CurriculumDraft.model_validate(
             {"curriculum": {"modules": [{"title": "Travel", "lessons": []}]}}
         )
+
+    draft = CurriculumDraft.model_validate(
+        {
+            "curriculum": {
+                "modules": [{"title": "Travel", "lessons": [{"title": "Tickets"}]}]
+            }
+        }
+    )
+    assert draft.curriculum.modules[0].title == "Travel"
