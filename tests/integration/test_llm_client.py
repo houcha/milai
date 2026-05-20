@@ -38,6 +38,32 @@ def test_litellm_client_parses_structured_json(monkeypatch) -> None:
     assert calls[0]["response_format"] is ToyResponse
 
 
+def test_litellm_client_returns_raw_completion_without_response_model(
+    monkeypatch,
+) -> None:
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = []
+
+    async def fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return {"choices": [{"message": {"content": " hola "}}]}
+
+    monkeypatch.setattr(
+        "milai.llm.litellm_client.litellm.acompletion", fake_acompletion
+    )
+    client = LiteLLMClient(LLMConfig(model="test-model"))
+
+    result = asyncio.run(
+        client.complete([Message(role=Role.USER, content="translate hello")])
+    )
+
+    assert result == "hola"
+    assert "response_format" not in calls[0]
+
+
 def test_litellm_client_retries_internal_server_error(monkeypatch) -> None:
     import litellm
     import litellm.main

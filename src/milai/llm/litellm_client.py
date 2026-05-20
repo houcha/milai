@@ -1,6 +1,6 @@
 """LiteLLM-backed LLM client."""
 
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 import litellm
 from pydantic import BaseModel, ValidationError
@@ -22,21 +22,45 @@ class LiteLLMClient:
     def __init__(self, config: LLMConfig) -> None:
         self._config = config
 
+    @overload
     async def complete(
         self,
         messages: list[Message],
         *,
         response_model: type[T],
         **litellm_kwargs: Any,
-    ) -> T:
+    ) -> T: ...
+
+    @overload
+    async def complete(
+        self,
+        messages: list[Message],
+        *,
+        response_model: None = None,
+        **litellm_kwargs: Any,
+    ) -> str: ...
+
+    async def complete(
+        self,
+        messages: list[Message],
+        *,
+        response_model: type[T] | None = None,
+        **litellm_kwargs: Any,
+    ) -> T | str:
         try:
-            raw = await self._acompletion(
-                messages, response_format=response_model, **litellm_kwargs
-            )
+            if response_model is not None:
+                litellm_kwargs["response_format"] = response_model
+            raw = await self._acompletion(messages, **litellm_kwargs)
         except LLMError:
             raise
         except Exception as exc:
             raise LLMError(str(exc)) from exc
+
+        if response_model is None:
+            content = raw.strip()
+            if not content:
+                raise LLMError("empty completion response")
+            return content
 
         try:
             return response_model.model_validate_json(raw)

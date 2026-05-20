@@ -48,6 +48,21 @@ def test_scripted_llm_client_returns_structured_and_chat_responses() -> None:
     assert client.calls == [messages, messages]
 
 
+def test_scripted_llm_client_returns_raw_completion_without_response_model() -> None:
+    from milai.llm.types import Message, Role
+    from tests.fakes.llm_client import ScriptedLLMClient
+
+    client = ScriptedLLMClient([" raw answer "])
+    messages = [Message(role=Role.USER, content="explain hello")]
+
+    async def run_script() -> None:
+        assert await client.complete(messages) == "raw answer"
+
+    asyncio.run(run_script())
+
+    assert client.response_models == [None]
+
+
 def test_scripted_llm_client_raises_scripted_errors_without_retrying() -> None:
     from milai.llm.errors import LLMError
     from milai.llm.types import Message, Role
@@ -59,6 +74,22 @@ def test_scripted_llm_client_raises_scripted_errors_without_retrying() -> None:
 
     async def run_script() -> None:
         with pytest.raises(LLMError, match="provider unavailable"):
+            await client.complete(messages, response_model=ToyResponse)
+
+    asyncio.run(run_script())
+    assert client.calls == [messages]
+
+
+def test_scripted_llm_client_wraps_parse_errors() -> None:
+    from milai.llm.errors import LLMParseError
+    from milai.llm.types import Message, Role
+    from tests.fakes.llm_client import ScriptedLLMClient
+
+    client = ScriptedLLMClient([{"answer": 123}])
+    messages = [Message(role=Role.USER, content="translate hello")]
+
+    async def run_script() -> None:
+        with pytest.raises(LLMParseError):
             await client.complete(messages, response_model=ToyResponse)
 
     asyncio.run(run_script())
