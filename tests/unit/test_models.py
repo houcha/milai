@@ -43,7 +43,11 @@ def test_skill_strength_and_srs_fields_are_bounded() -> None:
 def test_persisted_state_serializes_and_restores_discriminated_app_state() -> None:
     from milai.models.state import PersistedState
     from milai.models.user_state import UserState
-    from milai.state.variants import AssessmentState, OnboardingState
+    from milai.state.variants import (
+        AssessmentState,
+        LessonPracticeState,
+        OnboardingState,
+    )
 
     onboarding = PersistedState(user=UserState(), app=OnboardingState())
     restored = PersistedState.model_validate_json(onboarding.model_dump_json())
@@ -53,6 +57,10 @@ def test_persisted_state_serializes_and_restores_discriminated_app_state() -> No
     restored = PersistedState.model_validate_json(assessment.model_dump_json())
     assert isinstance(restored.app, AssessmentState)
     assert restored.app.current_idx == 2
+
+    practice = PersistedState(user=UserState(), app=LessonPracticeState())
+    restored = PersistedState.model_validate_json(practice.model_dump_json())
+    assert isinstance(restored.app, LessonPracticeState)
 
 
 def test_placeholder_lesson_is_valid_by_default() -> None:

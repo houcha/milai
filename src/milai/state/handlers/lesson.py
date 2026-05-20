@@ -12,7 +12,7 @@ from milai.srs.scheduler import update_skill
 from milai.state.variants import (
     AppState,
     DeviationState,
-    LessonCompleteState,
+    LessonPracticeState,
     LessonState,
 )
 
@@ -24,7 +24,7 @@ class LessonHandler:
 
     async def step(
         self, app: AppState, user: UserState
-    ) -> tuple[LessonState | DeviationState | LessonCompleteState, UserState] | None:
+    ) -> tuple[LessonState | LessonPracticeState | DeviationState, UserState] | None:
         if not isinstance(app, LessonState):
             raise TypeError(f"LessonHandler cannot handle {app.type!r}")
         if user.curriculum is None:
@@ -37,20 +37,12 @@ class LessonHandler:
             generated = await self._generate_lesson_content(app, updated)
             _replace_active_lesson(updated, generated)
             return LessonState(), updated
-        if not lesson.exercises:
-            generated = await self._generate_exercises(app, updated)
-            lesson.exercises = generated
-            lesson.current_exercise_idx = 0
-            return LessonState(), updated
-
-        if lesson.current_exercise_idx >= len(lesson.exercises):
-            return LessonCompleteState(), updated
 
         await self._show_lesson(module, lesson)
         choice = await self._mediator.choose(
             "Lesson",
             [
-                Choice("Answer", "answer", "Answer the current exercise"),
+                Choice("Practice", "practice", "Start lesson practice"),
                 Choice("Ask", "deviation", "Ask a question before continuing"),
                 Choice("Change", "change", "Adjust this lesson"),
             ],
@@ -62,21 +54,12 @@ class LessonHandler:
         if choice.value == "change":
             request = await self._mediator.prompt("Requested change")
             changed = await self._change_lesson(app, updated, requested_change=request)
+            changed.exercises = []
+            changed.current_exercise_idx = 0
             _replace_active_lesson(updated, changed)
             return LessonState(), updated
 
-        exercise = lesson.exercises[lesson.current_exercise_idx]
-        answer = await self._mediator.prompt(exercise.instruction)
-        feedback = await self._feedback(
-            exercise,
-            updated,
-            answer=answer,
-            lesson_context=_lesson_context(module, lesson),
-        )
-        _apply_feedback(updated, exercise, answer=answer, feedback=feedback)
-        lesson.current_exercise_idx += 1
-        await self._mediator.show(RichContent(feedback.feedback))
-        return LessonState(), updated
+        return LessonPracticeState(), updated
 
     async def _show_lesson(self, module: Module, lesson: Lesson) -> None:
         await self._mediator.clear()
@@ -84,18 +67,6 @@ class LessonHandler:
             RichContent(_lesson_context(module, lesson), kind=ContentKind.HEADER)
         )
         await self._mediator.show(RichContent(lesson.theory, kind=ContentKind.MARKDOWN))
-        total = len(lesson.exercises)
-        current = min(lesson.current_exercise_idx + 1, total)
-        await self._mediator.show(
-            RichContent(
-                "Exercise", kind=ContentKind.PROGRESS, current=current, total=total
-            )
-        )
-        exercise = lesson.exercises[lesson.current_exercise_idx]
-        lines = [exercise.instruction]
-        if exercise.options:
-            lines.extend(f"- {option}" for option in exercise.options)
-        await self._mediator.show(RichContent("\n".join(lines)))
 
     async def _generate_lesson_content(
         self, state: LessonState, user: UserState
@@ -103,24 +74,6 @@ class LessonHandler:
         while True:
             try:
                 return await self._llm.generate_lesson_content(state, user)
-            except LLMError as exc:
-                if not await self._handle_llm_error(exc):
-                    raise
-
-    async def _generate_exercises(
-        self,
-        state: LessonState,
-        user: UserState,
-        *,
-        requested_change: str = "",
-    ) -> list[Exercise]:
-        while True:
-            try:
-                return await self._llm.generate_exercises(
-                    state,
-                    user,
-                    requested_change=requested_change,
-                )
             except LLMError as exc:
                 if not await self._handle_llm_error(exc):
                     raise
@@ -138,26 +91,6 @@ class LessonHandler:
                     state,
                     user,
                     requested_change=requested_change,
-                )
-            except LLMError as exc:
-                if not await self._handle_llm_error(exc):
-                    raise
-
-    async def _feedback(
-        self,
-        exercise: Exercise,
-        user: UserState,
-        *,
-        answer: str,
-        lesson_context: str,
-    ) -> ExerciseEvaluation:
-        while True:
-            try:
-                return await self._llm.evaluate_answer(
-                    exercise,
-                    user,
-                    answer=answer,
-                    lesson_context=lesson_context,
                 )
             except LLMError as exc:
                 if not await self._handle_llm_error(exc):

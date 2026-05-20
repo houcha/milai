@@ -23,6 +23,7 @@ from milai.state.handlers.curriculum_review import CurriculumReviewHandler
 from milai.state.handlers.deviation import DeviationHandler
 from milai.state.handlers.lesson import LessonHandler
 from milai.state.handlers.lesson_complete import LessonCompleteHandler
+from milai.state.handlers.lesson_practice import LessonPracticeHandler
 from milai.state.handlers.onboarding import OnboardingHandler
 from milai.state.machine import HandlerMap, StateMachine
 from milai.state.variants import (
@@ -33,6 +34,7 @@ from milai.state.variants import (
     CurriculumReviewState,
     DeviationState,
     LessonCompleteState,
+    LessonPracticeState,
     LessonState,
     OnboardingState,
 )
@@ -157,6 +159,7 @@ def build_handler_map(
             curriculum_review_client,
         ),
         LessonState: LessonHandler(mediator, LessonLLM(lesson_client)),
+        LessonPracticeState: LessonPracticeHandler(mediator, LessonLLM(lesson_client)),
         DeviationState: DeviationHandler(mediator, deviation_client),
         LessonCompleteState: LessonCompleteHandler(mediator),
         CurriculumCompleteState: CurriculumCompleteHandler(

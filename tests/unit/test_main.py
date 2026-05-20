@@ -1,8 +1,11 @@
 import asyncio
+from typing import cast
 
 import pytest
 
 import milai.main as main_module
+from milai.io.mediator import IOMediator
+from milai.llm.client import LLMClient
 
 
 # tmp_path and capsys are built-in pytest fixtures:
@@ -55,3 +58,27 @@ def test_missing_default_config_uses_defaults(monkeypatch, tmp_path) -> None:
     )
 
     asyncio.run(main_module.run([]))
+
+
+def test_build_handler_map_registers_lesson_practice_state() -> None:
+    from milai.config import Config
+    from milai.state.handlers.lesson_practice import LessonPracticeHandler
+    from milai.state.variants import LessonPracticeState
+
+    class DummyMediator:
+        pass
+
+    class DummyClient:
+        async def complete(self, *args, **kwargs):
+            raise AssertionError("unexpected LLM call")
+
+        async def chat(self, *args, **kwargs):
+            raise AssertionError("unexpected LLM call")
+
+    handlers = main_module.build_handler_map(
+        config=Config(),
+        mediator=cast(IOMediator, DummyMediator()),
+        clients={"light": cast(LLMClient, DummyClient())},
+    )
+
+    assert isinstance(handlers[LessonPracticeState], LessonPracticeHandler)

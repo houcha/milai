@@ -38,6 +38,10 @@ class LessonState(BaseModel):
     type: Literal["lesson"] = "lesson"
 
 
+class LessonPracticeState(BaseModel):
+    type: Literal["lesson_practice"] = "lesson_practice"
+
+
 class DeviationState(BaseModel):
     type: Literal["deviation"] = "deviation"
     context_window: list[Message] = Field(default_factory=list)
@@ -59,6 +63,7 @@ AppState = Annotated[
     | CurriculumGenerationState
     | CurriculumReviewState
     | LessonState
+    | LessonPracticeState
     | DeviationState
     | LessonCompleteState
     | CurriculumCompleteState,

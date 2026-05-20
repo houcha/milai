@@ -15,7 +15,7 @@ from milai.models.curriculum import (
 )
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.lesson import LessonHandler
-from milai.state.variants import DeviationState, LessonCompleteState, LessonState
+from milai.state.variants import DeviationState, LessonPracticeState, LessonState
 
 
 class ScriptedLessonLLM:
@@ -172,18 +172,20 @@ def test_lesson_handler_generates_missing_lesson_theory_with_review_skills() -> 
 def test_lesson_handler_generates_missing_exercises_lazily() -> None:
     from tests.fakes.mediator import ScriptedMediator
 
-    llm = ScriptedLessonLLM([_generated_exercises()])
-    handler = _handler(ScriptedMediator([]), llm)
+    llm = ScriptedLessonLLM([])
+    mediator = ScriptedMediator(["practice"])
+    handler = _handler(mediator, llm)
 
     result = asyncio.run(handler.step(LessonState(), _lesson_with_theory_only()))
     assert result is not None
     app, updated = result
 
-    assert isinstance(app, LessonState)
+    assert isinstance(app, LessonPracticeState)
     assert updated.curriculum is not None
     lesson = updated.curriculum.modules[0].lessons[0]
     assert lesson.theory == "Hola means hello."
-    assert lesson.exercises[0].instruction == "Translate hello"
+    assert lesson.exercises == []
+    assert llm.calls == []
 
 
 def test_lesson_handler_retries_generated_lesson_content_error() -> None:
@@ -207,24 +209,6 @@ def test_lesson_handler_retries_generated_lesson_content_error() -> None:
     assert updated.curriculum.modules[0].lessons[0].theory == "Hola means hello."
 
 
-def test_lesson_handler_retries_generated_exercises_error() -> None:
-    from tests.fakes.mediator import ScriptedMediator
-
-    llm = ScriptedLessonLLM([LLMError("provider failed"), _generated_exercises()])
-    mediator = ScriptedMediator([True])
-    handler = _handler(mediator, llm)
-
-    result = asyncio.run(handler.step(LessonState(), _lesson_with_theory_only()))
-    assert result is not None
-    app, updated = result
-
-    assert isinstance(app, LessonState)
-    assert llm.calls == ["generate_exercises", "generate_exercises"]
-    assert mediator.errors == ["provider failed"]
-    assert updated.curriculum is not None
-    assert updated.curriculum.modules[0].lessons[0].exercises[0].instruction
-
-
 def test_lesson_handler_declined_generated_lesson_retry_does_not_mutate_user() -> None:
     from tests.fakes.mediator import ScriptedMediator
 
@@ -239,66 +223,6 @@ def test_lesson_handler_declined_generated_lesson_retry_does_not_mutate_user() -
 
     assert user.curriculum is not None
     assert user.curriculum.modules[0].lessons[0].theory == ""
-
-
-def test_lesson_handler_captures_answer_feedback_and_updates_srs() -> None:
-    from tests.fakes.mediator import ScriptedMediator
-
-    llm = ScriptedLessonLLM([_generated_feedback("Correct.", is_correct=True)])
-    mediator = ScriptedMediator(["answer", "hola"])
-    handler = _handler(mediator, llm)
-
-    result = asyncio.run(handler.step(LessonState(), _active_lesson_user()))
-    assert result is not None
-    app, updated = result
-
-    assert isinstance(app, LessonState)
-    assert updated.curriculum is not None
-    exercise = updated.curriculum.modules[0].lessons[0].exercises[0]
-    assert exercise.user_answer == "hola"
-    assert exercise.feedback == "Correct."
-    assert exercise.is_correct is True
-    assert exercise.skill_topics == ["greetings"]
-    assert updated.skills[0].strength == 0.2
-    assert updated.skills[0].streak == 1
-
-
-def test_lesson_handler_feedback_timeout_can_retry_without_data_loss() -> None:
-    from tests.fakes.mediator import ScriptedMediator
-
-    llm = ScriptedLessonLLM(
-        [LLMError("timeout"), _generated_feedback("Try again.", is_correct=False)]
-    )
-    mediator = ScriptedMediator(["answer", "wrong", True])
-    handler = _handler(mediator, llm)
-
-    result = asyncio.run(handler.step(LessonState(), _active_lesson_user()))
-    assert result is not None
-    app, updated = result
-
-    assert isinstance(app, LessonState)
-    assert llm.calls == ["evaluate_answer", "evaluate_answer"]
-    assert mediator.errors == ["timeout"]
-    assert updated.curriculum is not None
-    exercise = updated.curriculum.modules[0].lessons[0].exercises[0]
-    assert exercise.user_answer == "wrong"
-    assert exercise.feedback == "Try again."
-
-
-def test_lesson_handler_declined_feedback_retry_does_not_mutate_user() -> None:
-    from tests.fakes.mediator import ScriptedMediator
-
-    user = _active_lesson_user()
-    handler = _handler(
-        ScriptedMediator(["answer", "hola", False]),
-        ScriptedLessonLLM([LLMError("timeout")]),
-    )
-
-    with pytest.raises(LLMError, match="timeout"):
-        asyncio.run(handler.step(LessonState(), user))
-
-    assert user.curriculum is not None
-    assert user.curriculum.modules[0].lessons[0].exercises[0].user_answer is None
 
 
 def test_lesson_handler_applies_dynamic_change() -> None:
@@ -318,10 +242,11 @@ def test_lesson_handler_applies_dynamic_change() -> None:
     lesson = updated.curriculum.modules[0].lessons[0]
     assert lesson.title == "Greetings"
     assert lesson.theory == "Use hola."
-    assert lesson.exercises[0].instruction == "Say hello"
+    assert lesson.exercises == []
+    assert lesson.current_exercise_idx == 0
 
 
-def test_lesson_handler_starts_deviation_and_completes_finished_lesson() -> None:
+def test_lesson_handler_starts_deviation() -> None:
     from tests.fakes.mediator import ScriptedMediator
 
     result = asyncio.run(
@@ -334,12 +259,23 @@ def test_lesson_handler_starts_deviation_and_completes_finished_lesson() -> None
     assert isinstance(app, DeviationState)
     assert app.lesson_context == "Basics / Greetings"
 
-    user = _active_lesson_user()
-    assert user.curriculum is not None
-    user.curriculum.modules[0].lessons[0].current_exercise_idx = 1
-    result = asyncio.run(
-        _handler(ScriptedMediator([]), ScriptedLessonLLM([])).step(LessonState(), user)
-    )
+
+def test_lesson_handler_shows_theory_without_exercise() -> None:
+    from milai.io.types import ContentKind
+    from tests.fakes.mediator import ScriptedMediator
+
+    mediator = ScriptedMediator(["practice"])
+    handler = _handler(mediator, ScriptedLessonLLM([]))
+
+    result = asyncio.run(handler.step(LessonState(), _active_lesson_user()))
     assert result is not None
     app, _ = result
-    assert isinstance(app, LessonCompleteState)
+
+    assert isinstance(app, LessonPracticeState)
+    assert [content.kind for content in mediator.shown] == [
+        ContentKind.HEADER,
+        ContentKind.MARKDOWN,
+    ]
+    assert "Translate hello" not in "\n".join(
+        content.text for content in mediator.shown
+    )

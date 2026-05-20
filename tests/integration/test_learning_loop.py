@@ -8,11 +8,13 @@ from milai.state.handlers.curriculum_complete import CurriculumCompleteHandler
 from milai.state.handlers.deviation import DeviationHandler
 from milai.state.handlers.lesson import LessonHandler
 from milai.state.handlers.lesson_complete import LessonCompleteHandler
+from milai.state.handlers.lesson_practice import LessonPracticeHandler
 from milai.state.machine import StateMachine
 from milai.state.variants import (
     CurriculumCompleteState,
     DeviationState,
     LessonCompleteState,
+    LessonPracticeState,
     LessonState,
 )
 
@@ -24,12 +26,12 @@ def test_learning_loop_persists_progress_deviation_srs_and_completion() -> None:
 
     mediator = ScriptedMediator(
         [
-            "answer",
+            "practice",
             "hola",
             "deviation",
             "Why plural?",
             "return",
-            "answer",
+            "practice",
             "un cafe",
         ]
     )
@@ -47,6 +49,7 @@ def test_learning_loop_persists_progress_deviation_srs_and_completion() -> None:
             },
             {"feedback": "Correct.", "is_correct": True},
             "Use quiero for I want.",
+            "Because some greetings are idiomatic.",
             {
                 "exercises": [
                     {
@@ -56,7 +59,6 @@ def test_learning_loop_persists_progress_deviation_srs_and_completion() -> None:
                     }
                 ]
             },
-            "Because some greetings are idiomatic.",
             {"feedback": "Good effort.", "is_correct": True},
         ]
     )
@@ -84,13 +86,14 @@ def test_learning_loop_persists_progress_deviation_srs_and_completion() -> None:
         storage=storage,
         handlers={
             LessonState: LessonHandler(mediator, LessonLLM(llm)),
+            LessonPracticeState: LessonPracticeHandler(mediator, LessonLLM(llm)),
             DeviationState: DeviationHandler(mediator, llm),
             LessonCompleteState: LessonCompleteHandler(mediator),
             CurriculumCompleteState: CurriculumCompleteHandler(mediator, llm),
         },
     )
 
-    asyncio.run(machine.run(max_steps=13))
+    asyncio.run(machine.run(max_steps=11))
 
     saved = asyncio.run(storage.load())
     assert saved is not None

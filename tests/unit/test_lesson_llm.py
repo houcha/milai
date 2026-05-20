@@ -122,13 +122,12 @@ def test_lesson_llm_generates_exercises_with_exercise_batch_model() -> None:
     assert "Use options only for multiple_choice exercises" in rendered
 
 
-def test_lesson_llm_dynamic_change_generates_changed_content_then_exercises() -> None:
+def test_lesson_llm_dynamic_change_generates_changed_theory_only() -> None:
     from tests.fakes.llm_client import ScriptedLLMClient
 
     llm = ScriptedLLMClient(
         [
             "Use hola.",
-            _exercise_batch("Say hello"),
         ]
     )
     service = LessonLLM(llm)
@@ -144,12 +143,9 @@ def test_lesson_llm_dynamic_change_generates_changed_content_then_exercises() ->
     assert lesson.title == "Greetings"
     assert lesson.theory == "Use hola."
     assert lesson.current_exercise_idx == 0
-    assert lesson.exercises[0].instruction == "Say hello"
+    assert lesson.exercises == []
     assert llm.response_models[0] is None
-    assert llm.response_models[1] is not None
-    assert llm.response_models[1].__name__ == "_ExerciseBatch"
     assert [message.role for message in llm.calls[0]] == [Role.USER]
-    assert [message.role for message in llm.calls[1]] == [Role.USER]
     change_prompt = "\n".join(message.content for message in llm.calls[0])
     assert (
         "Revise only the theory for lesson Greetings in module Basics" in change_prompt
@@ -163,13 +159,6 @@ def test_lesson_llm_dynamic_change_generates_changed_content_then_exercises() ->
     assert "Active curriculum position" not in change_prompt
     assert "Module:" not in change_prompt
     assert "Profile:" not in change_prompt
-    exercise_prompt = "\n".join(message.content for message in llm.calls[1])
-    assert "for lesson Greetings in module Basics" in exercise_prompt
-    assert (
-        "Use the lesson theory as the source of what to practice: Use hola."
-        in exercise_prompt
-    )
-    assert "Apply this requested change: Make it easier." in exercise_prompt
 
 
 def test_lesson_llm_evaluates_answer_with_feedback_model() -> None:

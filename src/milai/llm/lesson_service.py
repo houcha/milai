@@ -113,17 +113,10 @@ class LessonLLM:
             ],
             timeout=LESSON_LLM_TIMEOUT_SECONDS,
         )
-        changed_user = user.model_copy(deep=True)
         changed = _lesson_with_theory(
-            _active_lesson(changed_user),
+            _active_lesson(user),
             theory,
             reset_progress=True,
-        )
-        _replace_active_lesson(changed_user, changed)
-        changed.exercises = await self.generate_exercises(
-            state,
-            changed_user,
-            requested_change=requested_change,
         )
         return changed
 
@@ -162,13 +155,6 @@ def _active_lesson(user: UserState) -> Lesson:
         raise ValueError("user has no curriculum")
     module = user.curriculum.modules[user.curriculum.current_module_idx]
     return module.lessons[module.current_lesson_idx]
-
-
-def _replace_active_lesson(user: UserState, lesson: Lesson) -> None:
-    if user.curriculum is None:
-        raise ValueError("user has no curriculum")
-    module = user.curriculum.modules[user.curriculum.current_module_idx]
-    module.lessons[module.current_lesson_idx] = lesson
 
 
 def _lesson_with_theory(
