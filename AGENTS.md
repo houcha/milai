@@ -69,3 +69,7 @@ git commit \
 Added exponential backoff retry logic with max 3 attempts." \
   -m "Closes #123"
 ```
+
+<!-- SPECKIT START -->
+Current Spec Kit plan: `specs/002-adaptive-agent-sessions/plan.md`
+<!-- SPECKIT END -->
