@@ -23,9 +23,9 @@ description: "Tasks for Adaptive Learning Agents implementation"
 
 **Purpose**: Prepare concrete agent package and test support locations.
 
-- [ ] T001 Create concrete agent package exports in `src/milai/agents/__init__.py`
-- [ ] T002 [P] Add reusable scripted adaptive-agent fakes in `tests/fakes/adaptive_agents.py`
-- [ ] T003 [P] Add shared adaptive-flow fixtures for assessment, curriculum, and lessons in `tests/fakes/adaptive_scenarios.py`
+- [X] T001 Create concrete agent package exports in `src/milai/agents/__init__.py`
+- [X] T002 [P] Add reusable scripted adaptive-agent fakes in `tests/fakes/adaptive_agents.py`
+- [X] T003 [P] Add shared adaptive-flow fixtures for assessment, curriculum, and lessons in `tests/fakes/adaptive_scenarios.py`
 
 ---
 
