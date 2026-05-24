@@ -39,6 +39,7 @@ class AssessmentReviewHandler:
         return (
             CurriculumGenerationState(
                 assessment_questions=app.assessment_questions,
+                assessment_messages=app.assessment_messages,
             ),
             updated,
         )

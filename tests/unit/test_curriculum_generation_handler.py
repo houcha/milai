@@ -4,6 +4,7 @@ import pytest
 
 from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft
+from milai.llm.types import Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.curriculum import Curriculum, Lesson, Module
 from milai.models.user_state import Skill, UserProfile, UserState
@@ -53,6 +54,12 @@ def test_curriculum_generation_persists_draft_and_initial_skills() -> None:
         "travel phrases",
     ]
     assert updated.skills[0].strength == 0.8
+    assert [message.role for message in app.curriculum_messages] == [
+        Role.USER,
+        Role.ASSISTANT,
+    ]
+    assert "Create 3 to 20 modules" in app.curriculum_messages[0].content
+    assert "Travel Basics" in app.curriculum_messages[1].content
     rendered = "\n".join(message.content for message in llm.calls[0])
     assert "buenos dias" in rendered
     assert "A1" in rendered

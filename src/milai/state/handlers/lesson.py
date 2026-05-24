@@ -6,6 +6,7 @@ from milai.io.mediator import IOMediator
 from milai.io.types import Choice, ContentKind, RichContent
 from milai.llm.errors import LLMError
 from milai.llm.lesson_service import LessonLLM
+from milai.llm.types import Message, Role
 from milai.models.curriculum import Exercise, ExerciseEvaluation, Lesson, Module
 from milai.models.user_state import Skill, UserState
 from milai.srs.scheduler import update_skill
@@ -36,7 +37,10 @@ class LessonHandler:
         if not lesson.theory.strip():
             generated = await self._generate_lesson_content(app, updated)
             _replace_active_lesson(updated, generated)
-            return LessonState(), updated
+            app.lesson_messages.append(
+                Message(role=Role.ASSISTANT, content=generated.theory)
+            )
+            return LessonState(lesson_messages=app.lesson_messages), updated
 
         await self._show_lesson(module, lesson)
         choice = await self._mediator.choose(
@@ -57,9 +61,15 @@ class LessonHandler:
             changed.exercises = []
             changed.current_exercise_idx = 0
             _replace_active_lesson(updated, changed)
-            return LessonState(), updated
+            app.lesson_messages.extend(
+                [
+                    Message(role=Role.USER, content=request),
+                    Message(role=Role.ASSISTANT, content=changed.theory),
+                ]
+            )
+            return LessonState(lesson_messages=app.lesson_messages), updated
 
-        return LessonPracticeState(), updated
+        return LessonPracticeState(lesson_messages=app.lesson_messages), updated
 
     async def _show_lesson(self, module: Module, lesson: Lesson) -> None:
         await self._mediator.clear()

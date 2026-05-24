@@ -16,6 +16,7 @@ class AssessmentState(BaseModel):
     type: Literal["assessment"] = "assessment"
     questions: list[AssessmentQuestion] = Field(default_factory=list)
     current_idx: NonNegativeInt = 0
+    assessment_messages: list[Message] = Field(default_factory=list)
 
 
 class AssessmentReviewState(BaseModel):
@@ -23,23 +24,29 @@ class AssessmentReviewState(BaseModel):
     fluency_level: str
     fluency_rationale: str = ""
     assessment_questions: list[AssessmentQuestion] = Field(default_factory=list)
+    assessment_messages: list[Message] = Field(default_factory=list)
 
 
 class CurriculumGenerationState(BaseModel):
     type: Literal["curriculum_gen"] = "curriculum_gen"
     assessment_questions: list[AssessmentQuestion] = Field(default_factory=list)
+    assessment_messages: list[Message] = Field(default_factory=list)
+    curriculum_messages: list[Message] = Field(default_factory=list)
 
 
 class CurriculumReviewState(BaseModel):
     type: Literal["curriculum_review"] = "curriculum_review"
+    curriculum_messages: list[Message] = Field(default_factory=list)
 
 
 class LessonState(BaseModel):
     type: Literal["lesson"] = "lesson"
+    lesson_messages: list[Message] = Field(default_factory=list)
 
 
 class LessonPracticeState(BaseModel):
     type: Literal["lesson_practice"] = "lesson_practice"
+    lesson_messages: list[Message] = Field(default_factory=list)
 
 
 class DeviationState(BaseModel):

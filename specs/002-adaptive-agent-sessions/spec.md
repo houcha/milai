@@ -10,7 +10,7 @@
 ### Session 2026-05-21
 
 - Q: Should lesson theory/practice still use the separate deviation flow? → A: Remove deviation flow entirely for lessons.
-- Q: What conversation history must persist across assessment, curriculum, and lessons? → A: Store visible messages plus internal observations.
+- Q: What conversation history must persist across assessment, curriculum, and lessons? → A: Store section-scoped LLM messages for assessment, curriculum, and lessons.
 - Q: Can curriculum be generated before assessment is complete? → A: Block curriculum until assessment complete.
 - Q: What happens after unusable assessment answers? → A: Retry until usable answer.
 
@@ -69,7 +69,7 @@ As a learner in a lesson, I want theory and practice to handle questions, clarif
 
 As a learner or operator after interruption, I want assessment, curriculum, and lesson sessions to resume from confirmed history so retries do not duplicate prompts or lose context.
 
-**Why this priority**: Adaptive decisions depend on durable history.
+**Why this priority**: Adaptive LLM behavior depends on durable section history.
 
 **Independent Test**: Interrupt each workflow after one confirmed turn, retry it, and verify the next result uses confirmed history with no duplicate visible turn, lost input, or conflicting curriculum version.
 
@@ -94,7 +94,7 @@ As a learner or operator after interruption, I want assessment, curriculum, and 
 
 - **FR-001**: The system MUST provide `AssessmentInterviewer`, an adaptive assessment role with ordered history per assessment session.
 - **FR-002**: Assessment MUST show at most one unanswered item per active turn.
-- **FR-003**: Assessment MUST record each answer, evaluation evidence, and decision before choosing next item, retry, or final placement.
+- **FR-003**: Assessment MUST record each confirmed question and answer in assessment message history before the next adaptive assessment call.
 - **FR-004**: Assessment MUST finish with fluency level, rationale, supporting evidence, and existing minimum-evidence and maximum-item policies respected.
 - **FR-005**: Assessment MUST retry unusable answers until a usable answer is provided, without discarding history or placing from insufficient evidence.
 - **FR-006**: The system MUST provide `CurriculumDesigner`, an adaptive curriculum role with ordered history for drafts, feedback, revisions, and confirmation.
@@ -103,16 +103,16 @@ As a learner or operator after interruption, I want assessment, curriculum, and 
 - **FR-009**: Lesson theory and practice MUST support open-ended learner questions, clarification, rephrasing, examples, hints, mistake discussion, difficulty changes, and pacing changes inside the current lesson flow.
 - **FR-010**: Lesson responses MUST use current curriculum, lesson objective, prior exchanges, and learner performance evidence.
 - **FR-011**: Lesson theory and practice MUST NOT enter a separate deviation flow; relevant learner-driven changes are handled inline, and unrelated requests are acknowledged then redirected to the current objective.
-- **FR-012**: Assessment, curriculum, and lesson histories MUST store learner-visible messages plus internal observations, remain scoped to the current learner session, and survive retries from the last confirmed state without duplicate prompts, lost input, conflicting versions, or cross-session leakage.
+- **FR-012**: Assessment, curriculum, and lesson histories MUST store section-scoped LLM messages, remain scoped to the current learner session, and survive retries from the last confirmed state without duplicate prompts, lost input, conflicting versions, or cross-session leakage.
 
 ### Key Entities *(include if feature involves data)*
 
-- **Assessment Session**: Learner-specific interview history with visible messages, internal observations, decisions, and final placement.
-- **Curriculum Design Session**: Learner-specific design history with assessment evidence, goals, visible messages, internal observations, drafts, feedback, revisions, and confirmation status.
+- **Assessment Session**: Learner-specific interview history with assessment messages, questions, answers, and final placement.
+- **Curriculum Design Session**: Learner-specific design history with curriculum messages, assessment context, goals, drafts, feedback, revisions, and confirmation status.
 - **Curriculum Draft**: Proposed learning plan with units, pacing, focus areas, practice emphasis, and learner-evidence rationale.
-- **Lesson Session**: Learner-specific lesson history tied to a curriculum item, including visible messages, internal observations, theory, practice, questions, requested changes, and learning observations.
+- **Lesson Session**: Learner-specific lesson message history tied to a curriculum item, including theory, practice, questions, requested changes, and feedback.
 - **Learner-Driven Change**: Request to alter explanation style, pace, examples, practice difficulty, or nearby lesson direction.
-- **Agent History**: Ordered records used for adaptation, traceability, and retry recovery.
+- **Section Message History**: Ordered LLM messages scoped to one adaptive section and used for context, traceability, and retry recovery.
 
 ## Success Criteria *(mandatory)*
 
@@ -123,7 +123,7 @@ As a learner or operator after interruption, I want assessment, curriculum, and 
 - **SC-003**: Curriculum validation includes pre-assessment generation request, initial draft, and targeted revision; incomplete assessment blocks generation, completed draft reflects learner evidence, and revision preserves unaffected accepted content.
 - **SC-004**: Lesson validation includes theory question, rephrasing request, incorrect practice answer, hint request, difficulty change, and unrelated request; none enters a separate deviation flow.
 - **SC-005**: Retry validation covers assessment, curriculum revision, and lesson response after confirmed learner input; each resumes without duplicate visible turns, lost input, conflicting versions, or cross-session leakage.
-- **SC-006**: Finalized placement, curriculum, and lesson decisions are traceable to recorded histories during review.
+- **SC-006**: Finalized placement, curriculum, and lesson responses are traceable to recorded section histories during review.
 
 ## Assumptions
 

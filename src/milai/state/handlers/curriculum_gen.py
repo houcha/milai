@@ -7,6 +7,7 @@ from milai.io.types import ContentKind, RichContent
 from milai.llm.client import LLMClient
 from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft, build_generation_prompt
+from milai.llm.types import Message, Role
 from milai.models.user_state import Skill, UserState
 from milai.state.variants import (
     AppState,
@@ -37,18 +38,31 @@ class CurriculumGenerationHandler:
         updated = user.model_copy(deep=True)
         updated.curriculum = draft.curriculum
         updated.skills = _merge_skills(updated.skills, draft.initial_skills)
-        return CurriculumReviewState(), updated
+        return CurriculumReviewState(
+            curriculum_messages=app.curriculum_messages,
+        ), updated
 
     async def _generate_draft(
         self, state: CurriculumGenerationState, user: UserState
     ) -> CurriculumDraft:
         while True:
             try:
-                return await self._llm.complete(
-                    build_generation_prompt(state, user),
+                messages = build_generation_prompt(state, user)
+                draft = await self._llm.complete(
+                    messages,
                     response_model=CurriculumDraft,
                     timeout=CURRICULUM_GENERATION_TIMEOUT_SECONDS,
                 )
+                state.curriculum_messages.extend(
+                    [
+                        messages[-1],
+                        Message(
+                            role=Role.ASSISTANT,
+                            content=draft.model_dump_json(),
+                        ),
+                    ]
+                )
+                return draft
             except LLMError as exc:
                 if not await self._handle_llm_error(exc):
                     raise

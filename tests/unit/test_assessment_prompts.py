@@ -4,6 +4,7 @@ from milai.llm.prompts.assessment import (
     build_fluency_prompt,
     build_question_prompt,
 )
+from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.user_state import UserProfile, UserState
 from milai.state.variants import AssessmentState
@@ -27,6 +28,9 @@ def test_question_prompt_includes_profile_assessment_hist_and_schema_context() -
                 difficulty="beginner",
             )
         ],
+        assessment_messages=[
+            Message(role=Role.USER, content="Previous answer from section history.")
+        ],
     )
 
     rendered = "\n".join(
@@ -38,6 +42,7 @@ def test_question_prompt_includes_profile_assessment_hist_and_schema_context() -
     assert "travel" in rendered
     assert "grammar jargon" in rendered
     assert "ticket answer" in rendered
+    assert "Previous answer from section history." in rendered
     assert "Current question index" not in rendered
     assert "Follow-up guidance" in rendered
     assert "difficulty" in rendered.lower()
@@ -68,6 +73,9 @@ def test_fluency_prompt_includes_answered_questions_and_validates_result() -> No
                 difficulty="beginner",
             )
         ],
+        assessment_messages=[
+            Message(role=Role.ASSISTANT, content="Prior assessment question.")
+        ],
     )
 
     rendered = "\n".join(
@@ -76,6 +84,7 @@ def test_fluency_prompt_includes_answered_questions_and_validates_result() -> No
 
     assert "French" in rendered
     assert "intro answer" in rendered
+    assert "Prior assessment question." in rendered
     assert FluencyResult.model_validate(
         {
             "fluency_level": "A1",

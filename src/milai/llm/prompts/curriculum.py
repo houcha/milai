@@ -45,6 +45,7 @@ def build_generation_prompt(
                 "individual assessment questions."
             ),
         ),
+        *state.curriculum_messages,
         Message(
             role=Role.USER,
             content=(
@@ -80,6 +81,7 @@ def build_adjustment_prompt(
                 "if the revision introduces new durable skill topics."
             ),
         ),
+        *state.curriculum_messages,
         Message(
             role=Role.USER,
             content=(

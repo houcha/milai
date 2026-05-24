@@ -1,5 +1,6 @@
 import asyncio
 
+from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.user_state import UserProfile, UserState
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
@@ -23,6 +24,7 @@ def test_assessment_review_confirms_fluency() -> None:
                         user_answer="morning answer",
                     )
                 ],
+                assessment_messages=[Message(role=Role.USER, content="morning answer")],
             ),
             UserState(profile=UserProfile(target_language="Spanish")),
         )
@@ -30,6 +32,7 @@ def test_assessment_review_confirms_fluency() -> None:
 
     assert isinstance(app, CurriculumGenerationState)
     assert app.assessment_questions[0].user_answer == "morning answer"
+    assert app.assessment_messages[0].content == "morning answer"
     assert user.profile.fluency_level == "A2"
 
 

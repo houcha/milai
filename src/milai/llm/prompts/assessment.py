@@ -37,7 +37,7 @@ def build_question_prompt(
     follow_up_guidance: str | None = None,
 ) -> list[Message]:
     profile = user.profile
-    assessment_history = [
+    assessment_answers = [
         f"{question.difficulty} question: {question.text}: {question.user_answer}"
         for question in state.questions
         if question.user_answer
@@ -51,6 +51,7 @@ def build_question_prompt(
                 "Return JSON matching the requested schema."
             ),
         ),
+        *state.assessment_messages,
         Message(
             role=Role.USER,
             content=(
@@ -58,7 +59,7 @@ def build_question_prompt(
                 f"Native language: {profile.native_language}. "
                 f"Goal: {profile.learning_goal}. "
                 f"Teaching preferences: {profile.preferences}. "
-                f"Assessment history: {assessment_history or 'none'}. "
+                f"Assessment answers: {assessment_answers or 'none'}. "
                 f"Follow-up guidance: {guidance}. "
                 "Generate adaptive questions with difficulty."
             ),
@@ -85,6 +86,7 @@ def build_fluency_prompt(
                 "should probe if more evidence is needed."
             ),
         ),
+        *state.assessment_messages,
         Message(
             role=Role.USER,
             content=(

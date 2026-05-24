@@ -63,6 +63,106 @@ def test_persisted_state_serializes_and_restores_discriminated_app_state() -> No
     assert isinstance(restored.app, LessonPracticeState)
 
 
+def test_persisted_state_round_trips_section_message_histories() -> None:
+    from milai.llm.types import Message, Role
+    from milai.models.state import PersistedState
+    from milai.models.user_state import UserState
+    from milai.state.variants import (
+        AssessmentReviewState,
+        AssessmentState,
+        CurriculumGenerationState,
+        CurriculumReviewState,
+        LessonPracticeState,
+        LessonState,
+    )
+
+    assessment_user = Message(
+        role=Role.USER,
+        content="I think it is hola.",
+    )
+    assessment_assistant = Message(
+        role=Role.ASSISTANT,
+        content="Translate good morning.",
+    )
+    curriculum_user = Message(
+        role=Role.USER,
+        content="Make the travel module shorter.",
+    )
+    curriculum_assistant = Message(
+        role=Role.ASSISTANT,
+        content='{"modules": ["Travel Spanish"]}',
+    )
+    lesson_user = Message(
+        role=Role.USER,
+        content="Can you give another example?",
+    )
+    lesson_assistant = Message(
+        role=Role.ASSISTANT,
+        content="Sure, here is another travel example.",
+    )
+
+    assessment = PersistedState(
+        user=UserState(),
+        app=AssessmentState(
+            assessment_messages=[assessment_assistant, assessment_user]
+        ),
+    )
+    restored = PersistedState.model_validate_json(assessment.model_dump_json())
+    assert isinstance(restored.app, AssessmentState)
+    assert restored.app.assessment_messages[0].role == Role.ASSISTANT
+    assert restored.app.assessment_messages[1].content == "I think it is hola."
+
+    assessment_review = PersistedState(
+        user=UserState(),
+        app=AssessmentReviewState(
+            fluency_level="A1",
+            assessment_messages=[assessment_assistant, assessment_user],
+        ),
+    )
+    restored = PersistedState.model_validate_json(assessment_review.model_dump_json())
+    assert isinstance(restored.app, AssessmentReviewState)
+    assert restored.app.assessment_messages[0].content == "Translate good morning."
+
+    curriculum = PersistedState(
+        user=UserState(),
+        app=CurriculumGenerationState(
+            assessment_messages=[assessment_assistant, assessment_user],
+            curriculum_messages=[curriculum_user, curriculum_assistant],
+        ),
+    )
+    restored = PersistedState.model_validate_json(curriculum.model_dump_json())
+    assert isinstance(restored.app, CurriculumGenerationState)
+    assert restored.app.assessment_messages[1].role == Role.USER
+    assert restored.app.curriculum_messages[0].content == (
+        "Make the travel module shorter."
+    )
+
+    curriculum_review = PersistedState(
+        user=UserState(),
+        app=CurriculumReviewState(
+            curriculum_messages=[curriculum_user, curriculum_assistant],
+        ),
+    )
+    restored = PersistedState.model_validate_json(curriculum_review.model_dump_json())
+    assert isinstance(restored.app, CurriculumReviewState)
+    assert restored.app.curriculum_messages[1].role == Role.ASSISTANT
+
+    lesson_state = PersistedState(
+        user=UserState(),
+        app=LessonState(lesson_messages=[lesson_user, lesson_assistant]),
+    )
+    restored = PersistedState.model_validate_json(lesson_state.model_dump_json())
+    assert isinstance(restored.app, LessonState)
+    assert restored.app.lesson_messages[0].role == Role.USER
+
+    lesson = PersistedState(
+        user=UserState(), app=LessonPracticeState(lesson_messages=[lesson_user])
+    )
+    restored = PersistedState.model_validate_json(lesson.model_dump_json())
+    assert isinstance(restored.app, LessonPracticeState)
+    assert restored.app.lesson_messages[0].content == "Can you give another example?"
+
+
 def test_placeholder_lesson_is_valid_by_default() -> None:
     from milai.models.curriculum import Lesson
 

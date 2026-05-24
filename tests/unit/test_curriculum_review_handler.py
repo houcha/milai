@@ -4,6 +4,7 @@ import pytest
 
 from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft
+from milai.llm.types import Role
 from milai.models.curriculum import Curriculum, Lesson, Module
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.curriculum_review import CurriculumReviewHandler
@@ -71,6 +72,12 @@ def test_curriculum_review_feedback_adjusts_curriculum() -> None:
         "greetings",
         "restaurant phrases",
     ]
+    assert [message.role for message in app.curriculum_messages] == [
+        Role.USER,
+        Role.ASSISTANT,
+    ]
+    assert "Move food earlier" in app.curriculum_messages[0].content
+    assert "Restaurant Spanish" in app.curriculum_messages[1].content
     rendered = "\n".join(message.content for message in llm.calls[0])
     assert "Move food earlier" in rendered
     assert "remove the travel module" in rendered

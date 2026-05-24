@@ -6,6 +6,7 @@ from milai.llm.prompts.curriculum import (
     build_adjustment_prompt,
     build_generation_prompt,
 )
+from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.curriculum import Curriculum, Lesson, Module
 from milai.models.user_state import UserProfile, UserState
@@ -28,7 +29,10 @@ def test_generation_prompt_includes_assessment_answers_for_skill_inference() -> 
                 user_answer="morning answer",
                 difficulty="beginner",
             )
-        ]
+        ],
+        curriculum_messages=[
+            Message(role=Role.ASSISTANT, content="Prior curriculum draft")
+        ],
     )
 
     rendered = "\n".join(
@@ -37,6 +41,7 @@ def test_generation_prompt_includes_assessment_answers_for_skill_inference() -> 
 
     assert "Spanish" in rendered
     assert "morning answer" in rendered
+    assert "Prior curriculum draft" in rendered
     assert "initial skill" in rendered.lower()
     assert "Existing skills" not in rendered
     draft = CurriculumDraft.model_validate(
@@ -64,7 +69,11 @@ def test_adjustment_prompt_includes_current_curriculum_and_feedback() -> None:
     rendered = "\n".join(
         message.content
         for message in build_adjustment_prompt(
-            CurriculumReviewState(),
+            CurriculumReviewState(
+                curriculum_messages=[
+                    Message(role=Role.ASSISTANT, content="Previous revision")
+                ]
+            ),
             user,
             feedback="Move food earlier and remove hotel vocabulary.",
         )
@@ -74,6 +83,7 @@ def test_adjustment_prompt_includes_current_curriculum_and_feedback() -> None:
     assert "Food" in rendered
     assert "Move food earlier" in rendered
     assert "remove hotel vocabulary" in rendered
+    assert "Previous revision" in rendered
     assert "Spanish" in rendered
     assert "Existing skills" not in rendered
 

@@ -5,7 +5,7 @@ import pytest
 
 from milai.llm.errors import LLMError
 from milai.llm.lesson_service import LessonLLM
-from milai.llm.types import Role
+from milai.llm.types import Message, Role
 from milai.models.curriculum import (
     Curriculum,
     Exercise,
@@ -87,6 +87,27 @@ def test_lesson_llm_generates_theory_without_changing_curriculum_title() -> None
     assert "Reinforce these review topics" not in rendered
     assert "Current lesson placeholder/content" not in rendered
     assert "last_seen" not in rendered
+
+
+def test_lesson_llm_includes_lesson_message_history() -> None:
+    from tests.fakes.llm_client import ScriptedLLMClient
+
+    llm = ScriptedLLMClient(["Use hola."])
+    service = LessonLLM(llm)
+
+    asyncio.run(
+        service.generate_lesson_content(
+            LessonState(
+                lesson_messages=[
+                    Message(role=Role.USER, content="Use travel examples.")
+                ]
+            ),
+            _user(),
+        )
+    )
+
+    assert [message.role for message in llm.calls[0]] == [Role.USER, Role.USER]
+    assert llm.calls[0][0].content == "Use travel examples."
 
 
 def test_lesson_llm_generates_exercises_with_exercise_batch_model() -> None:

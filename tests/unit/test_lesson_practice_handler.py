@@ -6,6 +6,7 @@ import pytest
 from milai.io.mediator import IOMediator
 from milai.llm.errors import LLMError
 from milai.llm.lesson_service import LessonLLM
+from milai.llm.types import Role
 from milai.models.curriculum import (
     Curriculum,
     Exercise,
@@ -40,8 +41,9 @@ class ScriptedLessonLLM:
         *,
         answer: str,
         lesson_context: str,
+        state: LessonState | None = None,
     ) -> ExerciseEvaluation:
-        _ = exercise, user, answer, lesson_context
+        _ = exercise, user, answer, lesson_context, state
         return self._next("evaluate_answer")
 
     def _next(self, method: str):
@@ -240,6 +242,14 @@ def test_practice_handler_continues_when_more_exercises_remain() -> None:
     assert isinstance(app, LessonPracticeState)
     assert updated.curriculum is not None
     assert updated.curriculum.modules[0].lessons[0].current_exercise_idx == 1
+    assert [message.role for message in app.lesson_messages] == [
+        Role.ASSISTANT,
+        Role.USER,
+        Role.ASSISTANT,
+    ]
+    assert app.lesson_messages[0].content == "Translate hello"
+    assert app.lesson_messages[1].content == "hola"
+    assert app.lesson_messages[2].content == "Correct."
 
 
 def test_practice_handler_completes_finished_lesson() -> None:

@@ -35,10 +35,10 @@ description: "Tasks for Adaptive Learning Agents implementation"
 
 **CRITICAL**: No user story implementation should start until this phase is complete.
 
-- [ ] T004 [P] Add shared `VisibleMessage`, `InternalObservation`, `AgentDecision`, and `AgentHistoryRecord` Pydantic models in `src/milai/models/agent_history.py`
-- [ ] T005 [P] Add serialization and validation coverage for shared agent history records in `tests/unit/test_models.py`
-- [ ] T006 Extend adaptive workflow states with ordered history fields in `src/milai/state/variants.py`
-- [ ] T007 Add persisted `AppState` round-trip coverage for assessment, curriculum, and lesson histories in `tests/unit/test_models.py`
+- [X] T004 [P] Add section-scoped `assessment_messages`, `curriculum_messages`, and `lesson_messages` histories using shared LLM `Message` values in `src/milai/state/variants.py`
+- [X] T005 [P] Add serialization coverage for section-scoped message histories in `tests/unit/test_models.py`
+- [X] T006 Extend adaptive workflow states with ordered history fields in `src/milai/state/variants.py`
+- [X] T007 Add persisted `AppState` round-trip coverage for assessment, curriculum, and lesson histories in `tests/unit/test_models.py`
 
 **Checkpoint**: Foundation ready. User story implementation can begin.
 
@@ -61,7 +61,7 @@ description: "Tasks for Adaptive Learning Agents implementation"
 - [ ] T011 [P] [US1] Add assessment evidence, answer evaluation, retry, next-item, and placement result models in `src/milai/models/assessment.py`
 - [ ] T012 [US1] Implement `AssessmentInterviewer` with `LLMClient` calls, assessment history input, answer evaluation, next-item selection, unusable-answer retry, and placement output in `src/milai/agents/assessment.py`
 - [ ] T013 [US1] Update assessment prompt builders and structured response schemas to request exactly one outcome per turn in `src/milai/llm/prompts/assessment.py`
-- [ ] T014 [US1] Refactor `AssessmentHandler` to delegate adaptive decisions to `AssessmentInterviewer`, keep at most one unanswered item, record evidence and decisions, and enforce existing min/max assessment policies in `src/milai/state/handlers/assessment.py`
+- [ ] T014 [US1] Refactor `AssessmentHandler` to delegate adaptive assessment turns to `AssessmentInterviewer`, keep at most one unanswered item, record confirmed question/answer messages, and enforce existing min/max assessment policies in `src/milai/state/handlers/assessment.py`
 
 **Checkpoint**: User Story 1 works independently and can ship as MVP.
 
@@ -133,11 +133,11 @@ description: "Tasks for Adaptive Learning Agents implementation"
 
 ### Implementation for User Story 4
 
-- [ ] T038 [US4] Update assessment retry persistence so `AssessmentHandler` stores confirmed visible answer and internal observation before the next adaptive decision without duplicate prompts in `src/milai/state/handlers/assessment.py`
+- [ ] T038 [US4] Update assessment retry persistence so `AssessmentHandler` stores confirmed question/answer messages before the next adaptive assessment call without duplicate prompts in `src/milai/state/handlers/assessment.py`
 - [ ] T039 [US4] Update curriculum draft retry persistence so `CurriculumGenerationHandler` reuses confirmed assessment and draft history without conflicting versions in `src/milai/state/handlers/curriculum_gen.py`
 - [ ] T040 [US4] Update curriculum feedback retry persistence so `CurriculumReviewHandler` reuses confirmed feedback and prior draft history without losing accepted content in `src/milai/state/handlers/curriculum_review.py`
-- [ ] T041 [US4] Update lesson theory retry persistence so `LessonHandler` reuses confirmed learner requests, tutor replies, and internal observations without duplicate visible turns in `src/milai/state/handlers/lesson.py`
-- [ ] T042 [US4] Update lesson practice retry persistence so `LessonPracticeHandler` reuses confirmed answers, hints, feedback, and learning observations without lost input in `src/milai/state/handlers/lesson_practice.py`
+- [ ] T041 [US4] Update lesson theory retry persistence so `LessonHandler` reuses confirmed learner requests and tutor replies without duplicate visible turns in `src/milai/state/handlers/lesson.py`
+- [ ] T042 [US4] Update lesson practice retry persistence so `LessonPracticeHandler` reuses confirmed practice prompts, answers, hints, and feedback messages without lost input in `src/milai/state/handlers/lesson_practice.py`
 
 **Checkpoint**: All adaptive histories survive retry and resume through persisted app state.
 
@@ -267,6 +267,6 @@ Task: "Add persisted resume regression coverage for assessment, curriculum, and 
 - Use `uv` for Python commands. Do not invoke `python`, `pip`, or `pip install`.
 - Do not add a generic agent framework, new persistence layer, database, provider-specific imports, or duplicate lesson service.
 - Keep all LLM calls behind `LLMClient`.
-- Keep handlers thin; concrete agents own adaptive LLM prompts and decisions.
-- Visible learner messages and internal observations must be stored separately and scoped to the current persisted app state.
+- Keep handlers thin; concrete agents own adaptive LLM prompts and section message updates.
+- Assessment, curriculum, and lesson messages must stay separately scoped to the current persisted app state.
 - Commit after each completed task or logical group with Conventional Commits format.

@@ -5,6 +5,7 @@ from milai.io.types import Choice, ContentKind, RichContent
 from milai.llm.client import LLMClient
 from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft, build_adjustment_prompt
+from milai.llm.types import Message, Role
 from milai.models.curriculum import Curriculum
 from milai.models.user_state import UserState
 from milai.state.handlers.curriculum_gen import _merge_skills
@@ -42,7 +43,9 @@ class CurriculumReviewHandler:
         draft = await self._adjust_draft(app, updated, feedback=feedback)
         updated.curriculum = draft.curriculum
         updated.skills = _merge_skills(updated.skills, draft.initial_skills)
-        return CurriculumReviewState(), updated
+        return CurriculumReviewState(
+            curriculum_messages=app.curriculum_messages,
+        ), updated
 
     async def _show_curriculum(self, curriculum: Curriculum) -> None:
         await self._mediator.clear()
@@ -67,10 +70,21 @@ class CurriculumReviewHandler:
     ) -> CurriculumDraft:
         while True:
             try:
-                return await self._llm.complete(
-                    build_adjustment_prompt(state, user, feedback=feedback),
+                messages = build_adjustment_prompt(state, user, feedback=feedback)
+                draft = await self._llm.complete(
+                    messages,
                     response_model=CurriculumDraft,
                 )
+                state.curriculum_messages.extend(
+                    [
+                        messages[-1],
+                        Message(
+                            role=Role.ASSISTANT,
+                            content=draft.model_dump_json(),
+                        ),
+                    ]
+                )
+                return draft
             except LLMError as exc:
                 if not await self._handle_llm_error(exc):
                     raise

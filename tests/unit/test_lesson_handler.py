@@ -6,6 +6,7 @@ import pytest
 from milai.io.mediator import IOMediator
 from milai.llm.errors import LLMError
 from milai.llm.lesson_service import LessonLLM
+from milai.llm.types import Role
 from milai.models.curriculum import (
     Curriculum,
     Exercise,
@@ -167,6 +168,9 @@ def test_lesson_handler_generates_missing_lesson_theory_with_review_skills() -> 
     lesson = updated.curriculum.modules[0].lessons[0]
     assert lesson.theory == "Hola means hello."
     assert lesson.exercises == []
+    assert len(app.lesson_messages) == 1
+    assert app.lesson_messages[0].role == Role.ASSISTANT
+    assert app.lesson_messages[0].content == "Hola means hello."
 
 
 def test_lesson_handler_generates_missing_exercises_lazily() -> None:
@@ -244,6 +248,12 @@ def test_lesson_handler_applies_dynamic_change() -> None:
     assert lesson.theory == "Use hola."
     assert lesson.exercises == []
     assert lesson.current_exercise_idx == 0
+    assert [message.role for message in app.lesson_messages] == [
+        Role.USER,
+        Role.ASSISTANT,
+    ]
+    assert app.lesson_messages[0].content == "Make it easier"
+    assert app.lesson_messages[1].content == "Use hola."
 
 
 def test_lesson_handler_starts_deviation() -> None:

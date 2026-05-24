@@ -11,6 +11,7 @@ from milai.llm.prompts.assessment import (
     AssessmentQuestionBatch,
     FluencyResult,
 )
+from milai.llm.types import Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.user_state import UserProfile, UserState
 from milai.state.handlers.assessment import AssessmentHandler
@@ -77,6 +78,12 @@ def test_assessment_generates_initial_batch_and_captures_answers() -> None:
     assert isinstance(app, AssessmentState)
     assert app.questions[0].user_answer == "first answer"
     assert app.current_idx == 1
+    assert [message.role for message in app.assessment_messages] == [
+        Role.ASSISTANT,
+        Role.USER,
+    ]
+    assert app.assessment_messages[0].content == "Initial 1"
+    assert app.assessment_messages[1].content == "first answer"
     assert user.skills == []
 
     app, user = asyncio.run(handler.step(app, user))

@@ -9,7 +9,7 @@ Make assessment, curriculum design, and lesson interaction adaptive without addi
 - Add `AssessmentInterviewer`: one-question assessment turns, answer evidence, retry for unusable answers, final placement with rationale.
 - Add `CurriculumDesigner`: draft and revise curricula from completed assessment evidence, learner goals, prior drafts, and feedback.
 - Add `LessonTutor`: theory/practice conversation, questions, hints, clarification, difficulty changes, pacing changes, and unrelated redirects happen inline.
-- Persist visible messages plus internal observations for assessment, curriculum, and lesson sessions so retries resume from confirmed history.
+- Persist section-scoped LLM messages for assessment, curriculum, and lesson sessions so retries resume from confirmed history.
 
 ## Current Architecture Fit
 
@@ -47,9 +47,9 @@ No database, event log, generic `Agent` abstraction, duplicate lesson service, o
 | Area | Decision |
 |---|---|
 | Agent shape | Use concrete `AssessmentInterviewer`, `CurriculumDesigner`, and `LessonTutor`; defer a shared agent abstraction until duplication is proven stable. |
-| Lesson agent | Add a concrete `LessonTutor` rather than keeping a parallel `LessonLLM` service. It owns lesson history, lesson content generation, theory conversation, exercise generation, practice feedback, hints, adapted practice, and inline redirect decisions. |
-| Persistence | Extend existing persisted app state with ordered history records. Keep `PersistedState` as the only recovery boundary. |
-| History contents | Store learner-visible messages separately from internal observations and decisions. |
+| Lesson agent | Add a concrete `LessonTutor` rather than keeping a parallel `LessonLLM` service. It owns lesson history, lesson content generation, theory conversation, exercise generation, practice feedback, hints, adapted practice, and inline redirect handling. |
+| Persistence | Extend existing persisted app state with ordered section message histories. Keep `PersistedState` as the only recovery boundary. |
+| History contents | Store assessment, curriculum, and lesson LLM messages separately so each section sees its own prior conversation. |
 | Assessment | At most one unanswered item per turn. Handler enforces existing min/max assessment policies. Unusable answers retry until usable. |
 | Curriculum | Block generation until assessment is complete. Revisions record feedback and preserve unaffected accepted content. |
 | Lessons and practice | Practice is part of `LessonTutor`, not a separate agent. `LessonHandler` and `LessonPracticeHandler` may stay as state handlers, but both delegate lesson intelligence to `LessonTutor`. Inline theory/practice conversation replaces `DeviationState` for lesson interactions. |

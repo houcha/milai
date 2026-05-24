@@ -12,6 +12,7 @@ from milai.llm.prompts.assessment import (
     build_fluency_prompt,
     build_question_prompt,
 )
+from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.user_state import UserState
 from milai.state.variants import AppState, AssessmentReviewState, AssessmentState
@@ -67,6 +68,7 @@ class AssessmentHandler:
             fluency_level=fluency.fluency_level,
             fluency_rationale=fluency.rationale,
             assessment_questions=state.questions,
+            assessment_messages=state.assessment_messages,
         )
 
     async def _generate_questions(
@@ -102,6 +104,12 @@ class AssessmentHandler:
             )
         )
         question.user_answer = await self._mediator.prompt(question.text)
+        state.assessment_messages.extend(
+            [
+                Message(role=Role.ASSISTANT, content=question.text),
+                Message(role=Role.USER, content=question.user_answer),
+            ]
+        )
         state.current_idx += 1
 
     async def _calculate_fluency(
