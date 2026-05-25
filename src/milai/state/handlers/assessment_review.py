@@ -29,12 +29,17 @@ class AssessmentReviewHandler:
 
         if await self._mediator.confirm("Use this fluency level?"):
             fluency_level = app.fluency_level
+            fluency_rationale: str | None = app.fluency_rationale
         else:
             fluency_level = await self._prompt_override()
+            fluency_rationale = None
 
         updated = user.model_copy(deep=True)
         updated.profile = updated.profile.model_copy(
-            update={"fluency_level": fluency_level}
+            update={
+                "fluency_level": fluency_level,
+                "fluency_rationale": fluency_rationale,
+            }
         )
         return (
             CurriculumGenerationState(

@@ -1,27 +1,30 @@
 """Assessment state handler."""
 
+from pydantic import BaseModel
+
+from milai.agents.assessment import AssessmentInterviewer, AssessmentPhase
 from milai.io.mediator import IOMediator
 from milai.io.types import ContentKind, RichContent
-from milai.llm.client import LLMClient
 from milai.llm.errors import LLMError
-from milai.llm.prompts.assessment import (
-    MAX_ASSESSMENT_QUESTIONS,
-    MIN_ASSESSMENT_QUESTIONS,
-    AssessmentQuestionBatch,
-    FluencyResult,
-    build_fluency_prompt,
-    build_question_prompt,
-)
 from milai.llm.types import Message, Role
-from milai.models.assessment import AssessmentQuestion
+from milai.models.assessment import AssessmentQuestion, Diagnosis, NextQuestion, Retry
 from milai.models.user_state import UserState
-from milai.state.variants import AppState, AssessmentReviewState, AssessmentState
+from milai.state.variants import (
+    AppState,
+    AssessmentReviewState,
+    AssessmentState,
+)
+
+MIN_USABLE_ASSESSMENT_EVIDENCE = 6
+MAX_ASSESSMENT_QUESTIONS = 20
 
 
 class AssessmentHandler:
-    def __init__(self, mediator: IOMediator, llm: LLMClient) -> None:
+    def __init__(
+        self, mediator: IOMediator, interviewer: AssessmentInterviewer
+    ) -> None:
         self._mediator = mediator
-        self._llm = llm
+        self._interviewer = interviewer
 
     async def step(
         self, app: AppState, user: UserState
@@ -31,99 +34,128 @@ class AssessmentHandler:
         state = app.model_copy(deep=True)
         updated_user = user.model_copy(deep=True)
 
-        if not state.questions:
-            state.questions = await self._generate_questions(state, updated_user)
+        if state.questions and state.questions[-1].user_answer is None:
+            await self._capture_latest_answer(state)
             return state, updated_user
 
-        if state.current_idx < len(state.questions):
-            await self._capture_next_answer(state)
-            return state, updated_user
+        return await self._advance_assessment(state, updated_user), updated_user
 
-        fluency = await self._calculate_fluency(state, updated_user)
-        if self._should_stop_assessment(state, fluency):
-            return self._to_review_state(state, fluency), updated_user
-
-        follow_up_questions = await self._generate_questions(
-            state,
-            updated_user,
-            follow_up_guidance=fluency.follow_up_guidance,
-        )
-        state.questions.extend(follow_up_questions)
-        return state, updated_user
-
-    def _should_stop_assessment(
-        self, state: AssessmentState, fluency: FluencyResult
-    ) -> bool:
-        answered_count = len(state.questions)
-        if answered_count >= MAX_ASSESSMENT_QUESTIONS:
-            return True
-        return (
-            answered_count >= MIN_ASSESSMENT_QUESTIONS and fluency.confidence == "high"
-        )
-
-    def _to_review_state(
-        self, state: AssessmentState, fluency: FluencyResult
-    ) -> AssessmentReviewState:
-        return AssessmentReviewState(
-            fluency_level=fluency.fluency_level,
-            fluency_rationale=fluency.rationale,
-            assessment_questions=state.questions,
-            assessment_messages=state.assessment_messages,
-        )
-
-    async def _generate_questions(
-        self,
-        state: AssessmentState,
-        user: UserState,
-        *,
-        follow_up_guidance: str | None = None,
-    ) -> list[AssessmentQuestion]:
+    async def _advance_assessment(
+        self, state: AssessmentState, user: UserState
+    ) -> AssessmentState | AssessmentReviewState:
         while True:
             try:
-                batch = await self._llm.complete(
-                    build_question_prompt(
-                        state,
-                        user,
-                        follow_up_guidance=follow_up_guidance,
-                    ),
-                    response_model=AssessmentQuestionBatch,
+                usable_evidence = sum(
+                    question.user_answer is not None for question in state.questions
                 )
-                return batch.questions
+                usable_evidence_needed = max(
+                    MIN_USABLE_ASSESSMENT_EVIDENCE - usable_evidence, 0
+                )
+                question_budget_remaining = max(
+                    MAX_ASSESSMENT_QUESTIONS - len(state.questions), 0
+                )
+
+                result = await self._interviewer.next_action(
+                    state,
+                    user,
+                    self._assessment_phase(state, usable_evidence=usable_evidence),
+                    usable_evidence_needed=usable_evidence_needed,
+                    question_budget_remaining=question_budget_remaining,
+                )
+                return await self._apply_continuation_result(
+                    state,
+                    result,
+                )
             except LLMError as exc:
                 if not await self._handle_llm_error(exc):
                     raise
 
-    async def _capture_next_answer(self, state: AssessmentState) -> None:
-        question = state.questions[state.current_idx]
+    async def _apply_continuation_result(
+        self,
+        state: AssessmentState,
+        action: NextQuestion | Retry | Diagnosis,
+    ) -> AssessmentState | AssessmentReviewState:
+        match action:
+            case Diagnosis():
+                self._record_interviewer_reply(state, action)
+                return AssessmentReviewState(
+                    fluency_level=action.fluency_level,
+                    fluency_rationale=action.rationale,
+                    assessment_questions=state.questions,
+                    assessment_messages=state.assessment_messages,
+                )
+
+            case NextQuestion():
+                self._record_interviewer_reply(state, action)
+                state.questions.append(self._to_assessment_question(action))
+                return state
+
+            case Retry():
+                self._record_interviewer_reply(state, action)
+                await self._mediator.show(RichContent(action.message))
+                state.questions.pop()
+                state.questions.append(self._retry_to_assessment_question(action))
+                return state
+
+            case _:
+                raise LLMError("assessment interviewer returned incomplete result")
+
+    def _record_interviewer_reply(
+        self, state: AssessmentState, result: BaseModel
+    ) -> None:
+        state.assessment_messages.append(
+            Message(role=Role.ASSISTANT, content=result.model_dump_json())
+        )
+
+    def _assessment_phase(
+        self, state: AssessmentState, *, usable_evidence: int
+    ) -> AssessmentPhase:
+        if not state.questions:
+            return AssessmentPhase.INITIAL
+        if len(state.questions) >= MAX_ASSESSMENT_QUESTIONS:
+            return AssessmentPhase.FORCED_DIAGNOSIS
+        if usable_evidence < MIN_USABLE_ASSESSMENT_EVIDENCE:
+            return AssessmentPhase.COLLECTING
+        return AssessmentPhase.DIAGNOSING
+
+    def _to_assessment_question(self, action: NextQuestion) -> AssessmentQuestion:
+        return AssessmentQuestion(
+            text=action.text,
+            difficulty=action.difficulty,
+            rationale=action.rationale,
+        )
+
+    def _retry_to_assessment_question(self, action: Retry) -> AssessmentQuestion:
+        return AssessmentQuestion(
+            text=action.text,
+            difficulty=action.difficulty,
+            rationale=action.retry_reason,
+        )
+
+    async def _capture_latest_answer(self, state: AssessmentState) -> None:
+        question = state.questions[-1]
+        question_number = (
+            sum(item.user_answer is not None for item in state.questions) + 1
+        )
         await self._mediator.show(
             RichContent(
-                f"Question {state.current_idx + 1}",
+                f"Question {question_number}",
                 kind=ContentKind.PROGRESS,
-                current=state.current_idx + 1,
+                current=question_number,
                 total=0,
             )
         )
         question.user_answer = await self._mediator.prompt(question.text)
-        state.assessment_messages.extend(
-            [
-                Message(role=Role.ASSISTANT, content=question.text),
-                Message(role=Role.USER, content=question.user_answer),
-            ]
+        if (
+            not state.assessment_messages
+            or state.assessment_messages[-1].role is not Role.ASSISTANT
+        ):
+            state.assessment_messages.append(
+                Message(role=Role.ASSISTANT, content=question.text)
+            )
+        state.assessment_messages.append(
+            Message(role=Role.USER, content=question.user_answer)
         )
-        state.current_idx += 1
-
-    async def _calculate_fluency(
-        self, state: AssessmentState, user: UserState
-    ) -> FluencyResult:
-        while True:
-            try:
-                return await self._llm.complete(
-                    build_fluency_prompt(state, user),
-                    response_model=FluencyResult,
-                )
-            except LLMError as exc:
-                if not await self._handle_llm_error(exc):
-                    raise
 
     async def _handle_llm_error(self, exc: LLMError) -> bool:
         await self._mediator.show_error(str(exc))

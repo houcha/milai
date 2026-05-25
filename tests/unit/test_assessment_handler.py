@@ -1,273 +1,334 @@
 import asyncio
-from typing import Literal
+from typing import cast
 
 import pytest
 
+from milai.agents.assessment import AssessmentInterviewer, AssessmentPhase
 from milai.llm.errors import LLMError
-from milai.llm.prompts.assessment import (
-    ASSESSMENT_QUESTION_BATCH_SIZE,
-    MAX_ASSESSMENT_QUESTIONS,
-    MIN_ASSESSMENT_QUESTIONS,
-    AssessmentQuestionBatch,
-    FluencyResult,
-)
-from milai.llm.types import Role
-from milai.models.assessment import AssessmentQuestion
+from milai.llm.types import Message, Role
+from milai.models.assessment import AssessmentQuestion, Diagnosis, NextQuestion, Retry
 from milai.models.user_state import UserProfile, UserState
-from milai.state.handlers.assessment import AssessmentHandler
-from milai.state.variants import AssessmentReviewState, AssessmentState
+from milai.state.handlers.assessment import (
+    MAX_ASSESSMENT_QUESTIONS,
+    MIN_USABLE_ASSESSMENT_EVIDENCE,
+    AssessmentHandler,
+)
+from milai.state.variants import (
+    AssessmentReviewState,
+    AssessmentState,
+)
 
 
-def _question(text: str) -> AssessmentQuestion:
-    return AssessmentQuestion(text=text)
+def _user() -> UserState:
+    return UserState(profile=UserProfile(target_language="Spanish"))
 
 
-def _batch(prefix: str) -> AssessmentQuestionBatch:
-    return AssessmentQuestionBatch(
-        questions=[
-            _question(f"{prefix} {idx}")
-            for idx in range(1, ASSESSMENT_QUESTION_BATCH_SIZE + 1)
-        ]
-    )
+def _question(text: str, answer: str | None = None) -> AssessmentQuestion:
+    return AssessmentQuestion(text=text, user_answer=answer)
 
 
-def _fluency(
-    *,
-    confidence: Literal["low", "medium", "high"] = "high",
-    guidance: str = "No follow-up needed.",
-) -> FluencyResult:
-    return FluencyResult(
-        fluency_level="A1",
-        rationale="Basic greetings are emerging.",
-        confidence=confidence,
-        follow_up_guidance=guidance,
-    )
-
-
-def _answered_questions(count: int) -> list[AssessmentQuestion]:
+def _answered(count: int) -> list[AssessmentQuestion]:
     return [
-        AssessmentQuestion(
-            text=f"Question {idx}",
-            user_answer=f"answer {idx}",
-        )
+        _question(f"Question {idx}", f"answer {idx}") for idx in range(1, count + 1)
+    ]
+
+
+def _interviewer(scripted: object) -> AssessmentInterviewer:
+    return cast(AssessmentInterviewer, scripted)
+
+
+def _next_question(text: str) -> NextQuestion:
+    return NextQuestion(
+        action="next_question",
+        text=text,
+        difficulty="beginner",
+        rationale="Need one more evidence point.",
+    )
+
+
+def _first_question(text: str) -> NextQuestion:
+    return NextQuestion(
+        action="next_question",
+        text=text,
+        difficulty="beginner",
+        rationale="Need first evidence point.",
+    )
+
+
+def _retry(text: str = "Try again in Spanish.") -> Retry:
+    return Retry(
+        action="retry",
+        retry_reason="No usable target-language answer.",
+        message="Please answer in the target language so I can assess it.",
+        text=text,
+    )
+
+
+def _diagnosis(level: str = "A1") -> Diagnosis:
+    return Diagnosis(
+        action="diagnosis",
+        fluency_level=level,
+        rationale="Evidence supports placement.",
+        confidence="high",
+        evidence_summary="Consistent confirmed answers.",
+    )
+
+
+def _assistant_result(result: NextQuestion | Retry | Diagnosis) -> Message:
+    return Message(role=Role.ASSISTANT, content=result.model_dump_json())
+
+
+def _usable_evidence_messages(count: int) -> list[Message]:
+    return [
+        _assistant_result(_next_question(f"Recorded follow-up {idx}."))
         for idx in range(1, count + 1)
     ]
 
 
-def test_assessment_generates_initial_batch_and_captures_answers() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
+def test_assessment_starts_with_one_question() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
     from tests.fakes.mediator import ScriptedMediator
 
-    initial_batch = _batch("Initial")
-    llm = ScriptedLLMClient([initial_batch])
-    mediator = ScriptedMediator(["first answer", "second answer"])
-    handler = AssessmentHandler(mediator, llm)
-
-    app, user = asyncio.run(
-        handler.step(
-            AssessmentState(),
-            UserState(profile=UserProfile(target_language="Spanish")),
-        )
+    interviewer = ScriptedAssessmentInterviewer([_first_question("Say good morning.")])
+    handler = AssessmentHandler(
+        ScriptedMediator([]),
+        _interviewer(interviewer),
     )
-    assert isinstance(app, AssessmentState)
-    assert app.questions == initial_batch.questions
-    assert app.current_idx == 0
-    assert len(llm.calls) == 1
 
-    app, user = asyncio.run(handler.step(app, user))
+    app, user = asyncio.run(handler.step(AssessmentState(), _user()))
+
     assert isinstance(app, AssessmentState)
-    assert app.questions[0].user_answer == "first answer"
-    assert app.current_idx == 1
+    assert user.skills == []
+    assert [question.text for question in app.questions] == ["Say good morning."]
+    assert [message.role for message in app.assessment_messages] == [Role.ASSISTANT]
+    assert len(interviewer.calls) == 1
+    assert interviewer.calls[0].method == "next_action"
+    assert interviewer.calls[0].args[2] is AssessmentPhase.INITIAL
+
+
+def test_assessment_records_strong_answer_then_asks_one_follow_up() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
+    from tests.fakes.mediator import ScriptedMediator
+
+    interviewer = ScriptedAssessmentInterviewer(
+        [_next_question("Ask for a train ticket.")]
+    )
+    handler = AssessmentHandler(
+        ScriptedMediator(["Buenos dias. Necesito un boleto de tren."]),
+        _interviewer(interviewer),
+    )
+    state = AssessmentState(questions=[_question("Greet the clerk.")])
+
+    app, user = asyncio.run(handler.step(state, _user()))
+    app, _user_state = asyncio.run(handler.step(app, user))
+
+    assert isinstance(app, AssessmentState)
+    assert app.questions[0].user_answer == "Buenos dias. Necesito un boleto de tren."
+    assert app.questions[1].text == "Ask for a train ticket."
     assert [message.role for message in app.assessment_messages] == [
         Role.ASSISTANT,
         Role.USER,
+        Role.ASSISTANT,
     ]
-    assert app.assessment_messages[0].content == "Initial 1"
-    assert app.assessment_messages[1].content == "first answer"
-    assert user.skills == []
-
-    app, user = asyncio.run(handler.step(app, user))
-    assert isinstance(app, AssessmentState)
-    assert app.questions[1].user_answer == "second answer"
-    assert app.current_idx == 2
-    assert user.skills == []
 
 
-def test_assessment_evaluates_after_batch_and_appends_guided_follow_up() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
+def test_assessment_records_weak_mixed_and_contradictory_evidence() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
     from tests.fakes.mediator import ScriptedMediator
 
-    state = AssessmentState(
-        questions=_answered_questions(ASSESSMENT_QUESTION_BATCH_SIZE),
-        current_idx=ASSESSMENT_QUESTION_BATCH_SIZE,
-    )
-    llm = ScriptedLLMClient(
+    interviewer = ScriptedAssessmentInterviewer(
         [
-            _fluency(confidence="high", guidance="Probe harder past tense."),
-            _batch("Follow-up"),
+            _next_question("Use a past-tense sentence."),
+            _next_question("Repair the contradiction."),
+            _diagnosis("A2"),
         ]
     )
-    mediator = ScriptedMediator([])
-    handler = AssessmentHandler(mediator, llm)
-
-    app, _user = asyncio.run(
-        handler.step(state, UserState(profile=UserProfile(target_language="Spanish")))
-    )
-
-    assert isinstance(app, AssessmentState)
-    assert len(app.questions) == ASSESSMENT_QUESTION_BATCH_SIZE * 2
-    assert app.current_idx == ASSESSMENT_QUESTION_BATCH_SIZE
-    rendered_follow_up = "\n".join(message.content for message in llm.calls[-1])
-    assert "Probe harder past tense" in rendered_follow_up
-    assert "answer 1" in rendered_follow_up
-
-
-def test_assessment_stops_on_high_confidence_after_minimum_questions() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
-    from tests.fakes.mediator import ScriptedMediator
-
-    state = AssessmentState(
-        questions=_answered_questions(MIN_ASSESSMENT_QUESTIONS),
-        current_idx=MIN_ASSESSMENT_QUESTIONS,
-    )
-    llm = ScriptedLLMClient([_fluency(confidence="high")])
-    mediator = ScriptedMediator([])
-    handler = AssessmentHandler(mediator, llm)
-
-    app, user = asyncio.run(
-        handler.step(state, UserState(profile=UserProfile(target_language="Spanish")))
-    )
-
-    assert isinstance(app, AssessmentReviewState)
-    assert app.fluency_level == "A1"
-    assert "Basic greetings" in app.fluency_rationale
-    assert len(app.assessment_questions) == MIN_ASSESSMENT_QUESTIONS
-    assert user.skills == []
-
-
-def test_assessment_continues_on_low_confidence_after_minimum_questions() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
-    from tests.fakes.mediator import ScriptedMediator
-
-    state = AssessmentState(
-        questions=_answered_questions(MIN_ASSESSMENT_QUESTIONS),
-        current_idx=MIN_ASSESSMENT_QUESTIONS,
-    )
-    llm = ScriptedLLMClient(
+    mediator = ScriptedMediator(
         [
-            _fluency(confidence="low", guidance="Check basic vocabulary."),
-            _batch("Vocabulary"),
+            "Hola",
+            "Ayer voy al museo",
+            "I know past tense but cannot form it yet",
         ]
     )
-    mediator = ScriptedMediator([])
-    handler = AssessmentHandler(mediator, llm)
-
-    app, _user = asyncio.run(
-        handler.step(state, UserState(profile=UserProfile(target_language="Spanish")))
+    handler = AssessmentHandler(mediator, _interviewer(interviewer))
+    app: AssessmentState | AssessmentReviewState = AssessmentState(
+        questions=[
+            *_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 3),
+            _question("Say hello."),
+        ],
+        assessment_messages=_usable_evidence_messages(
+            MIN_USABLE_ASSESSMENT_EVIDENCE - 3
+        ),
     )
+    user = _user()
 
-    assert isinstance(app, AssessmentState)
-    expected_count = MIN_ASSESSMENT_QUESTIONS + ASSESSMENT_QUESTION_BATCH_SIZE
-    assert len(app.questions) == expected_count
-    rendered_follow_up = "\n".join(message.content for message in llm.calls[-1])
-    assert "Check basic vocabulary" in rendered_follow_up
-
-
-def test_assessment_forces_review_at_maximum_questions() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
-    from tests.fakes.mediator import ScriptedMediator
-
-    state = AssessmentState(
-        questions=_answered_questions(MAX_ASSESSMENT_QUESTIONS),
-        current_idx=MAX_ASSESSMENT_QUESTIONS,
-    )
-    llm = ScriptedLLMClient([_fluency(confidence="low")])
-    mediator = ScriptedMediator([])
-    handler = AssessmentHandler(mediator, llm)
-
-    app, _user = asyncio.run(
-        handler.step(state, UserState(profile=UserProfile(target_language="Spanish")))
-    )
+    for _idx in range(6):
+        app, user = asyncio.run(handler.step(app, user))
+        if isinstance(app, AssessmentReviewState):
+            break
 
     assert isinstance(app, AssessmentReviewState)
-    assert len(app.assessment_questions) == MAX_ASSESSMENT_QUESTIONS
+    assert app.fluency_level == "A2"
+    assert len(app.assessment_questions) == MIN_USABLE_ASSESSMENT_EVIDENCE
+    assert app.assessment_questions[-1].user_answer == (
+        "I know past tense but cannot form it yet"
+    )
 
 
-def test_assessment_resumes_from_current_index() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
+def test_assessment_retries_unusable_answer_without_extra_unanswered_items() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
     from tests.fakes.mediator import ScriptedMediator
 
-    questions = _answered_questions(MIN_ASSESSMENT_QUESTIONS - 1)
-    questions.append(AssessmentQuestion(text="Pending"))
-    llm = ScriptedLLMClient([_fluency(confidence="high")])
-    mediator = ScriptedMediator(["pending answer"])
-    handler = AssessmentHandler(mediator, llm)
+    interviewer = ScriptedAssessmentInterviewer([_retry("Please answer in Spanish.")])
+    mediator = ScriptedMediator(["I do not know"])
+    handler = AssessmentHandler(
+        mediator,
+        _interviewer(interviewer),
+    )
+    state = AssessmentState(questions=[_question("Say good night.")])
 
-    app, user = asyncio.run(
+    app, user = asyncio.run(handler.step(state, _user()))
+    app, _user_state = asyncio.run(handler.step(app, user))
+
+    assert isinstance(app, AssessmentState)
+    assert app.questions[0].text == "Please answer in Spanish."
+    assert app.questions[0].user_answer is None
+    assert sum(question.user_answer is None for question in app.questions) == 1
+    assert app.assessment_messages[-2].content == "I do not know"
+    assert [content.text for content in mediator.shown] == [
+        "Question 1",
+        "Please answer in the target language so I can assess it.",
+    ]
+
+
+def test_assessment_uses_collecting_phase_before_minimum_evidence() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
+    from tests.fakes.mediator import ScriptedMediator
+
+    interviewer = ScriptedAssessmentInterviewer([_next_question("Need more evidence.")])
+    handler = AssessmentHandler(
+        ScriptedMediator([]),
+        _interviewer(interviewer),
+    )
+
+    app, _user_state = asyncio.run(
         handler.step(
-            AssessmentState(
-                questions=questions,
-                current_idx=MIN_ASSESSMENT_QUESTIONS - 1,
-            ),
-            UserState(profile=UserProfile(target_language="Spanish")),
+            AssessmentState(questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 1)),
+            _user(),
         )
     )
 
     assert isinstance(app, AssessmentState)
-    assert app.current_idx == MIN_ASSESSMENT_QUESTIONS
-    assert app.questions[-1].user_answer == "pending answer"
-    assert len(llm.calls) == 0
-
-    app, _user = asyncio.run(handler.step(app, user))
-    assert isinstance(app, AssessmentReviewState)
-    assert len(llm.calls) == 1
-    rendered = "\n".join(message.content for message in llm.calls[0])
-    assert "answer 1" in rendered
-    assert "pending answer" in rendered
+    assert interviewer.calls[0].args[2] is AssessmentPhase.COLLECTING
 
 
-def test_assessment_retry_after_timeout_preserves_answered_questions() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
+def test_assessment_diagnoses_after_minimum_evidence() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
     from tests.fakes.mediator import ScriptedMediator
 
-    state = AssessmentState(
-        questions=_answered_questions(MIN_ASSESSMENT_QUESTIONS),
-        current_idx=MIN_ASSESSMENT_QUESTIONS,
-    )
-    llm = ScriptedLLMClient(
-        [
-            LLMError("timeout"),
-            _fluency(confidence="high", guidance="Retry succeeded."),
-        ]
-    )
-    mediator = ScriptedMediator([True])
-    handler = AssessmentHandler(mediator, llm)
+    interviewer = ScriptedAssessmentInterviewer([_diagnosis("A1")])
+    handler = AssessmentHandler(ScriptedMediator([]), _interviewer(interviewer))
 
-    app, _user = asyncio.run(
-        handler.step(state, UserState(profile=UserProfile(target_language="Spanish")))
+    app, _user_state = asyncio.run(
+        handler.step(
+            AssessmentState(
+                questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE),
+                assessment_messages=_usable_evidence_messages(
+                    MIN_USABLE_ASSESSMENT_EVIDENCE - 1
+                ),
+            ),
+            _user(),
+        )
     )
 
     assert isinstance(app, AssessmentReviewState)
     assert app.fluency_level == "A1"
-    assert mediator.errors == ["timeout"]
-    rendered_retry = "\n".join(message.content for message in llm.calls[-1])
-    assert "answer 1" in rendered_retry
+    assert len(app.assessment_questions) == MIN_USABLE_ASSESSMENT_EVIDENCE
+
+
+def test_assessment_ignores_retry_messages_when_counting_usable_evidence() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
+    from tests.fakes.mediator import ScriptedMediator
+
+    interviewer = ScriptedAssessmentInterviewer([_next_question("Need more evidence.")])
+    handler = AssessmentHandler(
+        ScriptedMediator([]),
+        _interviewer(interviewer),
+    )
+
+    app, _user_state = asyncio.run(
+        handler.step(
+            AssessmentState(
+                questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 1),
+                assessment_messages=[
+                    *_usable_evidence_messages(MIN_USABLE_ASSESSMENT_EVIDENCE - 2),
+                    _assistant_result(_retry()),
+                    _assistant_result(_retry()),
+                ],
+            ),
+            _user(),
+        )
+    )
+
+    assert isinstance(app, AssessmentState)
+    assert interviewer.calls[0].args[2] is AssessmentPhase.COLLECTING
+
+
+def test_assessment_forces_diagnosis_at_maximum_items() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
+    from tests.fakes.mediator import ScriptedMediator
+
+    interviewer = ScriptedAssessmentInterviewer([_diagnosis("A1")])
+    handler = AssessmentHandler(ScriptedMediator([]), _interviewer(interviewer))
+
+    app, _user_state = asyncio.run(
+        handler.step(
+            AssessmentState(
+                questions=_answered(MAX_ASSESSMENT_QUESTIONS),
+                assessment_messages=[
+                    *_usable_evidence_messages(MIN_USABLE_ASSESSMENT_EVIDENCE - 2),
+                    _assistant_result(_retry()),
+                    _assistant_result(_retry()),
+                ],
+            ),
+            _user(),
+        )
+    )
+
+    assert isinstance(app, AssessmentReviewState)
+    assert interviewer.calls[0].args[2] is AssessmentPhase.FORCED_DIAGNOSIS
+
+
+def test_assessment_requests_forced_diagnosis_after_maximum_items() -> None:
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
+    from tests.fakes.mediator import ScriptedMediator
+
+    interviewer = ScriptedAssessmentInterviewer([_diagnosis("A1")])
+    handler = AssessmentHandler(
+        ScriptedMediator([]),
+        _interviewer(interviewer),
+    )
+
+    app, _user_state = asyncio.run(
+        handler.step(
+            AssessmentState(questions=_answered(MAX_ASSESSMENT_QUESTIONS)),
+            _user(),
+        )
+    )
+
+    assert isinstance(app, AssessmentReviewState)
+    assert interviewer.calls[0].args[2] is AssessmentPhase.FORCED_DIAGNOSIS
 
 
 def test_assessment_declined_retry_raises_llm_error() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
     from tests.fakes.mediator import ScriptedMediator
 
-    llm = ScriptedLLMClient([LLMError("provider unavailable")])
+    interviewer = ScriptedAssessmentInterviewer([LLMError("provider unavailable")])
     mediator = ScriptedMediator([False])
-    handler = AssessmentHandler(mediator, llm)
+    handler = AssessmentHandler(mediator, _interviewer(interviewer))
 
     with pytest.raises(LLMError, match="provider unavailable"):
-        asyncio.run(
-            handler.step(
-                AssessmentState(),
-                UserState(profile=UserProfile(target_language="Spanish")),
-            )
-        )
+        asyncio.run(handler.step(AssessmentState(), _user()))
 
     assert mediator.errors == ["provider unavailable"]

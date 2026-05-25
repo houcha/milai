@@ -51,7 +51,7 @@ def test_local_storage_overwrites_atomically_without_tmp_files(tmp_path) -> None
     )
     second = PersistedState(
         user=UserState(profile=UserProfile(target_language="French")),
-        app=AssessmentState(current_idx=1),
+        app=AssessmentState(),
     )
 
     async def run_script() -> None:

@@ -6,6 +6,7 @@ import logging
 from collections.abc import Mapping
 from pathlib import Path
 
+from milai.agents.assessment import AssessmentInterviewer
 from milai.config import Config, load_config
 from milai.io.mediator import IOMediator
 from milai.io.tui.app import TuiMediator
@@ -173,7 +174,10 @@ def build_handler_map(
     )
     return {
         OnboardingState: OnboardingHandler(mediator),
-        AssessmentState: AssessmentHandler(mediator, assessment_client),
+        AssessmentState: AssessmentHandler(
+            mediator,
+            AssessmentInterviewer(assessment_client),
+        ),
         AssessmentReviewState: AssessmentReviewHandler(mediator),
         CurriculumGenerationState: CurriculumGenerationHandler(
             mediator,

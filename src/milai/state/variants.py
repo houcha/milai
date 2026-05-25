@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, NonNegativeInt
+from pydantic import BaseModel, Field
 
 from milai.llm.types import Message
 from milai.models.assessment import AssessmentQuestion
@@ -15,7 +15,6 @@ class OnboardingState(BaseModel):
 class AssessmentState(BaseModel):
     type: Literal["assessment"] = "assessment"
     questions: list[AssessmentQuestion] = Field(default_factory=list)
-    current_idx: NonNegativeInt = 0
     assessment_messages: list[Message] = Field(default_factory=list)
 
 

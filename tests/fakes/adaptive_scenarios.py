@@ -47,7 +47,7 @@ def answered_assessment_questions(count: int = 3) -> list[AssessmentQuestion]:
 def assessment_state_with_pending_question() -> AssessmentState:
     questions = answered_assessment_questions(2)
     questions.append(assessment_question("Pending question"))
-    return AssessmentState(questions=questions, current_idx=2)
+    return AssessmentState(questions=questions)
 
 
 def completed_assessment_review_state() -> AssessmentReviewState:

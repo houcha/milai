@@ -14,6 +14,7 @@ class UserProfile(BaseModel):
     learning_goal: str | None = None
     minutes_per_day: int | None = Field(default=None, ge=1)
     fluency_level: str | None = None
+    fluency_rationale: str | None = None
     preferences: dict[str, str | int | float | bool | None] = Field(
         default_factory=dict
     )

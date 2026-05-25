@@ -1,7 +1,8 @@
 import asyncio
+from typing import cast
 
-from milai.llm.prompts.assessment import AssessmentQuestionBatch, FluencyResult
-from milai.models.assessment import AssessmentQuestion
+from milai.agents.assessment import AssessmentInterviewer
+from milai.models.assessment import Diagnosis, NextQuestion
 from milai.state.handlers.assessment import AssessmentHandler
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
 from milai.state.handlers.onboarding import OnboardingHandler
@@ -14,8 +15,43 @@ from milai.state.variants import (
 )
 
 
-def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None:
-    from tests.fakes.llm_client import ScriptedLLMClient
+def _interviewer(scripted: object) -> AssessmentInterviewer:
+    return cast(AssessmentInterviewer, scripted)
+
+
+def _next_question(text: str, *, has_latest_answer: bool = True) -> NextQuestion:
+    _ = has_latest_answer
+    return NextQuestion(
+        action="next_question",
+        text=text,
+        difficulty="beginner",
+        rationale="Need one focused item.",
+    )
+
+
+def _first_question(text: str) -> NextQuestion:
+    return NextQuestion(
+        action="next_question",
+        text=text,
+        difficulty="beginner",
+        rationale="Need one focused item.",
+    )
+
+
+def _diagnosis() -> Diagnosis:
+    return Diagnosis(
+        action="diagnosis",
+        fluency_level="A1",
+        rationale="Ready for basics from six confirmed answers.",
+        confidence="high",
+        evidence_summary="Greetings and travel requests are beginner-level.",
+    )
+
+
+def test_onboarding_to_assessment_asks_one_question_turns_and_persists_rationale() -> (
+    None
+):
+    from tests.fakes.adaptive_agents import ScriptedAssessmentInterviewer
     from tests.fakes.mediator import ScriptedMediator
     from tests.fakes.storage_client import InMemoryStorage
 
@@ -35,56 +71,15 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
             True,
         ]
     )
-    llm = ScriptedLLMClient(
+    interviewer = ScriptedAssessmentInterviewer(
         [
-            AssessmentQuestionBatch(
-                questions=[
-                    AssessmentQuestion(
-                        text="Translate: good morning",
-                    ),
-                    AssessmentQuestion(
-                        text="Translate: good night",
-                    ),
-                ]
-            ),
-            FluencyResult(
-                fluency_level="A1",
-                rationale="Early evidence.",
-                confidence="high",
-                follow_up_guidance="Probe polite phrases.",
-            ),
-            AssessmentQuestionBatch(
-                questions=[
-                    AssessmentQuestion(
-                        text="Say thanks",
-                    ),
-                    AssessmentQuestion(
-                        text="Say please",
-                    ),
-                ]
-            ),
-            FluencyResult(
-                fluency_level="A1",
-                rationale="More evidence.",
-                confidence="high",
-                follow_up_guidance="Probe travel needs.",
-            ),
-            AssessmentQuestionBatch(
-                questions=[
-                    AssessmentQuestion(
-                        text="Ask for a ticket",
-                    ),
-                    AssessmentQuestion(
-                        text="Ask for a hotel",
-                    ),
-                ]
-            ),
-            FluencyResult(
-                fluency_level="A1",
-                rationale="Ready for basics.",
-                confidence="high",
-                follow_up_guidance="No follow-up needed.",
-            ),
+            _first_question("Translate: good morning"),
+            _next_question("Translate: good night"),
+            _next_question("Say thanks"),
+            _next_question("Say please"),
+            _next_question("Ask for a ticket"),
+            _next_question("Ask for a hotel"),
+            _diagnosis(),
         ]
     )
     storage = InMemoryStorage()
@@ -92,12 +87,12 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
         storage=storage,
         handlers={
             OnboardingState: OnboardingHandler(mediator),
-            AssessmentState: AssessmentHandler(mediator, llm),
+            AssessmentState: AssessmentHandler(mediator, _interviewer(interviewer)),
             AssessmentReviewState: AssessmentReviewHandler(mediator),
         },
     )
 
-    asyncio.run(machine.run(max_steps=12))
+    asyncio.run(machine.run(max_steps=15))
 
     saved = asyncio.run(storage.load())
     assert saved is not None
@@ -111,3 +106,8 @@ def test_onboarding_to_assessment_persists_profile_answers_and_fluency() -> None
     assert saved.app.assessment_questions[3].user_answer == "please answer"
     assert saved.app.assessment_questions[4].user_answer == "ticket answer"
     assert saved.app.assessment_questions[5].user_answer == "hotel answer"
+    assert saved.user.profile.fluency_rationale is not None
+    assert "six confirmed answers" in saved.user.profile.fluency_rationale
+    assert all(
+        question.user_answer is not None for question in saved.app.assessment_questions
+    )

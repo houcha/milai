@@ -12,7 +12,7 @@ from tests.fakes.storage_client import InMemoryStorage
 def test_launch_choice_can_continue_saved_session() -> None:
     saved = PersistedState(
         user=UserState(profile=UserProfile(target_language="Spanish")),
-        app=AssessmentState(current_idx=1),
+        app=AssessmentState(),
     )
     storage = InMemoryStorage(saved)
     mediator = ScriptedMediator(["continue"])
@@ -25,7 +25,7 @@ def test_launch_choice_can_continue_saved_session() -> None:
 def test_launch_choice_can_start_new_session() -> None:
     saved = PersistedState(
         user=UserState(profile=UserProfile(target_language="Spanish")),
-        app=AssessmentState(current_idx=1),
+        app=AssessmentState(),
     )
     storage = InMemoryStorage(saved)
     mediator = ScriptedMediator(["start_new"])
@@ -50,7 +50,7 @@ def test_confirmed_replacement_clears_profile_curriculum_and_progress() -> None:
                 ]
             ),
         ),
-        app=AssessmentState(current_idx=1),
+        app=AssessmentState(),
     )
     storage = InMemoryStorage(saved)
     mediator = ScriptedMediator(["start_new"])

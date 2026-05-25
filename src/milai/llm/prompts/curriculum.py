@@ -38,7 +38,6 @@ def build_generation_prompt(
             role=Role.SYSTEM,
             content=(
                 "You are designing a self-paced language-learning curriculum. "
-                "Return strict JSON matching the CurriculumDraft schema. "
                 "Infer durable initial skill topics from the completed assessment "
                 "answers at curriculum-level granularity, normalize topic names, "
                 "and include them as initial_skills. Do not attach skills to "
@@ -75,10 +74,9 @@ def build_adjustment_prompt(
         Message(
             role=Role.SYSTEM,
             content=(
-                "Revise the learner's curriculum draft as strict JSON matching "
-                "the CurriculumDraft schema. Preserve useful existing structure, "
-                "apply the learner's feedback, and return only new initial_skills "
-                "if the revision introduces new durable skill topics."
+                "Revise the learner's curriculum draft. Preserve useful existing "
+                "structure, apply the learner's feedback, and return only new "
+                "initial_skills if the revision introduces new durable skill topics."
             ),
         ),
         *state.curriculum_messages,
@@ -103,7 +101,7 @@ def build_extension_prompt(
     _ = state
     skills = completed_skills if completed_skills is not None else user.skills
     return [
-        Message(role=Role.SYSTEM, content="Extend the completed curriculum as JSON."),
+        Message(role=Role.SYSTEM, content="Extend the completed curriculum."),
         Message(
             role=Role.USER,
             content=(

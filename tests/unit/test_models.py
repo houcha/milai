@@ -53,10 +53,10 @@ def test_persisted_state_serializes_and_restores_discriminated_app_state() -> No
     restored = PersistedState.model_validate_json(onboarding.model_dump_json())
     assert isinstance(restored.app, OnboardingState)
 
-    assessment = PersistedState(user=UserState(), app=AssessmentState(current_idx=2))
+    assessment = PersistedState(user=UserState(), app=AssessmentState())
     restored = PersistedState.model_validate_json(assessment.model_dump_json())
     assert isinstance(restored.app, AssessmentState)
-    assert restored.app.current_idx == 2
+    assert restored.app.questions == []
 
     practice = PersistedState(user=UserState(), app=LessonPracticeState())
     restored = PersistedState.model_validate_json(practice.model_dump_json())

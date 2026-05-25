@@ -52,16 +52,16 @@ description: "Tasks for Adaptive Learning Agents implementation"
 
 ### Tests for User Story 1
 
-- [ ] T008 [P] [US1] Add `AssessmentInterviewer` prompt/schema tests for single-turn outcomes in `tests/unit/test_assessment_prompts.py`
-- [ ] T009 [P] [US1] Add adaptive assessment handler tests for strong, weak, mixed, contradictory, unusable, min-item, max-item, and one-unanswered-item cases in `tests/unit/test_assessment_handler.py`
-- [ ] T010 [P] [US1] Add onboarding adaptive assessment integration coverage for one-question turns and final placement rationale in `tests/integration/test_onboarding_assessment.py`
+- [X] T008 [P] [US1] Add `AssessmentInterviewer` prompt/schema tests for single-turn outcomes in `tests/unit/test_assessment_prompts.py`
+- [X] T009 [P] [US1] Add adaptive assessment handler tests for strong, weak, mixed, contradictory, unusable, min-item, max-item, and one-unanswered-item cases in `tests/unit/test_assessment_handler.py`
+- [X] T010 [P] [US1] Add onboarding adaptive assessment integration coverage for one-question turns and final placement rationale in `tests/integration/test_onboarding_assessment.py`
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Add assessment evidence, answer evaluation, retry, next-item, and placement result models in `src/milai/models/assessment.py`
-- [ ] T012 [US1] Implement `AssessmentInterviewer` with `LLMClient` calls, assessment history input, answer evaluation, next-item selection, unusable-answer retry, and placement output in `src/milai/agents/assessment.py`
-- [ ] T013 [US1] Update assessment prompt builders and structured response schemas to request exactly one outcome per turn in `src/milai/llm/prompts/assessment.py`
-- [ ] T014 [US1] Refactor `AssessmentHandler` to delegate adaptive assessment turns to `AssessmentInterviewer`, keep at most one unanswered item, record confirmed question/answer messages, and enforce existing min/max assessment policies in `src/milai/state/handlers/assessment.py`
+- [X] T011 [P] [US1] Add assessment evidence, answer evaluation, retry, next-item, and placement result models in `src/milai/models/assessment.py`
+- [X] T012 [US1] Implement `AssessmentInterviewer` with `LLMClient` calls, assessment history input, answer evaluation, next-item selection, unusable-answer retry, and placement output in `src/milai/agents/assessment.py`
+- [X] T013 [US1] Update assessment prompt builders and structured response schemas to request exactly one outcome per turn in `src/milai/llm/prompts/assessment.py`
+- [X] T014 [US1] Refactor `AssessmentHandler` to delegate adaptive assessment turns to `AssessmentInterviewer`, keep at most one unanswered item, record confirmed question/answer messages, and enforce existing min/max assessment policies in `src/milai/state/handlers/assessment.py`
 
 **Checkpoint**: User Story 1 works independently and can ship as MVP.
 
@@ -148,12 +148,12 @@ description: "Tasks for Adaptive Learning Agents implementation"
 **Purpose**: Final validation, cleanup, and documentation after desired user stories are complete.
 
 - [ ] T043 [P] Update any adaptive-agent developer notes for the feature in `specs/002-adaptive-agent-sessions/plan.md`
-- [ ] T044 Run assessment validation with `uv run pytest tests/unit/test_assessment_handler.py tests/integration/test_onboarding_assessment.py` from `/home/bail/Code/milai`
+- [X] T044 Run assessment validation with `uv run pytest tests/unit/test_assessment_handler.py tests/integration/test_onboarding_assessment.py` from `/home/bail/Code/milai`
 - [ ] T045 Run curriculum validation with `uv run pytest tests/unit/test_curriculum_generation_handler.py tests/unit/test_curriculum_review_handler.py tests/integration/test_curriculum_review.py` from `/home/bail/Code/milai`
 - [ ] T046 Run lesson validation with `uv run pytest tests/unit/test_lesson_tutor.py tests/unit/test_lesson_handler.py tests/unit/test_lesson_practice_handler.py tests/integration/test_learning_loop.py` from `/home/bail/Code/milai`
 - [ ] T047 Run retry recovery validation with `uv run pytest tests/integration/test_startup_recovery.py` from `/home/bail/Code/milai`
-- [ ] T048 Run type checking with `just type-check-concise` from `/home/bail/Code/milai`
-- [ ] T049 Run pre-commit hooks with `prek run` from `/home/bail/Code/milai`
+- [X] T048 Run type checking with `just type-check-concise` from `/home/bail/Code/milai`
+- [X] T049 Run pre-commit hooks with `prek run` from `/home/bail/Code/milai`
 - [ ] T050 Run full QA with `just qa` from `/home/bail/Code/milai`
 
 ---

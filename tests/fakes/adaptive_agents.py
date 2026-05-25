@@ -38,11 +38,20 @@ class ScriptedAdaptiveAgent:
 
 
 class ScriptedAssessmentInterviewer(ScriptedAdaptiveAgent):
+    async def next_action(self, *args: Any, **kwargs: Any) -> Any:
+        return self._next("next_action", *args, **kwargs)
+
     async def start_assessment(self, *args: Any, **kwargs: Any) -> Any:
         return self._next("start_assessment", *args, **kwargs)
 
-    async def continue_assessment(self, *args: Any, **kwargs: Any) -> Any:
-        return self._next("continue_assessment", *args, **kwargs)
+    async def continue_before_minimum(self, *args: Any, **kwargs: Any) -> Any:
+        return self._next("continue_before_minimum", *args, **kwargs)
+
+    async def continue_after_minimum(self, *args: Any, **kwargs: Any) -> Any:
+        return self._next("continue_after_minimum", *args, **kwargs)
+
+    async def finish_assessment(self, *args: Any, **kwargs: Any) -> Any:
+        return self._next("finish_assessment", *args, **kwargs)
 
     async def evaluate_answer(self, *args: Any, **kwargs: Any) -> Any:
         return self._next("evaluate_answer", *args, **kwargs)

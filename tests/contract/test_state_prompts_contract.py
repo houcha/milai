@@ -5,24 +5,41 @@ from pydantic import ValidationError
 
 PROMPT_CONTRACT = [
     (
-        "milai.llm.prompts.assessment",
-        "build_question_prompt",
-        "AssessmentQuestionBatch",
+        "milai.agents.assessment",
+        "build_assessment_step_instructions",
+        "milai.models.assessment",
+        "NextQuestion",
     ),
-    ("milai.llm.prompts.assessment", "build_fluency_prompt", "FluencyResult"),
-    ("milai.llm.prompts.curriculum", "build_generation_prompt", "CurriculumDraft"),
-    ("milai.llm.prompts.curriculum", "build_adjustment_prompt", "CurriculumDraft"),
-    ("milai.llm.prompts.curriculum", "build_extension_prompt", "CurriculumDraft"),
-    ("milai.llm.prompts.deviation", "build_chat_prompt", None),
+    (
+        "milai.llm.prompts.curriculum",
+        "build_generation_prompt",
+        "milai.llm.prompts.curriculum",
+        "CurriculumDraft",
+    ),
+    (
+        "milai.llm.prompts.curriculum",
+        "build_adjustment_prompt",
+        "milai.llm.prompts.curriculum",
+        "CurriculumDraft",
+    ),
+    (
+        "milai.llm.prompts.curriculum",
+        "build_extension_prompt",
+        "milai.llm.prompts.curriculum",
+        "CurriculumDraft",
+    ),
+    ("milai.llm.prompts.deviation", "build_chat_prompt", None, None),
 ]
 
 
 @pytest.mark.parametrize(
-    ("module_path", "builder_name", "response_model_name"), PROMPT_CONTRACT
+    ("module_path", "builder_name", "response_model_module", "response_model_name"),
+    PROMPT_CONTRACT,
 )
 def test_llm_backed_states_have_pure_builders_and_schema_models(
     module_path: str,
     builder_name: str,
+    response_model_module: str | None,
     response_model_name: str | None,
 ) -> None:
     module = __import__(module_path, fromlist=[builder_name])
@@ -31,39 +48,30 @@ def test_llm_backed_states_have_pure_builders_and_schema_models(
     assert inspect.isfunction(builder)
     assert not inspect.iscoroutinefunction(builder)
 
-    if response_model_name is not None:
-        response_model = getattr(module, response_model_name)
+    if response_model_module is not None and response_model_name is not None:
+        model_module = __import__(response_model_module, fromlist=[response_model_name])
+        response_model = getattr(model_module, response_model_name)
         assert hasattr(response_model, "model_validate")
         with pytest.raises(ValidationError):
             response_model.model_validate({"unexpected": object()})
 
 
-def test_assessment_prompt_output_uses_provider_neutral_messages() -> None:
-    from milai.llm.prompts.assessment import build_question_prompt
+def test_assessment_prompt_output_uses_provider_neutral_message() -> None:
+    from milai.agents.assessment import build_assessment_step_instructions
     from milai.llm.types import Message, Role
-    from milai.models.user_state import UserProfile, UserState
-    from milai.state.variants import AssessmentState
 
-    state = AssessmentState()
-    user = UserState(
-        profile=UserProfile(
-            target_language="Spanish",
-            native_language="English",
-            learning_goal="travel",
-            preferences={
-                "teaching_preferences": "Use plain examples and avoid grammar jargon."
-            },
-        )
+    message = build_assessment_step_instructions(
+        instructions=(
+            "Evaluate the latest learner answer from history. Otherwise record "
+            "the evidence and ask a follow-up question."
+        ),
+        usable_evidence_needed=6,
+        question_budget_remaining=20,
     )
 
-    messages = build_question_prompt(state, user)
+    assert isinstance(message, Message)
+    assert message.role is Role.USER
 
-    assert isinstance(messages, list)
-    assert messages
-    assert all(isinstance(message, Message) for message in messages)
-    assert any(message.role is Role.SYSTEM for message in messages)
-    assert any(message.role is Role.USER for message in messages)
-
-    rendered = "\n".join(message.content for message in messages)
+    rendered = message.content
     assert "{{" not in rendered
     assert "API_KEY" not in rendered

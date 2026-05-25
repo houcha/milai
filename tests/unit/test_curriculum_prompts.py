@@ -43,6 +43,8 @@ def test_generation_prompt_includes_assessment_answers_for_skill_inference() -> 
     assert "morning answer" in rendered
     assert "Prior curriculum draft" in rendered
     assert "initial skill" in rendered.lower()
+    assert "strict JSON" not in rendered
+    assert "CurriculumDraft schema" not in rendered
     assert "Existing skills" not in rendered
     draft = CurriculumDraft.model_validate(
         {
@@ -85,6 +87,8 @@ def test_adjustment_prompt_includes_current_curriculum_and_feedback() -> None:
     assert "remove hotel vocabulary" in rendered
     assert "Previous revision" in rendered
     assert "Spanish" in rendered
+    assert "strict JSON" not in rendered
+    assert "CurriculumDraft schema" not in rendered
     assert "Existing skills" not in rendered
 
 

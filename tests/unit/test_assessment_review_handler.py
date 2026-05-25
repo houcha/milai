@@ -34,6 +34,7 @@ def test_assessment_review_confirms_fluency() -> None:
     assert app.assessment_questions[0].user_answer == "morning answer"
     assert app.assessment_messages[0].content == "morning answer"
     assert user.profile.fluency_level == "A2"
+    assert user.profile.fluency_rationale == "Good basics."
 
 
 def test_assessment_review_allows_override() -> None:
@@ -51,3 +52,4 @@ def test_assessment_review_allows_override() -> None:
 
     assert isinstance(app, CurriculumGenerationState)
     assert user.profile.fluency_level == "B1"
+    assert user.profile.fluency_rationale is None

@@ -1,6 +1,6 @@
 """Public domain model exports."""
 
-from milai.models.assessment import AssessmentQuestion
+from milai.models.assessment import AssessmentQuestion, Diagnosis, NextQuestion, Retry
 from milai.models.curriculum import (
     Curriculum,
     Exercise,
@@ -19,7 +19,10 @@ from milai.models.user_state import (
 )
 
 __all__ = [
+    "Diagnosis",
     "AssessmentQuestion",
+    "NextQuestion",
+    "Retry",
     "Curriculum",
     "Exercise",
     "ExerciseEvaluation",
