@@ -1,10 +1,16 @@
 import asyncio
+from typing import Literal
 
 import pytest
 from pydantic import BaseModel
 
 
 class ToyResponse(BaseModel):
+    answer: str
+
+
+class ToyAction(BaseModel):
+    action: Literal["next_question"]
     answer: str
 
 
@@ -36,6 +42,43 @@ def test_litellm_client_parses_structured_json(monkeypatch) -> None:
     assert result == ToyResponse(answer="hola")
     assert calls[0]["model"] == "test-model"
     assert calls[0]["response_format"] is ToyResponse
+
+
+def test_litellm_client_uses_gemini_compatible_single_value_enums(
+    monkeypatch,
+) -> None:
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = []
+
+    async def fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return {
+            "choices": [
+                {"message": {"content": '{"action":"next_question","answer":"hola"}'}}
+            ]
+        }
+
+    monkeypatch.setattr(
+        "milai.llm.litellm_client.litellm.acompletion", fake_acompletion
+    )
+    client = LiteLLMClient(LLMConfig(model="gemini/gemini-3.1-flash-lite"))
+
+    result = asyncio.run(
+        client.complete(
+            [Message(role=Role.USER, content="translate hello")],
+            response_model=ToyAction,
+        )
+    )
+
+    action_schema = calls[0]["response_format"]["json_schema"]["schema"]["properties"][
+        "action"
+    ]
+    assert result == ToyAction(action="next_question", answer="hola")
+    assert action_schema["enum"] == ["next_question"]
+    assert "const" not in action_schema
 
 
 def test_litellm_client_returns_raw_completion_without_response_model(

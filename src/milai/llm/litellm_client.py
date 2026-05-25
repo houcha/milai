@@ -2,6 +2,7 @@
 
 import json
 import logging
+from copy import deepcopy
 from typing import Any, TypeVar, overload
 
 import litellm
@@ -51,7 +52,16 @@ class LiteLLMClient:
         **litellm_kwargs: Any,
     ) -> T | str:
         if response_model is not None:
-            litellm_kwargs["response_format"] = response_model
+            # Problem: Pydantic emits `Literal["x"]` as JSON Schema "const", but
+            # Gemini structured output does not reliably enforce const. A field
+            # like `action: Literal["next_question"]` can therefore come back as
+            # any string, e.g. "assessment". Gemini does enforce string enum, so
+            # we rewrite `const: "x"` to `enum: ["x"]` before handing the schema
+            # to LiteLLM.
+            litellm_kwargs["response_format"] = _patch_gemini_response_model(
+                response_model,
+                model=str(litellm_kwargs.get("model") or self._config.model),
+            )
         payload = self._completion_payload(messages, **litellm_kwargs)
         try:
             raw = await self._acompletion(payload)
@@ -148,6 +158,44 @@ class LiteLLMClient:
 
 def _format_payload_for_log(payload: dict[str, Any]) -> str:
     return json.dumps(_json_safe(payload), indent=4)
+
+
+def _patch_gemini_response_model(
+    response_model: type[BaseModel],
+    *,
+    model: str,
+) -> type[BaseModel] | dict[str, Any]:
+    if not model.startswith("gemini/"):
+        return response_model
+
+    schema = _convert_const_to_single_value_enum(response_model.model_json_schema())
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "schema": schema,
+            "name": response_model.__name__,
+            "strict": True,
+        },
+    }
+
+
+def _convert_const_to_single_value_enum(schema: dict[str, Any]) -> dict[str, Any]:
+    converted = deepcopy(schema)
+    _replace_const_with_enum(converted)
+    return converted
+
+
+def _replace_const_with_enum(value: Any) -> None:
+    if isinstance(value, dict):
+        if "const" in value and "enum" not in value:
+            value["enum"] = [value.pop("const")]
+        else:
+            value.pop("const", None)
+        for item in value.values():
+            _replace_const_with_enum(item)
+    elif isinstance(value, list):
+        for item in value:
+            _replace_const_with_enum(item)
 
 
 def _json_safe(value: Any) -> Any:
