@@ -45,6 +45,7 @@ from milai.storage.local import LocalStorage
 
 logger = logging.getLogger(__name__)
 DEFAULT_CONFIG_PATH = Path.home() / ".milai" / "config.yaml"
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
 async def run(argv: list[str] | None = None) -> None:
@@ -60,7 +61,15 @@ async def run(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Delete the saved session after confirmation before starting.",
     )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        type=str.upper,
+        help="Minimum log level for developer diagnostics. Defaults to INFO.",
+    )
     args = parser.parse_args(argv)
+    configure_logging(args.log_level)
 
     if args.config is not None and not args.config.exists():
         parser.error(f"config file does not exist: {args.config}")
@@ -212,6 +221,11 @@ def _client_for_state(
 
 def _fresh_snapshot() -> PersistedState:
     return PersistedState(user=UserState(), app=OnboardingState())
+
+
+def configure_logging(level: str) -> None:
+    logging.basicConfig(level=level, format=LOG_FORMAT)
+    logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
 
 def main() -> None:

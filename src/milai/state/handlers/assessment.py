@@ -1,5 +1,7 @@
 """Assessment state handler."""
 
+import logging
+
 from pydantic import BaseModel
 
 from milai.agents.assessment import AssessmentInterviewer, AssessmentPhase
@@ -17,6 +19,7 @@ from milai.state.variants import (
 
 MIN_USABLE_ASSESSMENT_EVIDENCE = 6
 MAX_ASSESSMENT_QUESTIONS = 20
+logger = logging.getLogger(__name__)
 
 
 class AssessmentHandler:
@@ -54,11 +57,21 @@ class AssessmentHandler:
                 question_budget_remaining = max(
                     MAX_ASSESSMENT_QUESTIONS - len(state.questions), 0
                 )
+                phase = self._assessment_phase(state, usable_evidence=usable_evidence)
+                logger.info(
+                    "Assessment is continuing in the %s phase. Evidence: %s/%s. "
+                    "Questions asked: %s/%s.",
+                    phase,
+                    usable_evidence,
+                    MIN_USABLE_ASSESSMENT_EVIDENCE,
+                    len(state.questions),
+                    MAX_ASSESSMENT_QUESTIONS,
+                )
 
                 result = await self._interviewer.next_action(
                     state,
                     user,
-                    self._assessment_phase(state, usable_evidence=usable_evidence),
+                    phase,
                     usable_evidence_needed=usable_evidence_needed,
                     question_budget_remaining=question_budget_remaining,
                 )
@@ -78,6 +91,17 @@ class AssessmentHandler:
         match action:
             case Diagnosis():
                 self._record_interviewer_reply(state, action)
+                logger.info(
+                    "Assessment finished with %s fluency at %s confidence. "
+                    "Evidence: %s/%s. Questions asked: %s.",
+                    action.fluency_level,
+                    action.confidence,
+                    sum(
+                        question.user_answer is not None for question in state.questions
+                    ),
+                    MIN_USABLE_ASSESSMENT_EVIDENCE,
+                    len(state.questions),
+                )
                 return AssessmentReviewState(
                     fluency_level=action.fluency_level,
                     fluency_rationale=action.rationale,
@@ -88,6 +112,11 @@ class AssessmentHandler:
             case NextQuestion():
                 self._record_interviewer_reply(state, action)
                 state.questions.append(self._to_assessment_question(action))
+                logger.info(
+                    "Assessment asked question %s at %s difficulty.",
+                    len(state.questions),
+                    action.difficulty,
+                )
                 return state
 
             case Retry():
@@ -95,6 +124,16 @@ class AssessmentHandler:
                 await self._mediator.show(RichContent(action.message))
                 state.questions.pop()
                 state.questions.append(self._retry_to_assessment_question(action))
+                logger.info(
+                    "Assessment asked the learner to retry question %s at %s "
+                    "difficulty. Reason: %s",
+                    sum(
+                        question.user_answer is not None for question in state.questions
+                    )
+                    + 1,
+                    action.difficulty,
+                    action.retry_reason,
+                )
                 return state
 
             case _:
@@ -146,6 +185,11 @@ class AssessmentHandler:
             )
         )
         question.user_answer = await self._mediator.prompt(question.text)
+        logger.info(
+            "Assessment captured an answer for question %s. Answer length: %s.",
+            question_number,
+            len(question.user_answer),
+        )
         if (
             not state.assessment_messages
             or state.assessment_messages[-1].role is not Role.ASSISTANT

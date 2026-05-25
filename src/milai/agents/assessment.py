@@ -1,11 +1,15 @@
 """Concrete adaptive assessment agent."""
 
+import json
+import logging
+from dataclasses import asdict
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import Field, RootModel
+from pydantic import BaseModel, Field, RootModel
 
 from milai.llm.client import LLMClient
+from milai.llm.errors import LLMParseError
 from milai.llm.types import Message, Role
 from milai.models.assessment import Diagnosis, NextQuestion, Retry
 from milai.models.user_state import UserState
@@ -32,6 +36,8 @@ class _AfterMinimumAction(
 ):
     pass
 
+
+logger = logging.getLogger(__name__)
 
 _PHASE_INSTRUCTIONS = {
     AssessmentPhase.INITIAL: "Ask the first assessment question.",
@@ -110,24 +116,52 @@ class AssessmentInterviewer:
 
         match phase:
             case AssessmentPhase.INITIAL:
-                return await self._llm.complete(
-                    messages,
-                    response_model=NextQuestion,
+                return await self._complete_assessment_action(
+                    messages, phase=phase, response_model=NextQuestion
                 )
             case AssessmentPhase.COLLECTING:
-                collecting = await self._llm.complete(
-                    messages,
-                    response_model=_CollectingAction,
+                collecting = await self._complete_assessment_action(
+                    messages, phase=phase, response_model=_CollectingAction
                 )
                 return collecting.root
             case AssessmentPhase.DIAGNOSING:
-                diagnosing = await self._llm.complete(
-                    messages,
-                    response_model=_AfterMinimumAction,
+                diagnosing = await self._complete_assessment_action(
+                    messages, phase=phase, response_model=_AfterMinimumAction
                 )
                 return diagnosing.root
             case AssessmentPhase.FORCED_DIAGNOSIS:
-                return await self._llm.complete(
-                    messages,
-                    response_model=Diagnosis,
+                return await self._complete_assessment_action(
+                    messages, phase=phase, response_model=Diagnosis
                 )
+
+    async def _complete_assessment_action[T: BaseModel](
+        self,
+        messages: list[Message],
+        *,
+        phase: AssessmentPhase,
+        response_model: type[T],
+    ) -> T:
+        try:
+            return await self._llm.complete(messages, response_model=response_model)
+        except LLMParseError as exc:
+            logger.error(
+                "Assessment LLM response could not be parsed as %s.\n"
+                "Phase: %s\n"
+                "Messages sent: %s\n"
+                "Content:\n"
+                "%s\n"
+                "Validation error:\n"
+                "%s\n"
+                "Raw response:\n"
+                "%s",
+                response_model.__name__,
+                phase,
+                len(messages),
+                json.dumps(
+                    {"messages": [asdict(message) for message in messages]},
+                    indent=4,
+                ),
+                str(exc),
+                json.dumps(json.loads(exc.raw_response), indent=4),
+            )
+            raise
