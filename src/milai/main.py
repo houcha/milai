@@ -14,7 +14,7 @@ from milai.io.types import Choice
 from milai.llm.client import LLMClient
 from milai.llm.lesson_service import LessonLLM
 from milai.llm.litellm_client import LiteLLMClient
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
 from milai.state.handlers.assessment import AssessmentHandler
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
@@ -102,7 +102,7 @@ async def run(argv: list[str] | None = None) -> None:
 
 async def prepare_launch_snapshot(
     storage: StorageClient, mediator: IOMediator
-) -> PersistedState:
+) -> LearningSession:
     try:
         saved = await storage.load()
     except StorageError as exc:
@@ -219,8 +219,8 @@ def _client_for_state(
     return clients[profile_name]
 
 
-def _fresh_snapshot() -> PersistedState:
-    return PersistedState(user=UserState(), app=OnboardingState())
+def _fresh_snapshot() -> LearningSession:
+    return LearningSession(user=UserState(), app=OnboardingState())
 
 
 def configure_logging(level: str) -> None:

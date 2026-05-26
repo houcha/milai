@@ -2,15 +2,15 @@
 
 from typing import Protocol
 
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 
 
 class StorageClient(Protocol):
-    async def load(self) -> PersistedState | None:
+    async def load(self) -> LearningSession | None:
         """Load the persisted snapshot, or None if it does not exist."""
 
-    async def save(self, state: PersistedState) -> None:
+    async def save(self, state: LearningSession) -> None:
         """Persist the snapshot atomically."""
 
     async def delete(self) -> None:
-        """Delete persisted state if it exists."""
+        """Delete the learning session if it exists."""

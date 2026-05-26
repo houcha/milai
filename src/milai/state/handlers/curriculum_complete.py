@@ -5,10 +5,10 @@ from milai.io.types import Choice, ContentKind, RichContent
 from milai.llm.client import LLMClient
 from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft, build_extension_prompt
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
 from milai.state.handlers.curriculum_gen import _merge_skills
 from milai.state.variants import (
-    AppState,
     CurriculumCompleteState,
     LessonState,
     OnboardingState,
@@ -22,11 +22,9 @@ class CurriculumCompleteHandler:
         self._mediator = mediator
         self._llm = llm
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> (
-        tuple[LessonState | OnboardingState | CurriculumCompleteState, UserState] | None
-    ):
+    async def step(self, session: LearningSession) -> LearningSession | None:
+        app = session.app
+        user = session.user
         if not isinstance(app, CurriculumCompleteState):
             raise TypeError(f"CurriculumCompleteHandler cannot handle {app.type!r}")
 
@@ -44,7 +42,7 @@ class CurriculumCompleteHandler:
         if choice.value == "finish":
             return None
         if choice.value == "start_new":
-            return OnboardingState(), UserState()
+            return LearningSession(user=UserState(), app=OnboardingState())
 
         if user.curriculum is None:
             await self._mediator.show_error("No completed curriculum is available.")
@@ -59,7 +57,7 @@ class CurriculumCompleteHandler:
         updated.curriculum.current_module_idx = start_index
         updated.curriculum.modules[start_index].current_lesson_idx = 0
         updated.skills = _merge_skills(updated.skills, draft.initial_skills)
-        return LessonState(), updated
+        return session.model_copy(update={"app": LessonState(), "user": updated})
 
     async def _extend(
         self, state: CurriculumCompleteState, user: UserState

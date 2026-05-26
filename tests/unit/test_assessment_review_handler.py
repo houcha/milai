@@ -2,6 +2,7 @@ import asyncio
 
 from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion
+from milai.models.session import LearningSession
 from milai.models.user_state import UserProfile, UserState
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
 from milai.state.variants import AssessmentReviewState, CurriculumGenerationState
@@ -13,22 +14,28 @@ def test_assessment_review_confirms_fluency() -> None:
     mediator = ScriptedMediator([True])
     handler = AssessmentReviewHandler(mediator)
 
-    app, user = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentReviewState(
-                fluency_level="A2",
-                fluency_rationale="Good basics.",
-                assessment_questions=[
-                    AssessmentQuestion(
-                        text="Translate: good morning",
-                        user_answer="morning answer",
-                    )
-                ],
-                assessment_messages=[Message(role=Role.USER, content="morning answer")],
-            ),
-            UserState(profile=UserProfile(target_language="Spanish")),
+            LearningSession(
+                app=AssessmentReviewState(
+                    fluency_level="A2",
+                    fluency_rationale="Good basics.",
+                    assessment_questions=[
+                        AssessmentQuestion(
+                            text="Translate: good morning",
+                            user_answer="morning answer",
+                        )
+                    ],
+                    assessment_messages=[
+                        Message(role=Role.USER, content="morning answer")
+                    ],
+                ),
+                user=UserState(profile=UserProfile(target_language="Spanish")),
+            )
         )
     )
+    app = result.app
+    user = result.user
 
     assert isinstance(app, CurriculumGenerationState)
     assert app.assessment_questions[0].user_answer == "morning answer"
@@ -43,12 +50,18 @@ def test_assessment_review_allows_override() -> None:
     mediator = ScriptedMediator([False, "B1"])
     handler = AssessmentReviewHandler(mediator)
 
-    app, user = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentReviewState(fluency_level="A2", fluency_rationale="Good basics."),
-            UserState(profile=UserProfile(target_language="Spanish")),
+            LearningSession(
+                app=AssessmentReviewState(
+                    fluency_level="A2", fluency_rationale="Good basics."
+                ),
+                user=UserState(profile=UserProfile(target_language="Spanish")),
+            )
         )
     )
+    app = result.app
+    user = result.user
 
     assert isinstance(app, CurriculumGenerationState)
     assert user.profile.fluency_level == "B1"

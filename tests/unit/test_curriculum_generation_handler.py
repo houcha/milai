@@ -7,6 +7,7 @@ from milai.llm.prompts.curriculum import CurriculumDraft
 from milai.llm.types import Role
 from milai.models.assessment import AssessmentQuestion
 from milai.models.curriculum import Curriculum, Lesson, Module
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.curriculum_gen import CurriculumGenerationHandler
 from milai.state.variants import CurriculumGenerationState, CurriculumReviewState
@@ -44,7 +45,9 @@ def test_curriculum_generation_persists_draft_and_initial_skills() -> None:
         ]
     )
 
-    app, updated = asyncio.run(handler.step(state, user))
+    result = asyncio.run(handler.step(LearningSession(app=state, user=user)))
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, CurriculumReviewState)
     assert updated.curriculum is not None
@@ -79,7 +82,11 @@ def test_curriculum_generation_retry_after_timeout_preserves_existing_user_state
         skills=[Skill(topic="articles", strength=0.4)],
     )
 
-    app, updated = asyncio.run(handler.step(CurriculumGenerationState(), user))
+    result = asyncio.run(
+        handler.step(LearningSession(app=CurriculumGenerationState(), user=user))
+    )
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, CurriculumReviewState)
     assert updated.curriculum is not None
@@ -106,7 +113,9 @@ def test_curriculum_generation_declined_retry_raises_without_mutating_user() -> 
     )
 
     with pytest.raises(LLMError, match="provider unavailable"):
-        asyncio.run(handler.step(CurriculumGenerationState(), user))
+        asyncio.run(
+            handler.step(LearningSession(app=CurriculumGenerationState(), user=user))
+        )
 
     assert user.curriculum is None
     assert [skill.topic for skill in user.skills] == ["articles"]

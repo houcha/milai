@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Protocol
 
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
 from milai.state.variants import (
     AppState,
@@ -11,12 +11,10 @@ from milai.state.variants import (
 )
 from milai.storage.client import StorageClient
 
-type StepResult = tuple[AppState, UserState] | None
-
 
 class StateHandler(Protocol):
-    async def step(self, app: AppState, user: UserState) -> StepResult:
-        """Run one workflow step and return the next snapshot parts."""
+    async def step(self, session: LearningSession) -> LearningSession | None:
+        """Run one workflow step and return the next session."""
 
 
 # This is basically a tiny hand-rolled dynamic-dispatch table.
@@ -29,7 +27,7 @@ class StateHandler(Protocol):
 # config, etc. Then a data-focused class becomes responsible for state-specific
 # behavior plus service wiring, or every `step()` takes a giant "context"
 # parameter that is just this handler registry in disguise. Either way, the
-# persisted state model stops being a plain description of where the workflow is.
+# learning session model stops being a plain description of where the workflow is.
 #
 # The other obvious alternative is a big `match app:` in StateMachine. That
 # keeps states as data, but grows a second hand-maintained list of states and
@@ -56,21 +54,21 @@ class StateMachine:
         """
         snapshot = await self._storage.load()
         if snapshot is None:
-            snapshot = PersistedState(user=UserState(), app=OnboardingState())
+            snapshot = LearningSession(user=UserState(), app=OnboardingState())
 
         steps = 0
         while max_steps is None or steps < max_steps:
-            result = await self._dispatch(snapshot.app, snapshot.user)
+            result = await self._dispatch(snapshot)
             if result is None:
                 return
-            app, user = result
-            snapshot = PersistedState(user=user, app=app)
+            snapshot = result
             await self._storage.save(snapshot)
             steps += 1
 
-    async def _dispatch(self, app: AppState, user: UserState) -> StepResult:
+    async def _dispatch(self, session: LearningSession) -> LearningSession | None:
+        app = session.app
         handler = self._require(type(app), app)
-        return await handler.step(app, user)
+        return await handler.step(session)
 
     def _require(self, state_type: type[AppState], app: AppState) -> StateHandler:
         try:

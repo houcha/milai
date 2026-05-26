@@ -5,6 +5,7 @@ import pytest
 from milai.llm.errors import LLMError
 from milai.llm.prompts.deviation import MAX_DEVIATION_CONTEXT_MESSAGES
 from milai.llm.types import Message, Role
+from milai.models.session import LearningSession
 from milai.models.user_state import UserProfile, UserState
 from milai.state.handlers.deviation import DeviationHandler
 from milai.state.variants import DeviationState, LessonState
@@ -23,15 +24,18 @@ def test_deviation_handler_chats_and_caps_context_window() -> None:
     llm = ScriptedLLMClient(["Because it is an idiomatic greeting."])
     handler = DeviationHandler(ScriptedMediator(["Why plural?"]), llm)
 
-    app, _ = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            DeviationState(
-                context_window=old_context,
-                lesson_context="Basics / Greetings",
-            ),
-            UserState(profile=UserProfile(target_language="Spanish")),
+            LearningSession(
+                app=DeviationState(
+                    context_window=old_context,
+                    lesson_context="Basics / Greetings",
+                ),
+                user=UserState(profile=UserProfile(target_language="Spanish")),
+            )
         )
     )
+    app = result.app
 
     assert isinstance(app, DeviationState)
     assert len(app.context_window) == MAX_DEVIATION_CONTEXT_MESSAGES
@@ -48,19 +52,25 @@ def test_deviation_handler_retry_and_return_to_lesson() -> None:
     mediator = ScriptedMediator(["Explain hola", True])
     handler = DeviationHandler(mediator, llm)
 
-    app, _ = asyncio.run(
-        handler.step(DeviationState(lesson_context="Basics"), UserState())
+    result = asyncio.run(
+        handler.step(
+            LearningSession(
+                app=DeviationState(lesson_context="Basics"), user=UserState()
+            )
+        )
     )
+    app = result.app
 
     assert isinstance(app, DeviationState)
     assert mediator.errors == ["timeout"]
     assert len(llm.calls) == 2
 
-    app, _ = asyncio.run(
+    result = asyncio.run(
         DeviationHandler(ScriptedMediator(["return"]), ScriptedLLMClient([])).step(
-            app, UserState()
+            LearningSession(app=app, user=UserState())
         )
     )
+    app = result.app
     assert isinstance(app, LessonState)
 
 
@@ -78,6 +88,6 @@ def test_deviation_handler_declined_retry_preserves_context() -> None:
     )
 
     with pytest.raises(LLMError, match="timeout"):
-        asyncio.run(handler.step(state, UserState()))
+        asyncio.run(handler.step(LearningSession(app=state, user=UserState())))
 
     assert [message.content for message in state.context_window] == ["old"]

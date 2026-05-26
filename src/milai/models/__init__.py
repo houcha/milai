@@ -8,7 +8,7 @@ from milai.models.curriculum import (
     Lesson,
     Module,
 )
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import (
     JsonObject,
     PreferenceMap,
@@ -29,7 +29,7 @@ __all__ = [
     "JsonObject",
     "Lesson",
     "Module",
-    "PersistedState",
+    "LearningSession",
     "PreferenceMap",
     "PreferenceValue",
     "Skill",

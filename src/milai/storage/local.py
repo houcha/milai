@@ -1,4 +1,4 @@
-"""Local JSON storage for persisted snapshots."""
+"""Local JSON storage for learning sessions."""
 
 import json
 import os
@@ -8,28 +8,32 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.storage.errors import StorageError
 
 
 class LocalStorage:
-    """Store the full app snapshot in a single JSON file."""
+    """Store the full learning session in a single JSON file."""
 
     def __init__(self, path: Path) -> None:
         self._path = path
 
-    async def load(self) -> PersistedState | None:
+    async def load(self) -> LearningSession | None:
         if not self._path.exists():
             return None
         try:
-            return PersistedState.model_validate_json(self._path.read_text())
+            raw = self._path.read_text()
+            data = json.loads(raw)
+            if not isinstance(data, dict) or "id" not in data:
+                raise ValueError("learning session is missing required id")
+            return LearningSession.model_validate(data)
         except (OSError, json.JSONDecodeError, ValidationError, ValueError) as exc:
             raise StorageError(
-                f"could not load persisted state from {self._path}: {exc}",
+                f"could not load learning session from {self._path}: {exc}",
                 corrupt=True,
             ) from exc
 
-    async def save(self, state: PersistedState) -> None:
+    async def save(self, state: LearningSession) -> None:
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
             payload = state.model_dump_json(indent=2)
@@ -49,14 +53,14 @@ class LocalStorage:
                 if tmp_path.exists():
                     tmp_path.unlink()
         except OSError as exc:
-            msg = f"could not save persisted state to {self._path}: {exc}"
+            msg = f"could not save learning session to {self._path}: {exc}"
             raise StorageError(msg) from exc
 
     async def delete(self) -> None:
         try:
             self._path.unlink(missing_ok=True)
         except OSError as exc:
-            msg = f"could not delete persisted state at {self._path}: {exc}"
+            msg = f"could not delete learning session at {self._path}: {exc}"
             raise StorageError(msg) from exc
 
 

@@ -7,9 +7,10 @@ from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft, build_adjustment_prompt
 from milai.llm.types import Message, Role
 from milai.models.curriculum import Curriculum
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
 from milai.state.handlers.curriculum_gen import _merge_skills
-from milai.state.variants import AppState, CurriculumReviewState, LessonState
+from milai.state.variants import CurriculumReviewState, LessonState
 
 
 class CurriculumReviewHandler:
@@ -17,9 +18,9 @@ class CurriculumReviewHandler:
         self._mediator = mediator
         self._llm = llm
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[CurriculumReviewState | LessonState, UserState] | None:
+    async def step(self, session: LearningSession) -> LearningSession | None:
+        app = session.app
+        user = session.user
         if not isinstance(app, CurriculumReviewState):
             raise TypeError(f"CurriculumReviewHandler cannot handle {app.type!r}")
         if user.curriculum is None:
@@ -37,15 +38,20 @@ class CurriculumReviewHandler:
 
         updated = user.model_copy(deep=True)
         if choice.value == "confirm":
-            return LessonState(), updated
+            return session.model_copy(update={"app": LessonState(), "user": updated})
 
         feedback = await self._mediator.prompt("Curriculum feedback")
         draft = await self._adjust_draft(app, updated, feedback=feedback)
         updated.curriculum = draft.curriculum
         updated.skills = _merge_skills(updated.skills, draft.initial_skills)
-        return CurriculumReviewState(
-            curriculum_messages=app.curriculum_messages,
-        ), updated
+        return session.model_copy(
+            update={
+                "app": CurriculumReviewState(
+                    curriculum_messages=app.curriculum_messages,
+                ),
+                "user": updated,
+            }
+        )
 
     async def _show_curriculum(self, curriculum: Curriculum) -> None:
         await self._mediator.clear()

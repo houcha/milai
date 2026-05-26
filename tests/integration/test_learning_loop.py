@@ -2,7 +2,7 @@ import asyncio
 
 from milai.llm.lesson_service import LessonLLM
 from milai.models.curriculum import Curriculum, Lesson, Module
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.curriculum_complete import CurriculumCompleteHandler
 from milai.state.handlers.deviation import DeviationHandler
@@ -63,7 +63,7 @@ def test_learning_loop_persists_progress_deviation_srs_and_completion() -> None:
         ]
     )
     storage = InMemoryStorage(
-        PersistedState(
+        LearningSession(
             user=UserState(
                 profile=UserProfile(target_language="Spanish", fluency_level="A1"),
                 skills=[Skill(topic="greetings", strength=0.1)],

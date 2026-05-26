@@ -6,6 +6,7 @@ from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft
 from milai.llm.types import Role
 from milai.models.curriculum import Curriculum, Lesson, Module
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.curriculum_review import CurriculumReviewHandler
 from milai.state.variants import CurriculumReviewState, LessonState
@@ -38,9 +39,12 @@ def test_curriculum_review_confirm_starts_lessons() -> None:
         ScriptedMediator(["confirm"]), ScriptedLLMClient([])
     )
 
-    result = asyncio.run(handler.step(CurriculumReviewState(), _user()))
+    result = asyncio.run(
+        handler.step(LearningSession(app=CurriculumReviewState(), user=_user()))
+    )
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, LessonState)
     assert _titles(updated) == ["Basics", "Travel", "Food"]
@@ -62,9 +66,12 @@ def test_curriculum_review_feedback_adjusts_curriculum() -> None:
     )
     handler = CurriculumReviewHandler(mediator, llm)
 
-    result = asyncio.run(handler.step(CurriculumReviewState(), _user()))
+    result = asyncio.run(
+        handler.step(LearningSession(app=CurriculumReviewState(), user=_user()))
+    )
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, CurriculumReviewState)
     assert _titles(updated) == ["Restaurant Spanish"]
@@ -97,9 +104,12 @@ def test_curriculum_review_feedback_retry_preserves_current_curriculum() -> None
     mediator = ScriptedMediator(["feedback", "Shorter modules please.", True])
     handler = CurriculumReviewHandler(mediator, llm)
 
-    result = asyncio.run(handler.step(CurriculumReviewState(), _user()))
+    result = asyncio.run(
+        handler.step(LearningSession(app=CurriculumReviewState(), user=_user()))
+    )
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, CurriculumReviewState)
     assert _titles(updated) == ["Retry Curriculum"]
@@ -117,7 +127,9 @@ def test_curriculum_review_declined_retry_raises_without_mutating_user() -> None
     handler = CurriculumReviewHandler(mediator, llm)
 
     with pytest.raises(LLMError, match="provider unavailable"):
-        asyncio.run(handler.step(CurriculumReviewState(), user))
+        asyncio.run(
+            handler.step(LearningSession(app=CurriculumReviewState(), user=user))
+        )
 
     assert _titles(user) == ["Basics", "Travel", "Food"]
     assert mediator.errors == ["provider unavailable"]

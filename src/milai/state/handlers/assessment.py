@@ -10,9 +10,9 @@ from milai.io.types import ContentKind, RichContent
 from milai.llm.errors import LLMError
 from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion, Diagnosis, NextQuestion, Retry
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
 from milai.state.variants import (
-    AppState,
     AssessmentReviewState,
     AssessmentState,
 )
@@ -29,9 +29,9 @@ class AssessmentHandler:
         self._mediator = mediator
         self._interviewer = interviewer
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[AssessmentState | AssessmentReviewState, UserState]:
+    async def step(self, session: LearningSession) -> LearningSession:
+        app = session.app
+        user = session.user
         if not isinstance(app, AssessmentState):
             raise TypeError(f"AssessmentHandler cannot handle {app.type!r}")
         state = app.model_copy(deep=True)
@@ -39,9 +39,10 @@ class AssessmentHandler:
 
         if state.questions and state.questions[-1].user_answer is None:
             await self._capture_latest_answer(state)
-            return state, updated_user
+            return session.model_copy(update={"app": state, "user": updated_user})
 
-        return await self._advance_assessment(state, updated_user), updated_user
+        next_app = await self._advance_assessment(state, updated_user)
+        return session.model_copy(update={"app": next_app, "user": updated_user})
 
     async def _advance_assessment(
         self, state: AssessmentState, user: UserState

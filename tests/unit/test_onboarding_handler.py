@@ -1,11 +1,16 @@
 import asyncio
 
+from milai.models.session import LearningSession
+from milai.models.user_state import UserState
 from milai.state.handlers.onboarding import OnboardingHandler
 from milai.state.variants import AssessmentState, OnboardingState
 
 
+def _session() -> LearningSession:
+    return LearningSession(app=OnboardingState(), user=UserState())
+
+
 def test_onboarding_collects_required_and_optional_preferences() -> None:
-    from milai.models.user_state import UserState
     from tests.fakes.mediator import ScriptedMediator
 
     mediator = ScriptedMediator(
@@ -19,7 +24,9 @@ def test_onboarding_collects_required_and_optional_preferences() -> None:
     )
     handler = OnboardingHandler(mediator)
 
-    app, user = asyncio.run(handler.step(OnboardingState(), UserState()))
+    result = asyncio.run(handler.step(_session()))
+    app = result.app
+    user = result.user
 
     assert isinstance(app, AssessmentState)
     assert user.profile.target_language == "Spanish"
@@ -33,13 +40,14 @@ def test_onboarding_collects_required_and_optional_preferences() -> None:
 
 
 def test_onboarding_requires_target_language_and_keeps_optional_defaults() -> None:
-    from milai.models.user_state import UserState
     from tests.fakes.mediator import ScriptedMediator
 
     mediator = ScriptedMediator(["", "German", "", "", "", ""])
     handler = OnboardingHandler(mediator)
 
-    app, user = asyncio.run(handler.step(OnboardingState(), UserState()))
+    result = asyncio.run(handler.step(_session()))
+    app = result.app
+    user = result.user
 
     assert isinstance(app, AssessmentState)
     assert user.profile.target_language == "German"

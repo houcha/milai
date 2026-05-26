@@ -14,6 +14,7 @@ from milai.models.curriculum import (
     Lesson,
     Module,
 )
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.lesson_practice import LessonPracticeHandler
 from milai.state.variants import LessonCompleteState, LessonPracticeState, LessonState
@@ -118,6 +119,10 @@ def _handler(mediator: IOMediator, llm: ScriptedLessonLLM) -> LessonPracticeHand
     return LessonPracticeHandler(mediator, cast(LessonLLM, llm))
 
 
+def _session(user: UserState) -> LearningSession:
+    return LearningSession(app=LessonPracticeState(), user=user)
+
+
 def test_practice_handler_generates_missing_exercises_and_answers_without_theory() -> (
     None
 ):
@@ -130,11 +135,10 @@ def test_practice_handler_generates_missing_exercises_and_answers_without_theory
     mediator = ScriptedMediator(["hola"])
     handler = _handler(mediator, llm)
 
-    result = asyncio.run(
-        handler.step(LessonPracticeState(), _lesson_with_theory_only())
-    )
+    result = asyncio.run(handler.step(_session(_lesson_with_theory_only())))
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, LessonCompleteState)
     assert llm.calls == ["generate_exercises", "evaluate_answer"]
@@ -163,9 +167,10 @@ def test_practice_handler_feedback_timeout_can_retry_without_data_loss() -> None
     mediator = ScriptedMediator(["wrong", True])
     handler = _handler(mediator, llm)
 
-    result = asyncio.run(handler.step(LessonPracticeState(), _active_lesson_user()))
+    result = asyncio.run(handler.step(_session(_active_lesson_user())))
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, LessonCompleteState)
     assert llm.calls == ["evaluate_answer", "evaluate_answer"]
@@ -186,7 +191,7 @@ def test_practice_handler_declined_feedback_retry_does_not_mutate_user() -> None
     )
 
     with pytest.raises(LLMError, match="timeout"):
-        asyncio.run(handler.step(LessonPracticeState(), user))
+        asyncio.run(handler.step(_session(user)))
 
     assert user.curriculum is not None
     assert user.curriculum.modules[0].lessons[0].exercises[0].user_answer is None
@@ -205,11 +210,10 @@ def test_practice_handler_retries_generated_exercises_error() -> None:
     mediator = ScriptedMediator([True, "hola"])
     handler = _handler(mediator, llm)
 
-    result = asyncio.run(
-        handler.step(LessonPracticeState(), _lesson_with_theory_only())
-    )
+    result = asyncio.run(handler.step(_session(_lesson_with_theory_only())))
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, LessonCompleteState)
     assert llm.calls == [
@@ -235,9 +239,10 @@ def test_practice_handler_continues_when_more_exercises_remain() -> None:
         ScriptedLessonLLM([_generated_feedback("Correct.", is_correct=True)]),
     )
 
-    result = asyncio.run(handler.step(LessonPracticeState(), user))
+    result = asyncio.run(handler.step(_session(user)))
     assert result is not None
-    app, updated = result
+    app = result.app
+    updated = result.user
 
     assert isinstance(app, LessonPracticeState)
     assert updated.curriculum is not None
@@ -260,10 +265,8 @@ def test_practice_handler_completes_finished_lesson() -> None:
     user.curriculum.modules[0].lessons[0].current_exercise_idx = 1
 
     result = asyncio.run(
-        _handler(ScriptedMediator([]), ScriptedLessonLLM([])).step(
-            LessonPracticeState(), user
-        )
+        _handler(ScriptedMediator([]), ScriptedLessonLLM([])).step(_session(user))
     )
     assert result is not None
-    app, _ = result
+    app = result.app
     assert isinstance(app, LessonCompleteState)

@@ -6,6 +6,7 @@ from milai.llm.errors import LLMError
 from milai.llm.lesson_service import LessonLLM
 from milai.llm.types import Message, Role
 from milai.models.curriculum import Exercise, ExerciseEvaluation, Lesson
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
 from milai.state.handlers.lesson import (
     _active_module_lesson,
@@ -13,7 +14,6 @@ from milai.state.handlers.lesson import (
     _lesson_context,
 )
 from milai.state.variants import (
-    AppState,
     LessonCompleteState,
     LessonPracticeState,
     LessonState,
@@ -25,9 +25,9 @@ class LessonPracticeHandler:
         self._mediator = mediator
         self._llm = llm
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[LessonPracticeState | LessonCompleteState, UserState] | None:
+    async def step(self, session: LearningSession) -> LearningSession | None:
+        app = session.app
+        user = session.user
         if not isinstance(app, LessonPracticeState):
             raise TypeError(f"LessonPracticeHandler cannot handle {app.type!r}")
         if user.curriculum is None:
@@ -42,7 +42,9 @@ class LessonPracticeHandler:
             lesson.current_exercise_idx = 0
 
         if lesson.current_exercise_idx >= len(lesson.exercises):
-            return LessonCompleteState(), updated
+            return session.model_copy(
+                update={"app": LessonCompleteState(), "user": updated}
+            )
 
         exercise = lesson.exercises[lesson.current_exercise_idx]
         await self._show_practice(lesson, exercise)
@@ -66,8 +68,15 @@ class LessonPracticeHandler:
         await self._mediator.show(RichContent(feedback.feedback))
 
         if lesson.current_exercise_idx >= len(lesson.exercises):
-            return LessonCompleteState(), updated
-        return LessonPracticeState(lesson_messages=app.lesson_messages), updated
+            return session.model_copy(
+                update={"app": LessonCompleteState(), "user": updated}
+            )
+        return session.model_copy(
+            update={
+                "app": LessonPracticeState(lesson_messages=app.lesson_messages),
+                "user": updated,
+            }
+        )
 
     async def _show_practice(self, lesson: Lesson, exercise: Exercise) -> None:
         await self._mediator.clear()

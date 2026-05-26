@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 import milai.main as main_module
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import UserProfile, UserState
 from milai.state.variants import OnboardingState
 from milai.storage.errors import StorageError
@@ -14,12 +14,12 @@ from tests.fakes.storage_client import InMemoryStorage
 class CorruptStorage:
     def __init__(self) -> None:
         self.deleted = False
-        self.saved: PersistedState | None = None
+        self.saved: LearningSession | None = None
 
-    async def load(self) -> PersistedState | None:
+    async def load(self) -> LearningSession | None:
         raise StorageError("state is corrupt", corrupt=True)
 
-    async def save(self, state: PersistedState) -> None:
+    async def save(self, state: LearningSession) -> None:
         self.saved = state
 
     async def delete(self) -> None:
@@ -54,7 +54,7 @@ def test_corrupt_state_is_preserved_when_recovery_is_declined() -> None:
 
 def test_reset_confirmation_deletes_existing_saved_session() -> None:
     storage = InMemoryStorage(
-        PersistedState(
+        LearningSession(
             user=UserState(profile=UserProfile(target_language="Spanish")),
             app=OnboardingState(),
         )
@@ -68,7 +68,7 @@ def test_reset_confirmation_deletes_existing_saved_session() -> None:
 
 
 def test_reset_confirmation_can_be_declined_without_deleting_state() -> None:
-    saved = PersistedState(
+    saved = LearningSession(
         user=UserState(profile=UserProfile(target_language="Spanish")),
         app=OnboardingState(),
     )

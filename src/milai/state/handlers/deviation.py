@@ -9,8 +9,9 @@ from milai.llm.prompts.deviation import (
     build_chat_prompt,
 )
 from milai.llm.types import Message, Role
+from milai.models.session import LearningSession
 from milai.models.user_state import UserState
-from milai.state.variants import AppState, DeviationState, LessonState
+from milai.state.variants import DeviationState, LessonState
 
 DEVIATION_LLM_TIMEOUT_SECONDS = 60
 RETURN_COMMANDS = {"return", "back", "lesson", "/return", "/back"}
@@ -21,9 +22,9 @@ class DeviationHandler:
         self._mediator = mediator
         self._llm = llm
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[DeviationState | LessonState, UserState]:
+    async def step(self, session: LearningSession) -> LearningSession:
+        app = session.app
+        user = session.user
         if not isinstance(app, DeviationState):
             raise TypeError(f"DeviationHandler cannot handle {app.type!r}")
 
@@ -35,7 +36,7 @@ class DeviationHandler:
             placeholder="type return to resume the lesson",
         )
         if user_message.strip().lower() in RETURN_COMMANDS:
-            return LessonState(), user
+            return session.model_copy(update={"app": LessonState(), "user": user})
 
         reply = await self._chat(app, user, user_message=user_message)
         await self._mediator.show(RichContent(reply, kind=ContentKind.MARKDOWN))
@@ -50,7 +51,7 @@ class DeviationHandler:
                 )
             }
         )
-        return next_state, user
+        return session.model_copy(update={"app": next_state, "user": user})
 
     async def _chat(
         self,

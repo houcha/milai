@@ -5,11 +5,11 @@ import pytest
 
 
 def _snapshot():
-    from milai.models.state import PersistedState
+    from milai.models.session import LearningSession
     from milai.models.user_state import UserProfile, UserState
     from milai.state.variants import OnboardingState
 
-    return PersistedState(
+    return LearningSession(
         user=UserState(
             profile=UserProfile(target_language="Spanish", native_language="English")
         ),
@@ -31,13 +31,14 @@ def test_local_storage_creates_parent_directory_and_round_trips_state(tmp_path) 
     asyncio.run(run_script())
 
     assert path.exists()
-    assert (
-        json.loads(path.read_text())["user"]["profile"]["target_language"] == "Spanish"
-    )
+    data = json.loads(path.read_text())
+    assert set(data) == {"id", "user", "app"}
+    assert data["id"] == snapshot.id
+    assert data["user"]["profile"]["target_language"] == "Spanish"
 
 
 def test_local_storage_overwrites_atomically_without_tmp_files(tmp_path) -> None:
-    from milai.models.state import PersistedState
+    from milai.models.session import LearningSession
     from milai.models.user_state import UserProfile, UserState
     from milai.state.variants import AssessmentState, OnboardingState
     from milai.storage.local import LocalStorage
@@ -45,11 +46,11 @@ def test_local_storage_overwrites_atomically_without_tmp_files(tmp_path) -> None
     path = tmp_path / "state.json"
     storage = LocalStorage(path)
 
-    first = PersistedState(
+    first = LearningSession(
         user=UserState(profile=UserProfile(target_language="Spanish")),
         app=OnboardingState(),
     )
-    second = PersistedState(
+    second = LearningSession(
         user=UserState(profile=UserProfile(target_language="French")),
         app=AssessmentState(),
     )

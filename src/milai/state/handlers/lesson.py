@@ -8,10 +8,10 @@ from milai.llm.errors import LLMError
 from milai.llm.lesson_service import LessonLLM
 from milai.llm.types import Message, Role
 from milai.models.curriculum import Exercise, ExerciseEvaluation, Lesson, Module
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserState
 from milai.srs.scheduler import update_skill
 from milai.state.variants import (
-    AppState,
     DeviationState,
     LessonPracticeState,
     LessonState,
@@ -23,9 +23,9 @@ class LessonHandler:
         self._mediator = mediator
         self._llm = llm
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[LessonState | LessonPracticeState | DeviationState, UserState] | None:
+    async def step(self, session: LearningSession) -> LearningSession | None:
+        app = session.app
+        user = session.user
         if not isinstance(app, LessonState):
             raise TypeError(f"LessonHandler cannot handle {app.type!r}")
         if user.curriculum is None:
@@ -40,7 +40,12 @@ class LessonHandler:
             app.lesson_messages.append(
                 Message(role=Role.ASSISTANT, content=generated.theory)
             )
-            return LessonState(lesson_messages=app.lesson_messages), updated
+            return session.model_copy(
+                update={
+                    "app": LessonState(lesson_messages=app.lesson_messages),
+                    "user": updated,
+                }
+            )
 
         await self._show_lesson(module, lesson)
         choice = await self._mediator.choose(
@@ -52,9 +57,14 @@ class LessonHandler:
             ],
         )
         if choice.value == "deviation":
-            return DeviationState(
-                lesson_context=_lesson_context(module, lesson)
-            ), updated
+            return session.model_copy(
+                update={
+                    "app": DeviationState(
+                        lesson_context=_lesson_context(module, lesson)
+                    ),
+                    "user": updated,
+                }
+            )
         if choice.value == "change":
             request = await self._mediator.prompt("Requested change")
             changed = await self._change_lesson(app, updated, requested_change=request)
@@ -67,9 +77,19 @@ class LessonHandler:
                     Message(role=Role.ASSISTANT, content=changed.theory),
                 ]
             )
-            return LessonState(lesson_messages=app.lesson_messages), updated
+            return session.model_copy(
+                update={
+                    "app": LessonState(lesson_messages=app.lesson_messages),
+                    "user": updated,
+                }
+            )
 
-        return LessonPracticeState(lesson_messages=app.lesson_messages), updated
+        return session.model_copy(
+            update={
+                "app": LessonPracticeState(lesson_messages=app.lesson_messages),
+                "user": updated,
+            }
+        )
 
     async def _show_lesson(self, module: Module, lesson: Lesson) -> None:
         await self._mediator.clear()

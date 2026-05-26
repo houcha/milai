@@ -3,7 +3,7 @@ import asyncio
 from milai.llm.prompts.curriculum import CurriculumDraft
 from milai.models.assessment import AssessmentQuestion
 from milai.models.curriculum import Curriculum, Lesson, Module
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.handlers.curriculum_gen import CurriculumGenerationHandler
 from milai.state.handlers.curriculum_review import CurriculumReviewHandler
@@ -49,7 +49,7 @@ def test_curriculum_generation_review_edits_and_confirmation_persist() -> None:
         ]
     )
     storage = InMemoryStorage(
-        PersistedState(
+        LearningSession(
             user=UserState(
                 profile=UserProfile(
                     target_language="Spanish",

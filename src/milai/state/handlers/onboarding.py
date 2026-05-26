@@ -2,17 +2,18 @@
 
 from milai.io.mediator import IOMediator
 from milai.io.types import ContentKind, RichContent
-from milai.models.user_state import PreferenceMap, UserProfile, UserState
-from milai.state.variants import AppState, AssessmentState, OnboardingState
+from milai.models.session import LearningSession
+from milai.models.user_state import PreferenceMap, UserProfile
+from milai.state.variants import AssessmentState, OnboardingState
 
 
 class OnboardingHandler:
     def __init__(self, mediator: IOMediator) -> None:
         self._mediator = mediator
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[AssessmentState, UserState]:
+    async def step(self, session: LearningSession) -> LearningSession:
+        app = session.app
+        user = session.user
         if not isinstance(app, OnboardingState):
             raise TypeError(f"OnboardingHandler cannot handle {app.type!r}")
         await self._mediator.clear()
@@ -41,7 +42,7 @@ class OnboardingHandler:
             minutes_per_day=minutes_per_day,
             preferences=preferences,
         )
-        return AssessmentState(), updated
+        return session.model_copy(update={"app": AssessmentState(), "user": updated})
 
     async def _prompt_required(self, label: str, *, error: str) -> str:
         while True:

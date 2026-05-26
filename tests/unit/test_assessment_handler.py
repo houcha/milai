@@ -7,6 +7,7 @@ from milai.agents.assessment import AssessmentInterviewer, AssessmentPhase
 from milai.llm.errors import LLMError
 from milai.llm.types import Message, Role
 from milai.models.assessment import AssessmentQuestion, Diagnosis, NextQuestion, Retry
+from milai.models.session import LearningSession
 from milai.models.user_state import UserProfile, UserState
 from milai.state.handlers.assessment import (
     MAX_ASSESSMENT_QUESTIONS,
@@ -21,6 +22,10 @@ from milai.state.variants import (
 
 def _user() -> UserState:
     return UserState(profile=UserProfile(target_language="Spanish"))
+
+
+def _session(app: AssessmentState | AssessmentReviewState, user: UserState):
+    return LearningSession(app=app, user=user)
 
 
 def _question(text: str, answer: str | None = None) -> AssessmentQuestion:
@@ -95,7 +100,9 @@ def test_assessment_starts_with_one_question() -> None:
         _interviewer(interviewer),
     )
 
-    app, user = asyncio.run(handler.step(AssessmentState(), _user()))
+    result = asyncio.run(handler.step(_session(AssessmentState(), _user())))
+    app = result.app
+    user = result.user
 
     assert isinstance(app, AssessmentState)
     assert user.skills == []
@@ -119,8 +126,9 @@ def test_assessment_records_strong_answer_then_asks_one_follow_up() -> None:
     )
     state = AssessmentState(questions=[_question("Greet the clerk.")])
 
-    app, user = asyncio.run(handler.step(state, _user()))
-    app, _user_state = asyncio.run(handler.step(app, user))
+    result = asyncio.run(handler.step(_session(state, _user())))
+    result = asyncio.run(handler.step(result))
+    app = result.app
 
     assert isinstance(app, AssessmentState)
     assert app.questions[0].user_answer == "Buenos dias. Necesito un boleto de tren."
@@ -163,7 +171,9 @@ def test_assessment_records_weak_mixed_and_contradictory_evidence() -> None:
     user = _user()
 
     for _idx in range(6):
-        app, user = asyncio.run(handler.step(app, user))
+        result = asyncio.run(handler.step(_session(app, user)))
+        app = cast(AssessmentState | AssessmentReviewState, result.app)
+        user = result.user
         if isinstance(app, AssessmentReviewState):
             break
 
@@ -187,8 +197,9 @@ def test_assessment_retries_unusable_answer_without_extra_unanswered_items() -> 
     )
     state = AssessmentState(questions=[_question("Say good night.")])
 
-    app, user = asyncio.run(handler.step(state, _user()))
-    app, _user_state = asyncio.run(handler.step(app, user))
+    result = asyncio.run(handler.step(_session(state, _user())))
+    result = asyncio.run(handler.step(result))
+    app = result.app
 
     assert isinstance(app, AssessmentState)
     assert app.questions[0].text == "Please answer in Spanish."
@@ -211,12 +222,17 @@ def test_assessment_uses_collecting_phase_before_minimum_evidence() -> None:
         _interviewer(interviewer),
     )
 
-    app, _user_state = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentState(questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 1)),
-            _user(),
+            _session(
+                AssessmentState(
+                    questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 1)
+                ),
+                _user(),
+            )
         )
     )
+    app = result.app
 
     assert isinstance(app, AssessmentState)
     assert interviewer.calls[0].args[2] is AssessmentPhase.COLLECTING
@@ -229,17 +245,20 @@ def test_assessment_diagnoses_after_minimum_evidence() -> None:
     interviewer = ScriptedAssessmentInterviewer([_diagnosis("A1")])
     handler = AssessmentHandler(ScriptedMediator([]), _interviewer(interviewer))
 
-    app, _user_state = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentState(
-                questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE),
-                assessment_messages=_usable_evidence_messages(
-                    MIN_USABLE_ASSESSMENT_EVIDENCE - 1
+            _session(
+                AssessmentState(
+                    questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE),
+                    assessment_messages=_usable_evidence_messages(
+                        MIN_USABLE_ASSESSMENT_EVIDENCE - 1
+                    ),
                 ),
-            ),
-            _user(),
+                _user(),
+            )
         )
     )
+    app = result.app
 
     assert isinstance(app, AssessmentReviewState)
     assert app.fluency_level == "A1"
@@ -256,19 +275,22 @@ def test_assessment_ignores_retry_messages_when_counting_usable_evidence() -> No
         _interviewer(interviewer),
     )
 
-    app, _user_state = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentState(
-                questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 1),
-                assessment_messages=[
-                    *_usable_evidence_messages(MIN_USABLE_ASSESSMENT_EVIDENCE - 2),
-                    _assistant_result(_retry()),
-                    _assistant_result(_retry()),
-                ],
-            ),
-            _user(),
+            _session(
+                AssessmentState(
+                    questions=_answered(MIN_USABLE_ASSESSMENT_EVIDENCE - 1),
+                    assessment_messages=[
+                        *_usable_evidence_messages(MIN_USABLE_ASSESSMENT_EVIDENCE - 2),
+                        _assistant_result(_retry()),
+                        _assistant_result(_retry()),
+                    ],
+                ),
+                _user(),
+            )
         )
     )
+    app = result.app
 
     assert isinstance(app, AssessmentState)
     assert interviewer.calls[0].args[2] is AssessmentPhase.COLLECTING
@@ -281,19 +303,22 @@ def test_assessment_forces_diagnosis_at_maximum_items() -> None:
     interviewer = ScriptedAssessmentInterviewer([_diagnosis("A1")])
     handler = AssessmentHandler(ScriptedMediator([]), _interviewer(interviewer))
 
-    app, _user_state = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentState(
-                questions=_answered(MAX_ASSESSMENT_QUESTIONS),
-                assessment_messages=[
-                    *_usable_evidence_messages(MIN_USABLE_ASSESSMENT_EVIDENCE - 2),
-                    _assistant_result(_retry()),
-                    _assistant_result(_retry()),
-                ],
-            ),
-            _user(),
+            _session(
+                AssessmentState(
+                    questions=_answered(MAX_ASSESSMENT_QUESTIONS),
+                    assessment_messages=[
+                        *_usable_evidence_messages(MIN_USABLE_ASSESSMENT_EVIDENCE - 2),
+                        _assistant_result(_retry()),
+                        _assistant_result(_retry()),
+                    ],
+                ),
+                _user(),
+            )
         )
     )
+    app = result.app
 
     assert isinstance(app, AssessmentReviewState)
     assert interviewer.calls[0].args[2] is AssessmentPhase.FORCED_DIAGNOSIS
@@ -309,12 +334,15 @@ def test_assessment_requests_forced_diagnosis_after_maximum_items() -> None:
         _interviewer(interviewer),
     )
 
-    app, _user_state = asyncio.run(
+    result = asyncio.run(
         handler.step(
-            AssessmentState(questions=_answered(MAX_ASSESSMENT_QUESTIONS)),
-            _user(),
+            _session(
+                AssessmentState(questions=_answered(MAX_ASSESSMENT_QUESTIONS)),
+                _user(),
+            )
         )
     )
+    app = result.app
 
     assert isinstance(app, AssessmentReviewState)
     assert interviewer.calls[0].args[2] is AssessmentPhase.FORCED_DIAGNOSIS
@@ -329,6 +357,6 @@ def test_assessment_declined_retry_raises_llm_error() -> None:
     handler = AssessmentHandler(mediator, _interviewer(interviewer))
 
     with pytest.raises(LLMError, match="provider unavailable"):
-        asyncio.run(handler.step(AssessmentState(), _user()))
+        asyncio.run(handler.step(_session(AssessmentState(), _user())))
 
     assert mediator.errors == ["provider unavailable"]

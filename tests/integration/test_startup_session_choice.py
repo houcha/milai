@@ -2,7 +2,7 @@ import asyncio
 
 import milai.main as main_module
 from milai.models.curriculum import Curriculum, Lesson, Module
-from milai.models.state import PersistedState
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
 from milai.state.variants import AssessmentState, OnboardingState
 from tests.fakes.mediator import ScriptedMediator
@@ -10,7 +10,7 @@ from tests.fakes.storage_client import InMemoryStorage
 
 
 def test_launch_choice_can_continue_saved_session() -> None:
-    saved = PersistedState(
+    saved = LearningSession(
         user=UserState(profile=UserProfile(target_language="Spanish")),
         app=AssessmentState(),
     )
@@ -23,7 +23,7 @@ def test_launch_choice_can_continue_saved_session() -> None:
 
 
 def test_launch_choice_can_start_new_session() -> None:
-    saved = PersistedState(
+    saved = LearningSession(
         user=UserState(profile=UserProfile(target_language="Spanish")),
         app=AssessmentState(),
     )
@@ -37,7 +37,7 @@ def test_launch_choice_can_start_new_session() -> None:
 
 
 def test_confirmed_replacement_clears_profile_curriculum_and_progress() -> None:
-    saved = PersistedState(
+    saved = LearningSession(
         user=UserState(
             profile=UserProfile(target_language="Spanish", fluency_level="B1"),
             skills=[Skill(topic="greetings")],

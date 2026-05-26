@@ -2,9 +2,8 @@
 
 from milai.io.mediator import IOMediator
 from milai.io.types import ContentKind, RichContent
-from milai.models.user_state import UserState
+from milai.models.session import LearningSession
 from milai.state.variants import (
-    AppState,
     AssessmentReviewState,
     CurriculumGenerationState,
 )
@@ -14,9 +13,9 @@ class AssessmentReviewHandler:
     def __init__(self, mediator: IOMediator) -> None:
         self._mediator = mediator
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[CurriculumGenerationState, UserState]:
+    async def step(self, session: LearningSession) -> LearningSession:
+        app = session.app
+        user = session.user
         if not isinstance(app, AssessmentReviewState):
             raise TypeError(f"AssessmentReviewHandler cannot handle {app.type!r}")
         await self._mediator.clear()
@@ -41,12 +40,14 @@ class AssessmentReviewHandler:
                 "fluency_rationale": fluency_rationale,
             }
         )
-        return (
-            CurriculumGenerationState(
-                assessment_questions=app.assessment_questions,
-                assessment_messages=app.assessment_messages,
-            ),
-            updated,
+        return session.model_copy(
+            update={
+                "app": CurriculumGenerationState(
+                    assessment_questions=app.assessment_questions,
+                    assessment_messages=app.assessment_messages,
+                ),
+                "user": updated,
+            }
         )
 
     async def _prompt_override(self) -> str:

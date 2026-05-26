@@ -5,11 +5,11 @@ import pytest
 
 
 def _fresh_snapshot():
-    from milai.models.state import PersistedState
+    from milai.models.session import LearningSession
     from milai.models.user_state import UserState
     from milai.state.variants import OnboardingState
 
-    return PersistedState(user=UserState(), app=OnboardingState())
+    return LearningSession(user=UserState(), app=OnboardingState())
 
 
 def test_storage_client_protocol_shape_is_async() -> None:
@@ -71,8 +71,32 @@ def test_local_storage_round_trips_snapshot_as_json(tmp_path) -> None:
 
     data = json.loads(path.read_text())
     assert data["app"]["type"] == "onboarding"
-    assert set(data) == {"user", "app"}
+    assert data["id"] == snapshot.id
+    assert set(data) == {"id", "user", "app"}
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_local_storage_rejects_snapshot_without_session_id(tmp_path) -> None:
+    from milai.storage.errors import StorageError
+    from milai.storage.local import LocalStorage
+
+    path = tmp_path / "state.json"
+    path.write_text(
+        json.dumps(
+            {
+                "user": {"profile": {"target_language": "Spanish"}},
+                "app": {"type": "onboarding"},
+            }
+        )
+    )
+    storage = LocalStorage(path)
+
+    async def run_script() -> None:
+        with pytest.raises(StorageError) as exc_info:
+            await storage.load()
+        assert exc_info.value.corrupt is True
+
+    asyncio.run(run_script())
 
 
 def test_local_storage_corrupt_file_raises_recoverable_storage_error(tmp_path) -> None:

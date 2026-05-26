@@ -2,18 +2,19 @@ import asyncio
 
 
 def test_machine_loads_initial_snapshot_runs_handler_and_persists_transition() -> None:
-    from milai.models.state import PersistedState
+    from milai.models.session import LearningSession
     from milai.models.user_state import UserState
     from milai.state.machine import StateMachine
     from milai.state.variants import AssessmentState, OnboardingState
     from tests.fakes.storage_client import InMemoryStorage
 
     class OnboardingHandler:
-        async def step(self, app, user):
-            assert isinstance(app, OnboardingState)
-            return AssessmentState(), user
+        async def step(self, session):
+            assert isinstance(session.app, OnboardingState)
+            return session.model_copy(update={"app": AssessmentState()})
 
-    storage = InMemoryStorage(PersistedState(user=UserState(), app=OnboardingState()))
+    session = LearningSession(user=UserState(), app=OnboardingState())
+    storage = InMemoryStorage(session)
     machine = StateMachine(
         storage=storage, handlers={OnboardingState: OnboardingHandler()}
     )
@@ -27,24 +28,25 @@ def test_machine_loads_initial_snapshot_runs_handler_and_persists_transition() -
     saved = asyncio.run(storage.load())
     assert saved is not None
     assert isinstance(saved.app, AssessmentState)
+    assert saved.id == session.id
 
 
 def test_machine_saves_after_each_transition_and_stops_on_terminal_step() -> None:
-    from milai.models.state import PersistedState
+    from milai.models.session import LearningSession
     from milai.models.user_state import UserState
     from milai.state.machine import HandlerMap, StateMachine
     from milai.state.variants import LessonCompleteState, LessonState
     from tests.fakes.storage_client import InMemoryStorage
 
     class LessonHandler:
-        async def step(self, app, user):
-            return LessonCompleteState(), user
+        async def step(self, session):
+            return session.model_copy(update={"app": LessonCompleteState()})
 
     class LessonCompleteHandler:
-        async def step(self, app, user):
+        async def step(self, session):
             return None
 
-    storage = InMemoryStorage(PersistedState(user=UserState(), app=LessonState()))
+    storage = InMemoryStorage(LearningSession(user=UserState(), app=LessonState()))
     handlers: HandlerMap = {
         LessonState: LessonHandler(),
         LessonCompleteState: LessonCompleteHandler(),

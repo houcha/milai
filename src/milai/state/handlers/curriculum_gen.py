@@ -8,9 +8,9 @@ from milai.llm.client import LLMClient
 from milai.llm.errors import LLMError
 from milai.llm.prompts.curriculum import CurriculumDraft, build_generation_prompt
 from milai.llm.types import Message, Role
+from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserState
 from milai.state.variants import (
-    AppState,
     CurriculumGenerationState,
     CurriculumReviewState,
 )
@@ -23,9 +23,9 @@ class CurriculumGenerationHandler:
         self._mediator = mediator
         self._llm = llm
 
-    async def step(
-        self, app: AppState, user: UserState
-    ) -> tuple[CurriculumReviewState, UserState]:
+    async def step(self, session: LearningSession) -> LearningSession:
+        app = session.app
+        user = session.user
         if not isinstance(app, CurriculumGenerationState):
             raise TypeError(f"CurriculumGenerationHandler cannot handle {app.type!r}")
 
@@ -38,9 +38,14 @@ class CurriculumGenerationHandler:
         updated = user.model_copy(deep=True)
         updated.curriculum = draft.curriculum
         updated.skills = _merge_skills(updated.skills, draft.initial_skills)
-        return CurriculumReviewState(
-            curriculum_messages=app.curriculum_messages,
-        ), updated
+        return session.model_copy(
+            update={
+                "app": CurriculumReviewState(
+                    curriculum_messages=app.curriculum_messages,
+                ),
+                "user": updated,
+            }
+        )
 
     async def _generate_draft(
         self, state: CurriculumGenerationState, user: UserState
