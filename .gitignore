@@ -233,7 +233,8 @@ __marimo__/
 !.claude/skills/
 
 # Codex
-.codex
+.codex/*
+!.codex/config.toml
 
 # Universal local files
 .DS_Store

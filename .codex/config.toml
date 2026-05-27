@@ -1,0 +1,9 @@
+[mcp_servers.langfuse-docs]
+url = "https://langfuse.com/api/mcp"
+enabled = true
+
+[mcp_servers.langfuse-docs.tools.searchLangfuseDocs]
+approval_mode = "approve"
+
+[mcp_servers.langfuse-docs.tools.getLangfuseOverview]
+approval_mode = "approve"

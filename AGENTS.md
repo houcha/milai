@@ -14,6 +14,11 @@ Use `uv` for all Python commands. Never invoke `python`, `pip`, or `pip install`
 
 Pre-commit hooks must always pass. Never use `--no-verify`. Fix the root cause when a hook fails.
 
+## Langfuse
+
+When working with Langfuse, use the project-scoped `langfuse` skill. Prefer the
+`langfuse-docs` MCP server for current documentation when available.
+
 ## GitHub Issues
 
 Use GitHub issues for backlog items, ideas and follow-up work.
