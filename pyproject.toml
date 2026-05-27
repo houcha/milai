@@ -9,6 +9,7 @@ description = "AI language tutor with personalized curriculum and adaptive feedb
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "langfuse>=4.0.0",
     "litellm>=1.80.9",
     "pydantic>=2.12.5",
     "pyyaml>=6.0.3",

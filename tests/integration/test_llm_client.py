@@ -42,6 +42,7 @@ def test_litellm_client_parses_structured_json(monkeypatch) -> None:
     assert result == ToyResponse(answer="hola")
     assert calls[0]["model"] == "test-model"
     assert calls[0]["response_format"] is ToyResponse
+    assert "metadata" not in calls[0]
 
 
 def test_litellm_client_uses_gemini_compatible_single_value_enums(
@@ -105,6 +106,7 @@ def test_litellm_client_returns_raw_completion_without_response_model(
 
     assert result == "hola"
     assert "response_format" not in calls[0]
+    assert "metadata" not in calls[0]
 
 
 def test_litellm_client_retries_internal_server_error(monkeypatch) -> None:
@@ -285,3 +287,33 @@ def test_litellm_client_rejects_empty_chat_response(monkeypatch) -> None:
 
     with pytest.raises(LLMError, match="empty"):
         asyncio.run(client.chat([Message(role=Role.USER, content="hello")]))
+
+
+def test_litellm_client_passes_caller_kwargs_without_langfuse_metadata(
+    monkeypatch,
+) -> None:
+    from milai.config import LLMConfig
+    from milai.llm.litellm_client import LiteLLMClient
+    from milai.llm.types import Message, Role
+
+    calls = []
+
+    async def fake_acompletion(**kwargs):
+        calls.append(kwargs)
+        return {"choices": [{"message": {"content": "hola"}}]}
+
+    monkeypatch.setattr(
+        "milai.llm.litellm_client.litellm.acompletion", fake_acompletion
+    )
+    client = LiteLLMClient(LLMConfig(model="test-model"))
+
+    result = asyncio.run(
+        client.chat(
+            [Message(role=Role.USER, content="hello")],
+            custom_llm_provider="openai",
+        )
+    )
+
+    assert result == "hola"
+    assert calls[0]["custom_llm_provider"] == "openai"
+    assert "metadata" not in calls[0]

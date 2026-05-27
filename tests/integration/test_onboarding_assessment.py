@@ -3,6 +3,7 @@ from typing import cast
 
 from milai.agents.assessment import AssessmentInterviewer
 from milai.models.assessment import Diagnosis, NextQuestion
+from milai.observability import NoopObservability
 from milai.state.handlers.assessment import AssessmentHandler
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
 from milai.state.handlers.onboarding import OnboardingHandler
@@ -90,6 +91,7 @@ def test_onboarding_to_assessment_asks_one_question_turns_and_persists_rationale
             AssessmentState: AssessmentHandler(mediator, _interviewer(interviewer)),
             AssessmentReviewState: AssessmentReviewHandler(mediator),
         },
+        observability=NoopObservability(),
     )
 
     asyncio.run(machine.run(max_steps=15))

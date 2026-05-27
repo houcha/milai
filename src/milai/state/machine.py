@@ -5,6 +5,7 @@ from typing import Protocol
 
 from milai.models.session import LearningSession
 from milai.models.user_state import UserState
+from milai.observability import Observability
 from milai.state.variants import (
     AppState,
     OnboardingState,
@@ -42,9 +43,16 @@ type HandlerMap = Mapping[type[AppState], StateHandler]
 
 
 class StateMachine:
-    def __init__(self, *, storage: StorageClient, handlers: HandlerMap) -> None:
+    def __init__(
+        self,
+        *,
+        storage: StorageClient,
+        handlers: HandlerMap,
+        observability: Observability,
+    ) -> None:
         self._storage = storage
         self._handlers = handlers
+        self._observability = observability
 
     async def run(self, *, max_steps: int | None = None) -> None:
         """Run until a handler stops the workflow or max_steps is reached.
@@ -68,7 +76,13 @@ class StateMachine:
     async def _dispatch(self, session: LearningSession) -> LearningSession | None:
         app = session.app
         handler = self._require(type(app), app)
-        return await handler.step(session)
+        with self._observability.state_dispatch(session) as span:
+            result = await handler.step(session)
+            if result is None:
+                span.update(output={"terminal": True})
+            else:
+                span.update(output={"nextState": result.app.type})
+            return result
 
     def _require(self, state_type: type[AppState], app: AppState) -> StateHandler:
         try:

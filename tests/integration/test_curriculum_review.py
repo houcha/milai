@@ -5,6 +5,7 @@ from milai.models.assessment import AssessmentQuestion
 from milai.models.curriculum import Curriculum, Lesson, Module
 from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
+from milai.observability import NoopObservability
 from milai.state.handlers.curriculum_gen import CurriculumGenerationHandler
 from milai.state.handlers.curriculum_review import CurriculumReviewHandler
 from milai.state.machine import StateMachine
@@ -73,6 +74,7 @@ def test_curriculum_generation_review_edits_and_confirmation_persist() -> None:
             CurriculumGenerationState: CurriculumGenerationHandler(mediator, llm),
             CurriculumReviewState: CurriculumReviewHandler(mediator, llm),
         },
+        observability=NoopObservability(),
     )
 
     asyncio.run(machine.run(max_steps=3))

@@ -26,9 +26,9 @@ class ScriptedLessonLLM:
         self.calls: list[str] = []
 
     async def generate_lesson_content(
-        self, state: LessonState, user: UserState
+        self, state: LessonState, user: UserState, **kwargs
     ) -> Lesson:
-        _ = state, user
+        _ = state, user, kwargs
         return self._next("generate_lesson_content")
 
     async def generate_exercises(
@@ -37,8 +37,9 @@ class ScriptedLessonLLM:
         user: UserState,
         *,
         requested_change: str = "",
+        **kwargs,
     ) -> list[Exercise]:
-        _ = state, user, requested_change
+        _ = state, user, requested_change, kwargs
         return self._next("generate_exercises")
 
     async def change_lesson(
@@ -47,8 +48,9 @@ class ScriptedLessonLLM:
         user: UserState,
         *,
         requested_change: str,
+        **kwargs,
     ) -> Lesson:
-        _ = state, user, requested_change
+        _ = state, user, requested_change, kwargs
         return self._next("change_lesson")
 
     async def evaluate_answer(
@@ -58,8 +60,9 @@ class ScriptedLessonLLM:
         *,
         answer: str,
         lesson_context: str,
+        **kwargs,
     ) -> ExerciseEvaluation:
-        _ = exercise, user, answer, lesson_context
+        _ = exercise, user, answer, lesson_context, kwargs
         return self._next("evaluate_answer")
 
     def _next(self, method: str):

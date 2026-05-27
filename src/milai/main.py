@@ -9,6 +9,7 @@ from pathlib import Path
 from milai.agents.assessment import AssessmentInterviewer
 from milai.config import Config, load_config
 from milai.io.mediator import IOMediator
+from milai.io.tracing import TracingMediator
 from milai.io.tui.app import TuiMediator
 from milai.io.types import Choice
 from milai.llm.client import LLMClient
@@ -16,6 +17,7 @@ from milai.llm.lesson_service import LessonLLM
 from milai.llm.litellm_client import LiteLLMClient
 from milai.models.session import LearningSession
 from milai.models.user_state import UserState
+from milai.observability import configure_observability
 from milai.state.handlers.assessment import AssessmentHandler
 from milai.state.handlers.assessment_review import AssessmentReviewHandler
 from milai.state.handlers.curriculum_complete import CurriculumCompleteHandler
@@ -70,6 +72,7 @@ async def run(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
     configure_logging(args.log_level)
+    observability = configure_observability()
 
     if args.config is not None and not args.config.exists():
         parser.error(f"config file does not exist: {args.config}")
@@ -83,7 +86,7 @@ async def run(argv: list[str] | None = None) -> None:
         config = Config()
 
     storage = LocalStorage(config.storage_path)
-    mediator = TuiMediator()
+    mediator: IOMediator = TracingMediator(TuiMediator(), observability)
 
     if args.reset:
         await maybe_reset_saved_session(storage, mediator)
@@ -93,11 +96,17 @@ async def run(argv: list[str] | None = None) -> None:
     clients = {
         name: LiteLLMClient(profile) for name, profile in config.llm.profiles.items()
     }
-    machine = StateMachine(
-        storage=storage,
-        handlers=build_handler_map(config=config, mediator=mediator, clients=clients),
-    )
-    await machine.run()
+    try:
+        machine = StateMachine(
+            storage=storage,
+            handlers=build_handler_map(
+                config=config, mediator=mediator, clients=clients
+            ),
+            observability=observability,
+        )
+        await machine.run()
+    finally:
+        observability.shutdown()
 
 
 async def prepare_launch_snapshot(

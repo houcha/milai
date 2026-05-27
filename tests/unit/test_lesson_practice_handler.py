@@ -31,8 +31,9 @@ class ScriptedLessonLLM:
         user: UserState,
         *,
         requested_change: str = "",
+        **kwargs,
     ) -> list[Exercise]:
-        _ = state, user, requested_change
+        _ = state, user, requested_change, kwargs
         return self._next("generate_exercises")
 
     async def evaluate_answer(
@@ -43,8 +44,9 @@ class ScriptedLessonLLM:
         answer: str,
         lesson_context: str,
         state: LessonState | None = None,
+        **kwargs,
     ) -> ExerciseEvaluation:
-        _ = exercise, user, answer, lesson_context, state
+        _ = exercise, user, answer, lesson_context, state, kwargs
         return self._next("evaluate_answer")
 
     def _next(self, method: str):

@@ -4,6 +4,7 @@ from milai.llm.lesson_service import LessonLLM
 from milai.models.curriculum import Curriculum, Lesson, Module
 from milai.models.session import LearningSession
 from milai.models.user_state import Skill, UserProfile, UserState
+from milai.observability import NoopObservability
 from milai.state.handlers.curriculum_complete import CurriculumCompleteHandler
 from milai.state.handlers.deviation import DeviationHandler
 from milai.state.handlers.lesson import LessonHandler
@@ -91,6 +92,7 @@ def test_learning_loop_persists_progress_deviation_srs_and_completion() -> None:
             LessonCompleteState: LessonCompleteHandler(mediator),
             CurriculumCompleteState: CurriculumCompleteHandler(mediator, llm),
         },
+        observability=NoopObservability(),
     )
 
     asyncio.run(machine.run(max_steps=11))

@@ -100,7 +100,8 @@ def test_assessment_starts_with_one_question() -> None:
         _interviewer(interviewer),
     )
 
-    result = asyncio.run(handler.step(_session(AssessmentState(), _user())))
+    session = _session(AssessmentState(), _user())
+    result = asyncio.run(handler.step(session))
     app = result.app
     user = result.user
 
@@ -111,6 +112,7 @@ def test_assessment_starts_with_one_question() -> None:
     assert len(interviewer.calls) == 1
     assert interviewer.calls[0].method == "next_action"
     assert interviewer.calls[0].args[2] is AssessmentPhase.INITIAL
+    assert "metadata" not in interviewer.calls[0].kwargs
 
 
 def test_assessment_records_strong_answer_then_asks_one_follow_up() -> None:

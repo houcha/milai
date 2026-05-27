@@ -41,6 +41,30 @@ one of the named profiles from `llm.profiles`.
 API keys stay in environment variables and should not be written into config
 files.
 
+## Langfuse Tracing
+
+milai enables Langfuse tracing automatically when Langfuse credentials and base
+URL are present. State dispatches are recorded as `milai.state.*` spans, learner
+input as `milai.user.*` child spans, and LiteLLM generations attach through the
+active OpenTelemetry context.
+
+```bash
+export LANGFUSE_PUBLIC_KEY="pk-lf-..."
+export LANGFUSE_SECRET_KEY="sk-lf-..."
+export LANGFUSE_BASE_URL="https://cloud.langfuse.com"
+```
+
+For self-hosted Langfuse, use your self-hosted base URL:
+
+```bash
+export LANGFUSE_BASE_URL="http://localhost:3000"
+```
+
+milai derives LiteLLM's `LANGFUSE_OTEL_HOST` from `LANGFUSE_BASE_URL` at startup.
+
+No config file changes are required. When the Langfuse variables are absent,
+tracing remains disabled.
+
 ## Usage
 
 Run the TUI entrypoint:
