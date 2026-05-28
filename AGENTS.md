@@ -14,6 +14,25 @@ Use `uv` for all Python commands. Never invoke `python`, `pip`, or `pip install`
 
 Pre-commit hooks must always pass. Never use `--no-verify`. Fix the root cause when a hook fails.
 
+## GitHub Issues
+
+Use GitHub issues for backlog items, ideas and follow-up work.
+
+Rules:
+
+- Use issue templates in `.github/ISSUE_TEMPLATE`.
+- Use natural issue titles without Conventional Commit prefixes; labels carry the type.
+- Do not add priority labels.
+- Close `evaluation` issues only after updating the `Decision` section.
+
+### Issue types
+
+- `enhancement`: product/user-facing capabilities.
+- `refactor`: internal design or structure changes that should preserve behavior.
+- `bug`: incorrect current behavior.
+- `documentation`: documentation-only changes.
+- `evaluation`: tool, framework, or approach assessments before deciding whether to adopt them.
+
 ## Commit Messages
 
 All commits must follow Conventional Commits format:
@@ -26,7 +45,7 @@ All commits must follow Conventional Commits format:
 [optional footer(s)] - breaking changes, closes #issue
 ```
 
-### Types
+### Commit types
 
 - `feat`: new feature
 - `fix`: bug fix
