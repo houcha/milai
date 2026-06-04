@@ -76,5 +76,5 @@ Added exponential backoff retry logic with max 3 attempts." \
 ```
 
 <!-- SPECKIT START -->
-Current Spec Kit plan: `specs/002-adaptive-agent-sessions/plan.md`
+Current Spec Kit plan: `specs/003-assessment-llm-logging/plan.md`
 <!-- SPECKIT END -->
