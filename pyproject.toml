@@ -9,6 +9,7 @@ description = "AI language tutor with personalized curriculum and adaptive feedb
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "jinja2>=3.1.6",
     "langfuse>=4.0.0",
     "litellm>=1.80.9",
     "pydantic>=2.12.5",
@@ -21,6 +22,9 @@ milai = "milai.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"milai.llm.prompts" = ["assessment/*.txt.j2"]
 
 [dependency-groups]
 dev = [

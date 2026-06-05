@@ -6,6 +6,7 @@ from typing import Annotated
 from pydantic import Field, RootModel
 
 from milai.llm.client import LLMClient
+from milai.llm.prompts.assets import render_prompt_template
 from milai.llm.types import Message, Role
 from milai.models.assessment import Diagnosis, NextQuestion, Retry
 from milai.models.user_state import UserState
@@ -56,14 +57,14 @@ def build_assessment_system_prompt(user: UserState) -> Message:
     profile = user.profile
     return Message(
         role=Role.SYSTEM,
-        content=(
-            "You are a language assessment interviewer. Estimate the learner's "
-            f"current ability in {profile.target_language}; their native language "
-            f"is {profile.native_language}. Treat the assessment history as the "
-            "evidence record. Prefer practical language tasks aligned with the "
-            f"learning goal: {profile.learning_goal}. Teaching preferences: "
-            f"{profile.preferences}. Keep the exchange focused on assessment, "
-            "not teaching or correction."
+        content=render_prompt_template(
+            "assessment/system.txt.j2",
+            {
+                "target_language": profile.target_language,
+                "native_language": profile.native_language,
+                "learning_goal": profile.learning_goal,
+                "preferences": profile.preferences,
+            },
         ),
     )
 
@@ -76,11 +77,13 @@ def build_assessment_step_instructions(
 ) -> Message:
     return Message(
         role=Role.USER,
-        content=(
-            f"Additional usable answers targeted by policy: {usable_evidence_needed}. "
-            "Question budget remaining for new questions: "
-            f"{question_budget_remaining}. "
-            f"{instructions}"
+        content=render_prompt_template(
+            "assessment/step_instructions.txt.j2",
+            {
+                "instructions": instructions,
+                "usable_evidence_needed": usable_evidence_needed,
+                "question_budget_remaining": question_budget_remaining,
+            },
         ),
     )
 

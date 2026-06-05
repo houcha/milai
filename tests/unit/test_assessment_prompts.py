@@ -1,11 +1,15 @@
 import asyncio
 
+import pytest
+from jinja2 import UndefinedError
+
 from milai.agents.assessment import (
     AssessmentInterviewer,
     AssessmentPhase,
     build_assessment_step_instructions,
     build_assessment_system_prompt,
 )
+from milai.llm.prompts.assets import render_prompt_template
 from milai.llm.types import Message, Role
 from milai.models.assessment import Diagnosis, NextQuestion, Retry
 from milai.models.user_state import UserProfile, UserState
@@ -41,6 +45,11 @@ def test_assessment_system_prompt_includes_stable_profile_context() -> None:
     assert "structured output schema" not in rendered
     assert "Ask one question at a time" not in rendered
     assert "retry" not in rendered.lower()
+
+
+def test_assessment_prompt_assets_fail_on_missing_template_variables() -> None:
+    with pytest.raises(UndefinedError):
+        render_prompt_template("assessment/system.txt.j2", {})
 
 
 def test_assessment_step_instructions_exclude_profile_and_history_context() -> None:
