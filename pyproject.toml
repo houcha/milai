@@ -4,27 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "milai"
-version = "0.1.0"
-description = "AI language tutor with personalized curriculum and adaptive feedback"
+version = "0.2.0"
+description = "AI language tutor"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "jinja2>=3.1.6",
-    "langfuse>=4.0.0",
-    "litellm>=1.80.9",
-    "pydantic>=2.12.5",
-    "pyyaml>=6.0.3",
-    "tenacity>=9.1.4",
 ]
 
 [project.scripts]
-milai = "milai.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-"milai.llm.prompts" = ["assessment/*.txt.j2"]
 
 [dependency-groups]
 dev = [
@@ -44,11 +34,7 @@ select = [
     "C4",
     "SIM",
     "S",
-    # "D" temporarily disabled
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
-
-# [tool.ruff.lint.pydocstyle]
-# convention = "google"
