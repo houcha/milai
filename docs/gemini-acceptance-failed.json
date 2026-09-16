@@ -1,0 +1,290 @@
+{
+  "kind": "live-synthetic",
+  "model": "gemini-3.5-flash-lite",
+  "checks": {
+    "profile_saved": false,
+    "provisional_curriculum": false,
+    "live_source_available": true,
+    "exercise_saved": true,
+    "needs_work_evidence": true,
+    "assisted_success": false,
+    "adapted_action_after_restart": true
+  },
+  "transcript": [
+    {
+      "learner": "Hi, I'd like help learning a language.",
+      "tutor": "Hello! I'd love to help you with that. \n\nTo get us started, which language are you hoping to learn, and what's your main goal with it (for example: travel, speaking with family, work, or just for fun)?",
+      "trace_id": "2a246870f7b106a1ca9d9a4820cf4be0"
+    },
+    {
+      "learner": "English. I speak Spanish, but please explain in simple English. I think I'm A2. I want to talk about trips and read basic websites. I like technology and walking. What else do you need to know?",
+      "tutor": "That is everything I need to know! Thank you for telling me so clearly. \n\nBased on what you said, here is a short, provisional plan for our practice. We can change it anytime:\n1. **Talking about trips:** Practicing how to talk about past travel and future plans (using simple past and future tenses).\n2. **Reading basic websites:** Looking at short articles about technology, gadgets, or walking routes.\n\nWould you like to start with a short exercise about a past trip, or would you prefer to read a short text about technology or walking first?",
+      "trace_id": "cfd08ae5ea7c030e742ca6f8c3177c95"
+    },
+    {
+      "learner": "I prefer short public web pages and original exercises. Please retrieve https://example.com as a short reading warmup, give me a brief provisional outline, then a tiny lesson with an original past-tense exercise: Yesterday I ___ to the park (go).",
+      "tutor": "Here is a quick look at the web page you requested (**Example Domain**, `https://example.com`): it is a simple placeholder page used for documentation. \n\nHere is our provisional curriculum plan (we can change this anytime):\n1. **Reading basic web pages** (like simple guides about walking and technology)\n2. **Talking about past trips** (using simple past-tense verbs)\n\nNow, let's try your exercise! Complete the sentence using the past tense of the verb in parentheses:\n\nYesterday I ___ to the park (go).",
+      "trace_id": "bc835625b5357e9901c0b01150c47b91"
+    },
+    {
+      "learner": "Yesterday I goed to the park.",
+      "tutor": "Almost! Using \"-ed\" is a great rule for regular verbs (like *walk* becomes *walked*), but **go** is an irregular verb, so it changes completely. \n\nCan you try again with the correct past-tense form of **go**?",
+      "trace_id": "113979cb5844f7dc9b4edc765a85bb84"
+    },
+    {
+      "learner": "Why isn't goed right? Give me a hint before I try again.",
+      "tutor": "In English, many common verbs are **irregular**. That means they don't follow the normal rule of adding \"-ed\" when we talk about the past. Instead, the whole word changes! \n\nHere is your hint: The past tense of **go** starts with the letter **W** and has three letters. \n\nWould you like to try the sentence again with that hint?",
+      "trace_id": "ed23a35cba1afcd57b0dd255b09e76d2"
+    },
+    {
+      "learner": "Yesterday I went to the park.",
+      "tutor": "That's it! **Went** is the correct past tense of **go**. \n\nSince you practiced with help that time, let's try a fresh, independent example to make sure you've got it down. \n\nCan you fill in the blank for this one?\nLast week, I ___ for a long walk in the mountains (go).",
+      "trace_id": "d0cd20e03214163ca4f42def0488fdd7"
+    },
+    {
+      "learner": "Let's continue with a fresh exercise based on how I did, without a hint yet.",
+      "tutor": "Sounds good! Since \"go\" is an irregular verb, let's try a fresh sentence about walking to check your independent practice:\n\nLast weekend, I ___ for a long walk in the mountains (go).",
+      "trace_id": "67ce16eee12b2675fad28e1a7c4925d0"
+    }
+  ],
+  "learning": {
+    "state": {
+      "profile": {
+        "target_language": {
+          "field": "target_language",
+          "value": "English",
+          "learner_quote": "English."
+        },
+        "explanation_language": {
+          "field": "explanation_language",
+          "value": "Simple English",
+          "learner_quote": "please explain in simple English."
+        },
+        "level": {
+          "field": "level",
+          "value": "A2 (provisional)",
+          "learner_quote": "I think I'm A2."
+        },
+        "goals": {
+          "field": "goals",
+          "value": "Talk about trips and read basic websites",
+          "learner_quote": "I want to talk about trips and read basic websites."
+        },
+        "interests": {
+          "field": "interests",
+          "value": "Technology and walking",
+          "learner_quote": "I like technology and walking."
+        }
+      },
+      "curriculum": [],
+      "evidence": [
+        {
+          "id": "a659c94de13f4254b7ea3f79aa142ca2",
+          "kind": "evidence",
+          "created": "2026-09-16T18:56:02.071664+00:00",
+          "exercise_id": "bfe9da23970f4c9fb540d2e1e7199dde",
+          "outcome": "needs_work",
+          "assistance": "none",
+          "feedback": "'Goed' is very common to try because we add -ed for regular past verbs, but 'go' is an irregular verb.",
+          "rationale": "The learner attempted the past tense of 'go' with 'goed', which is a regular past tense overgeneralization for an irregular verb.",
+          "independent_success": false,
+          "skill": "past-tense-verbs",
+          "learner_response": "Yesterday I goed to the park.",
+          "turn_id": "42be7f46c5244f4597956848d819a4d4",
+          "assessment_kind": "tutor_inference"
+        }
+      ],
+      "recurring_observations": [
+        {
+          "skill": "past-tense-verbs",
+          "count": 1
+        }
+      ],
+      "exercises": [
+        {
+          "id": "bfe9da23970f4c9fb540d2e1e7199dde",
+          "kind": "exercise",
+          "created": "2026-09-16T18:55:28.126700+00:00",
+          "skill": "past-tense-verbs",
+          "task": "Yesterday I ___ to the park (go).",
+          "source_ids": [
+            "2c2ffb97d9a4448c8bc3f001867a9594"
+          ],
+          "created_turn": "aa1d0e62f4a548d4bceaa9b2a401f757"
+        },
+        {
+          "id": "3d8a10eca9ac44f39b79daf7401019fe",
+          "kind": "exercise",
+          "created": "2026-09-16T18:57:39.072660+00:00",
+          "skill": "past-tense-verbs",
+          "task": "Last weekend, I ___ for a long walk in the mountains (go).",
+          "source_ids": [
+            "2c2ffb97d9a4448c8bc3f001867a9594"
+          ],
+          "created_turn": "fccab5aad90049289727ea8cf37c6eda"
+        }
+      ],
+      "assistance": [
+        {
+          "id": "0cb5fecb66454bd6829573b1417cdbee",
+          "kind": "assistance",
+          "created": "2026-09-16T18:56:34.591334+00:00",
+          "exercise_id": "bfe9da23970f4c9fb540d2e1e7199dde",
+          "level": "hint",
+          "content": "Explained that 'go' is irregular and gave a hint (it starts with W).",
+          "turn_id": "0e6a99f644ac43389cc97cdd51ccc34e"
+        }
+      ],
+      "sources": [
+        {
+          "id": "2c2ffb97d9a4448c8bc3f001867a9594",
+          "kind": "source",
+          "created": "2026-09-16T18:55:26.797393+00:00",
+          "url": "https://example.com",
+          "retrieved_at": "2026-09-16T18:55:26.369241+00:00",
+          "status": "available",
+          "title": "Example Domain",
+          "sha256": "ff67a9d764d6a2367a187734e697f6a53217db9a21c101d410a113ca871a299d",
+          "text": "Example Domain Example Domain This domain is for use in documentation examples without needing permission. Avoid use in operations. Learn more",
+          "truncated": false
+        }
+      ],
+      "teaching_actions": [
+        {
+          "id": "bfc03d8a00f646f8a6c52aaf526848f8",
+          "kind": "teaching_action",
+          "created": "2026-09-16T18:57:40.293142+00:00",
+          "action": "Offer a fresh analogous task on irregular past tense verbs to check independent transfer without a hint.",
+          "rationale": "The learner previously struggled with the irregular past tense of 'go' ('goed'). Now offering a fresh analogous task about walking to check independent transfer.",
+          "evidence_ids": [
+            "a659c94de13f4254b7ea3f79aa142ca2"
+          ]
+        }
+      ]
+    },
+    "events": [
+      {
+        "id": "f72bf341ea9a4a87938d6203187d779f",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "8a1d5c75fe004f3db90988a5ca54b677",
+        "record_id": "3e683e41879248cc9a3e0821dba67e86",
+        "kind": "profile",
+        "created": "2026-09-16T18:54:53.732445+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "3521f257a787422a949cf870caf9b94c",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "8a1d5c75fe004f3db90988a5ca54b677",
+        "record_id": "bf798b5185324af9b325ebb3701406f4",
+        "kind": "profile",
+        "created": "2026-09-16T18:54:53.732791+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "38da4c2965a545bda0ba6d58db97c365",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "8a1d5c75fe004f3db90988a5ca54b677",
+        "record_id": "f46d10196b044275a7f7df0716c0b970",
+        "kind": "profile",
+        "created": "2026-09-16T18:54:53.733093+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "6d986e680c22477087852c333a0b8558",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "8a1d5c75fe004f3db90988a5ca54b677",
+        "record_id": "730bce4f27fa4429a29933f08d21678d",
+        "kind": "profile",
+        "created": "2026-09-16T18:54:53.733356+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "e555285fa5cc40ceab77eca46c799f80",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "8a1d5c75fe004f3db90988a5ca54b677",
+        "record_id": "e42689bb6f1040d4b35758704296d34e",
+        "kind": "profile",
+        "created": "2026-09-16T18:54:53.733611+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "0593d78783de4917ab6a21fc585fc05c",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "aa1d0e62f4a548d4bceaa9b2a401f757",
+        "record_id": "2c2ffb97d9a4448c8bc3f001867a9594",
+        "kind": "source",
+        "created": "2026-09-16T18:55:26.797430+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "913d969c8dac47b392da025cdfc5a50e",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "aa1d0e62f4a548d4bceaa9b2a401f757",
+        "record_id": "bfe9da23970f4c9fb540d2e1e7199dde",
+        "kind": "exercise",
+        "created": "2026-09-16T18:55:28.126718+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "1a842f632f6d4f35b5840d476bc3063a",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "42be7f46c5244f4597956848d819a4d4",
+        "record_id": "a659c94de13f4254b7ea3f79aa142ca2",
+        "kind": "evidence",
+        "created": "2026-09-16T18:56:02.071699+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "6a0a805f34fe4450b22019b3b470f6dd",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "8b4861c74df84fb1b04e63fc571b7545",
+        "turn_id": "0e6a99f644ac43389cc97cdd51ccc34e",
+        "record_id": "0cb5fecb66454bd6829573b1417cdbee",
+        "kind": "assistance",
+        "created": "2026-09-16T18:56:34.591353+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "a4000b6533c44d1ebe0ed9ffcbdd55da",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "195a11a6a6d34875980d04d0bb3cb40b",
+        "turn_id": "fccab5aad90049289727ea8cf37c6eda",
+        "record_id": "3d8a10eca9ac44f39b79daf7401019fe",
+        "kind": "exercise",
+        "created": "2026-09-16T18:57:39.072703+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      },
+      {
+        "id": "7363b9871172472b837322a01e66b47b",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "session": "195a11a6a6d34875980d04d0bb3cb40b",
+        "turn_id": "fccab5aad90049289727ea8cf37c6eda",
+        "record_id": "bfc03d8a00f646f8a6c52aaf526848f8",
+        "kind": "teaching_action",
+        "created": "2026-09-16T18:57:40.293174+00:00",
+        "prompt_version": "93a87461e41c0f80"
+      }
+    ],
+    "sessions": [
+      {
+        "id": "8b4861c74df84fb1b04e63fc571b7545",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "created": "2026-09-16T18:54:20.632327+00:00"
+      },
+      {
+        "id": "195a11a6a6d34875980d04d0bb3cb40b",
+        "learner": "d7ada346b85cdb8e79cb4a336e1f8720",
+        "created": "2026-09-16T18:57:36.995871+00:00"
+      }
+    ]
+  }
+}

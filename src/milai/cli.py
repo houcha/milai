@@ -1,0 +1,114 @@
+"""Local single-user interface. The OS account is the authorization boundary."""
+
+import argparse
+import asyncio
+import json
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from openai import RateLimitError
+
+from milai.config import Settings
+from milai.observability import Telemetry
+from milai.probe import probe
+from milai.store import Store
+from milai.tutor import Tutor
+
+
+async def chat(settings: Settings, session: str | None):
+    store = Store(settings.database)
+    telemetry = Telemetry()
+    tutor = Tutor(settings, store, telemetry)
+    try:
+        session = store.session(store.owner, session)
+        print(f"Milai · session {session}")
+        print(
+            "/quit to exit · /state to inspect learning · /new for a new conversation"
+        )
+        if not store.history(store.owner, session):
+            print(
+                "Tutor: What language would you like to learn, "
+                "and what would you like to do with it?"
+            )
+        while True:
+            try:
+                message = await asyncio.to_thread(input, "You: ")
+            except EOFError:
+                break
+            if message.strip() == "/quit":
+                break
+            if message.strip() == "/state":
+                print(
+                    json.dumps(
+                        store.snapshot(store.owner), indent=2, ensure_ascii=False
+                    )
+                )
+                continue
+            if message.strip() == "/new":
+                session = store.session(store.owner)
+                print(f"New conversation: {session}; learning memory retained.")
+                continue
+            try:
+                reply = await tutor.respond(store.owner, session, message)
+                print(f"Tutor: {reply}")
+            except RateLimitError:
+                print(
+                    "Provider quota reached; this turn's learning changes were rolled "
+                    "back. Wait for the quota to reset before sending it again. "
+                    "No paid fallback was used."
+                )
+            except Exception as exc:
+                print(
+                    f"Turn failed ({type(exc).__name__}); "
+                    "learning changes rolled back. Try again."
+                )
+    finally:
+        await tutor.close()
+        store.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Milai local language tutor")
+    commands = parser.add_subparsers(dest="command", required=True)
+    chat_parser = commands.add_parser("chat")
+    chat_parser.add_argument("--session", help="Resume an existing session ID")
+    commands.add_parser("probe", help="Live model tool/continuation check")
+    commands.add_parser("inspect", help="Print local learning state and change events")
+    args = parser.parse_args()
+    load_dotenv(Path.cwd() / ".env")
+    try:
+        if args.command == "inspect":
+            store = Store(Path(os.getenv("MILAI_DATABASE", ".milai/learning.sqlite3")))
+            try:
+                print(
+                    json.dumps(store.inspect(store.owner), indent=2, ensure_ascii=False)
+                )
+            finally:
+                store.close()
+        elif args.command == "probe":
+            settings = Settings.load()
+            print(json.dumps(asyncio.run(probe(settings, Telemetry())), indent=2))
+        else:
+            asyncio.run(chat(Settings.load(), args.session))
+    except RateLimitError:
+        parser.exit(
+            1,
+            "Provider quota reached. Wait for the quota to reset; "
+            "no automatic retry or paid fallback was used.\n",
+        )
+    except (ValueError, PermissionError) as exc:
+        parser.exit(2, f"{exc}\n")
+    except KeyboardInterrupt:
+        print("\nGoodbye.")
+    except Exception as exc:
+        status = getattr(exc, "status_code", None)
+        parser.exit(
+            1,
+            f"Operation failed ({type(exc).__name__}, status={status}). "
+            "Check endpoint availability and credentials; no secret details logged.\n",
+        )
+
+
+if __name__ == "__main__":
+    main()

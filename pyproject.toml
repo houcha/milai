@@ -9,9 +9,18 @@ description = "AI language tutor"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "openai-agents>=0.22.2",
+    "langfuse>=4.15.3",
+    "openinference-instrumentation-openai-agents>=2.4.1",
+    "python-dotenv>=1",
+    "beautifulsoup4>=4.14",
 ]
 
 [project.scripts]
+milai = "milai.cli:main"
+
+[tool.setuptools.package-data]
+milai = ["prompts/*.md"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -23,6 +32,9 @@ dev = [
     "ruff>=0.15.11",
     "ty>=0.0.32",
 ]
+
+[tool.ruff]
+extend-exclude = [".agents", ".codex"]
 
 [tool.ruff.lint]
 select = [
