@@ -17,8 +17,15 @@ uses Low reasoning effort; optional deliberate planning uses High.
 uv run milai probe
 uv run milai chat
 uv run milai chat --session SESSION_ID
+uv run milai web
 uv run milai inspect
 ```
+
+The web interface runs locally at `http://127.0.0.1:8765`. It combines chat with a
+learner profile and current activity beside chat. Open the breadcrumb menu next to
+Milai to switch between Conversation, Curriculum, and Skills. Each view has its own
+link and supports browser back/forward navigation. Use `--session SESSION_ID` to resume a conversation or
+`--port PORT` to select another local port. It binds only to the loopback interface.
 
 Inside chat, `/state` shows learning memory, `/new` starts a conversation while
 retaining evidence, and `/quit` exits. The session ID is printed at startup.

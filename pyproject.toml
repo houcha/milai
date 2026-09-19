@@ -20,7 +20,7 @@ dependencies = [
 milai = "milai.cli:main"
 
 [tool.setuptools.package-data]
-milai = ["prompts/*.md"]
+milai = ["prompts/*.md", "web/*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

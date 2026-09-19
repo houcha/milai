@@ -14,6 +14,7 @@ from milai.observability import Telemetry
 from milai.probe import probe
 from milai.store import Store
 from milai.tutor import Tutor
+from milai.web import serve
 
 
 async def chat(settings: Settings, session: str | None):
@@ -73,6 +74,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     chat_parser = commands.add_parser("chat")
     chat_parser.add_argument("--session", help="Resume an existing session ID")
+    web_parser = commands.add_parser("web", help="Run the local browser interface")
+    web_parser.add_argument("--session", help="Resume an existing session ID")
+    web_parser.add_argument("--port", type=int, default=8765)
     commands.add_parser("probe", help="Live model tool/continuation check")
     commands.add_parser("inspect", help="Print local learning state and change events")
     args = parser.parse_args()
@@ -89,6 +93,8 @@ def main():
         elif args.command == "probe":
             settings = Settings.load()
             print(json.dumps(asyncio.run(probe(settings, Telemetry())), indent=2))
+        elif args.command == "web":
+            asyncio.run(serve(Settings.load(), args.session, args.port))
         else:
             asyncio.run(chat(Settings.load(), args.session))
     except RateLimitError:

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Milai · Language learning studio</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a class="brand" href="#chat" aria-label="Milai home">
+          <span class="brand-mark">M</span>
+          <span>
+            <strong>Milai</strong>
+            <small>language learning studio</small>
+          </span>
+        </a>
+        <span class="breadcrumb-divider" aria-hidden="true">/</span>
+        <details id="view-menu" class="view-menu">
+          <summary><span id="current-view">Conversation</span> <span aria-hidden="true">⌄</span></summary>
+          <div class="view-links">
+            <a href="#chat" aria-current="page">Conversation</a>
+            <a href="#curriculum">Curriculum</a>
+            <a href="#skills">Skills</a>
+          </div>
+        </details>
+        </nav>
+        <div class="topbar-actions">
+          <span class="connection"><i></i> Local &amp; private</span>
+          <button id="new-session" class="quiet-button" type="button">New conversation</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="learning-panel" data-view="chat" aria-label="Learning overview">
+          <section class="intro-block">
+            <p class="eyebrow">Your direction</p>
+            <h1 id="learning-title">Building your learning path</h1>
+            <p id="learning-subtitle">Tell Milai what you want to use the language for.</p>
+          </section>
+
+          <section class="panel-section" aria-labelledby="focus-heading">
+            <div class="section-heading">
+              <h2 id="focus-heading">Current focus</h2>
+              <span class="live-badge">Now</span>
+            </div>
+            <div id="current-focus" class="empty-card">No lesson selected yet.</div>
+          </section>
+
+        </aside>
+
+          <section class="detail-view" data-view="curriculum" aria-labelledby="curriculum-heading" hidden>
+            <div class="section-heading">
+              <h2 id="curriculum-heading">Curriculum</h2>
+              <span class="muted-label">Provisional</span>
+            </div>
+            <div id="curriculum" class="empty-card">Your roadmap will appear as Milai learns your goals.</div>
+          </section>
+
+          <section class="detail-view" data-view="skills" aria-labelledby="skills-heading" hidden>
+            <div class="section-heading">
+              <h2 id="skills-heading">Skills observed</h2>
+              <span id="skill-count" class="muted-label">0</span>
+            </div>
+            <div id="skills" class="skills-list">
+              <div class="empty-card">Evidence from your practice will appear here.</div>
+            </div>
+          </section>
+
+        <section class="chat-panel" data-view="chat" aria-label="Tutor conversation">
+          <div class="chat-heading">
+            <div>
+              <p class="eyebrow">Conversation</p>
+              <h2>Your tutor</h2>
+            </div>
+            <span id="session-label" class="session-label"></span>
+          </div>
+
+          <div id="messages" class="messages" aria-live="polite"></div>
+
+          <form id="composer" class="composer">
+            <label for="message" class="sr-only">Message Milai</label>
+            <textarea id="message" maxlength="8000" rows="1" placeholder="Tell Milai what you want to learn…"></textarea>
+            <button id="send" type="submit" aria-label="Send message">
+              <span>Send</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4.8 14-2.7-5.4L5 12Zm6.5 1.6L19 5"/></svg>
+            </button>
+          </form>
+          <p id="notice" class="notice" role="status"></p>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

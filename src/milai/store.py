@@ -179,6 +179,32 @@ class Store:
             ),
         )
 
+    def conversation(self, learner: str, session: str, limit: int = 50) -> list[dict]:
+        """Return learner-facing messages without replaying internal tool traffic."""
+        self.authorize(learner, session)
+        rows = self.db.execute(
+            "SELECT created, message, reply FROM turns WHERE session=? "
+            "ORDER BY rowid DESC LIMIT ?",
+            (session, limit),
+        ).fetchall()
+        messages = []
+        for row in reversed(rows):
+            messages.extend(
+                (
+                    {
+                        "role": "user",
+                        "content": row["message"],
+                        "created": row["created"],
+                    },
+                    {
+                        "role": "assistant",
+                        "content": row["reply"],
+                        "created": row["created"],
+                    },
+                )
+            )
+        return messages
+
     def snapshot(self, learner: str) -> dict:
         facts = [
             json.loads(row[0])
