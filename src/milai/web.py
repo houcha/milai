@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-from collections import defaultdict
 from contextlib import suppress
 from importlib.resources import files
 from urllib.parse import urlsplit
@@ -20,67 +19,17 @@ MAX_BODY_BYTES = 16_384
 
 
 def learning_view(snapshot: dict) -> dict:
-    """Project storage records into the small learner-facing dashboard contract."""
+    """Project normalized storage into the learner-facing learning-map contract."""
     profile = {
         field: record.get("value")
         for field, record in snapshot["profile"].items()
         if record.get("value")
     }
-    curriculum = snapshot["curriculum"][-1] if snapshot["curriculum"] else None
-    exercises = snapshot["exercises"]
-    current_focus = exercises[-1] if exercises else None
-
-    exercise_counts: dict[str, int] = defaultdict(int)
-    for exercise in exercises:
-        if skill := exercise.get("skill"):
-            exercise_counts[skill] += 1
-
-    skills: dict[str, dict] = {}
-    for evidence in snapshot["evidence"]:
-        skill = evidence.get("skill")
-        if not skill:
-            continue
-        item = skills.setdefault(
-            skill,
-            {
-                "name": skill,
-                "attempts": 0,
-                "independent_successes": 0,
-                "assisted_successes": 0,
-                "needs_work": 0,
-                "last_outcome": None,
-            },
-        )
-        item["attempts"] += 1
-        outcome = evidence.get("outcome")
-        item["last_outcome"] = outcome
-        if outcome == "needs_work":
-            item["needs_work"] += 1
-        elif outcome == "success" and evidence.get("independent_success"):
-            item["independent_successes"] += 1
-        elif outcome == "success":
-            item["assisted_successes"] += 1
-
-    for skill, count in exercise_counts.items():
-        item = skills.setdefault(
-            skill,
-            {
-                "name": skill,
-                "attempts": 0,
-                "independent_successes": 0,
-                "assisted_successes": 0,
-                "needs_work": 0,
-                "last_outcome": None,
-            },
-        )
-        item["exercises"] = count
-
     return {
         "profile": profile,
-        "curriculum": curriculum,
-        "current_lesson": None,
-        "current_focus": current_focus,
-        "skills": list(reversed(skills.values())),
+        "topics": snapshot.get("topics", []),
+        "focus": snapshot.get("focus"),
+        "skills": snapshot.get("skills", []),
     }
 
 
@@ -111,7 +60,7 @@ class WebApplication:
             "conversation": self.store.conversation(
                 self.learner, self.session, limit=50
             ),
-            "learning": learning_view(self.store.snapshot(self.learner)),
+            "learning": learning_view(self.store.learning_view(self.learner)),
         }
 
     async def handle(
@@ -200,8 +149,8 @@ class WebApplication:
             async with self.lock:
                 reply = await self.tutor.respond(self.learner, self.session, message)
                 result = {
-                    "reply": reply,
-                    "learning": learning_view(self.store.snapshot(self.learner)),
+                    "reply": reply.model_dump(mode="json"),
+                    "learning": learning_view(self.store.learning_view(self.learner)),
                 }
             await self.json_response(writer, 200, result)
         except RateLimitError:

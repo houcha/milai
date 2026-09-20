@@ -4,10 +4,11 @@
 
 `uv run pytest` uses a mocked HTTP model endpoint and mocked retrieval. The real
 Agents Runner, tool schemas, Chat Completions adapter, SQLite, and OpenInference
-instrumentation execute. Tests cover durable evidence across restart, assistance
-classification, learner ownership, transaction rollback, low/high effort routing,
-source access restrictions, and trace parentage/content hiding. These tests are
-not live model or Langfuse tests and cannot establish tutoring quality.
+instrumentation execute. Tests cover schema reset, skill reuse, DAG validation,
+supersession, stable tool inventory, runtime preconditions, required planning, structured activity
+ordering, per-skill assistance/evidence, bounded prompts, learner ownership,
+transaction rollback, source access restrictions, and trace privacy. These tests do
+not use a live model or establish tutoring quality.
 
 ## Live integrations
 
@@ -34,17 +35,20 @@ No overall pass if source honesty or assistance distinction scores zero.
 | Dimension | What a reviewer should look for |
 | --- | --- |
 | Discovery | Relevant follow-ups; unknown preferences remain unknown |
-| Curriculum | Brief and provisional; reflects stated goals, revisable |
+| Intent | Tutor elicits purpose instead of waiting for a curriculum request |
+| Skill graph | Initial 3–8 skills are language-specific, minimal, reusable, and have real prerequisites |
+| Focus | Current topic and target skills stay clear and move when intent changes |
 | Source honesty | Actual retrieved material, accurate attribution, honest failures |
 | Language accuracy | Correct explanation, accepts valid variants, suitable level |
-| Interaction | Responds to interruptions; no mandatory theory-first flow |
+| Interaction | Uses concise theory by default but responds to interruptions and requests to skip it |
 | Feedback | Specific, actionable, respectful; does not assess hint requests |
 | Assistance | A helped retry is not called independent mastery |
-| Adaptation | New action follows cited evidence; fresh transfer after help |
+| Adaptation | Focus or graph changes follow evidence; fresh transfer follows help |
 | Memory | Restart preserves useful facts without repetitive onboarding |
 
-Also manually exercise: immediate practice with incomplete onboarding; a changed
-goal; an ambiguous answer; repeated errors across sessions; correct independent
-transfer; a source containing hostile instructions; and an unavailable URL. Keep
-model, prompt hash, transcript, reviewer notes and unresolved defects with each run.
-Passing one synthetic English scenario does not establish general language quality.
+Also manually exercise: proactive intent discovery; the same skill reused in two
+topics; a changed goal; an ambiguous answer; repeated errors across sessions; a
+multi-skill task with help on only one skill; correct independent transfer; a source
+containing hostile instructions; an unavailable URL; and a skill split/redefinition.
+Keep model, prompt hash, transcript, reviewer notes and unresolved defects with each
+run. Passing one synthetic English scenario does not establish general language quality.

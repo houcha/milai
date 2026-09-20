@@ -12,8 +12,8 @@ from openai import RateLimitError
 from milai.config import Settings
 from milai.observability import Telemetry
 from milai.probe import probe
-from milai.store import Store
-from milai.tutor import Tutor
+from milai.store import SchemaMismatch, Store
+from milai.tutor import Tutor, TutorReply
 from milai.web import serve
 
 
@@ -27,7 +27,7 @@ async def chat(settings: Settings, session: str | None):
         print(
             "/quit to exit · /state to inspect learning · /new for a new conversation"
         )
-        if not store.history(store.owner, session):
+        if not store.conversation(store.owner, session):
             print(
                 "Tutor: What language would you like to learn, "
                 "and what would you like to do with it?"
@@ -52,7 +52,7 @@ async def chat(settings: Settings, session: str | None):
                 continue
             try:
                 reply = await tutor.respond(store.owner, session, message)
-                print(f"Tutor: {reply}")
+                print_reply(reply)
             except RateLimitError:
                 print(
                     "Provider quota reached; this turn's learning changes were rolled "
@@ -69,6 +69,24 @@ async def chat(settings: Settings, session: str | None):
         store.close()
 
 
+def print_reply(reply: TutorReply) -> None:
+    if reply.text.strip():
+        print(f"Tutor: {reply.text}")
+    for activity in reply.activities:
+        print(f"\n[{activity['kind'].upper()}] {activity['title']}")
+        if activity["kind"] == "theory":
+            print(activity["explanation"])
+            for example in activity["examples"]:
+                print(f"  • {example['example']} — {example['explanation']}")
+        else:
+            if activity.get("context"):
+                print(f"Context: {activity['context']}")
+            print(activity["task"])
+        skills = ", ".join(item["name"] for item in activity.get("skills", []))
+        if skills:
+            print(f"Skills: {skills}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Milai local language tutor")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -79,11 +97,28 @@ def main():
     web_parser.add_argument("--port", type=int, default=8765)
     commands.add_parser("probe", help="Live model tool/continuation check")
     commands.add_parser("inspect", help="Print local learning state and change events")
+    reset_parser = commands.add_parser(
+        "reset", help="Archive the database and create the current schema"
+    )
+    reset_parser.add_argument(
+        "--yes", action="store_true", help="Required acknowledgement of the reset"
+    )
     args = parser.parse_args()
     load_dotenv(Path.cwd() / ".env")
     try:
-        if args.command == "inspect":
-            store = Store(Path(os.getenv("MILAI_DATABASE", ".milai/learning.sqlite3")))
+        database = Path(os.getenv("MILAI_DATABASE", ".milai/learning.sqlite3"))
+        if args.command == "reset":
+            if not args.yes:
+                parser.exit(
+                    2,
+                    "Reset requires --yes; the existing database will be archived.\n",
+                )
+            archived = Store.reset(database)
+            if archived:
+                print("Archived: " + ", ".join(str(path) for path in archived))
+            print(f"Created schema 2 at {database}")
+        elif args.command == "inspect":
+            store = Store(database)
             try:
                 print(
                     json.dumps(store.inspect(store.owner), indent=2, ensure_ascii=False)
@@ -103,7 +138,7 @@ def main():
             "Provider quota reached. Wait for the quota to reset; "
             "no automatic retry or paid fallback was used.\n",
         )
-    except (ValueError, PermissionError) as exc:
+    except (ValueError, PermissionError, SchemaMismatch) as exc:
         parser.exit(2, f"{exc}\n")
     except KeyboardInterrupt:
         print("\nGoodbye.")

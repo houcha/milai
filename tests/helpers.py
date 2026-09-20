@@ -21,6 +21,22 @@ def call(name, **arguments):
     }
 
 
+def calls(*tool_calls):
+    """Return several independent function calls from one model generation."""
+    return {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [
+            {
+                "id": "replaced-by-transport",
+                "type": "function",
+                "function": {"name": name, "arguments": json.dumps(arguments)},
+            }
+            for name, arguments in tool_calls
+        ],
+    }
+
+
 def say(text):
     return {"role": "assistant", "content": text}
 
@@ -43,7 +59,8 @@ class MockProvider:
         step = self.steps.pop(0)
         message = step(body) if callable(step) else step
         if message.get("tool_calls"):
-            message["tool_calls"][0]["id"] = f"call-{len(self.requests)}"
+            for index, tool_call in enumerate(message["tool_calls"]):
+                tool_call["id"] = f"call-{len(self.requests)}-{index}"
         return httpx.Response(
             200,
             json={

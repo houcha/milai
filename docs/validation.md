@@ -1,5 +1,10 @@
 # Validation report — 2026-09-16
 
+> Historical report: this validates the curriculum/evidence prototype preserved in
+> the linked artifacts. The 2026-09-20 topic-independent skill-graph redesign replaces
+> that schema and prompt. Its offline checks are maintained in the current test suite;
+> a new live teaching-quality run has not yet been recorded.
+
 ## Completed
 
 - **Offline application behavior:** 25 tests passed. The real Agents Runner, Chat

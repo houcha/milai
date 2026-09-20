@@ -24,12 +24,14 @@ def test_supported_instrumentation_parentage_usage_and_privacy(tmp_path, monkeyp
     provider = MockProvider(
         [
             call(
-                "remember_profile",
-                fact={
-                    "field": "goals",
-                    "value": "PRIVATE_SENTINEL",
-                    "learner_quote": "PRIVATE_SENTINEL",
-                },
+                "record_learner_facts",
+                facts=[
+                    {
+                        "field": "goals",
+                        "value": "PRIVATE_SENTINEL",
+                        "learner_quote": "PRIVATE_SENTINEL",
+                    }
+                ],
             ),
             say("PRIVATE_SENTINEL"),
         ]

@@ -19,7 +19,7 @@ MESSAGES = [
     "I like technology and walking. What else do you need to know?",
     "I prefer short public web pages and original exercises. "
     "Please retrieve https://example.com as a short reading warmup, "
-    "give me a brief provisional outline, then a tiny lesson with an original "
+    "identify the essential skills, then give me a tiny theory lesson and original "
     "past-tense exercise: Yesterday I ___ to the park (go).",
     "Yesterday I goed to the park.",
     "Why isn't goed right? Give me a hint before I try again.",
@@ -50,11 +50,18 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                     tutor = Tutor(config, store, telemetry)
                 print(f"Learner: {message}", flush=True)
                 reply = await tutor.respond(learner, session, message)
-                print(f"Tutor: {reply}\n", flush=True)
+                print(f"Tutor: {reply.text}", flush=True)
+                for activity in reply.activities:
+                    print(
+                        f"[{activity['kind']}] {activity['title']}: "
+                        f"{activity.get('task') or activity.get('explanation')}",
+                        flush=True,
+                    )
+                print(flush=True)
                 transcript.append(
                     {
                         "learner": message,
-                        "tutor": reply,
+                        "tutor": reply.model_dump(mode="json"),
                         "trace_id": telemetry.last_trace_id,
                     }
                 )
@@ -72,20 +79,33 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                         "source_preferences",
                     )
                 ),
-                "provisional_curriculum": bool(state["curriculum"]),
+                "topic_skill_graph": bool(state["topics"])
+                and 3
+                <= len(
+                    [
+                        skill
+                        for skill in state["topics"][0]["skills"]
+                        if skill["role"] == "core"
+                    ]
+                )
+                <= 8,
                 "live_source_available": any(
                     s["status"] == "available" for s in state["sources"]
                 ),
-                "exercise_saved": bool(state["exercises"]),
+                "theory_saved": any(e["kind"] == "theory" for e in snapshot["events"]),
+                "exercise_saved": any(
+                    e["kind"] == "exercise" for e in snapshot["events"]
+                ),
                 "needs_work_evidence": any(
-                    e["outcome"] == "needs_work" for e in state["evidence"]
+                    e["outcome"] == "needs_work" for e in state["recent_observations"]
                 ),
                 "assisted_success": any(
                     e["outcome"] == "success" and not e["independent_success"]
-                    for e in state["evidence"]
+                    for e in state["recent_observations"]
                 ),
                 "adapted_action_after_restart": any(
-                    e["session"] == session and e["kind"] == "teaching_action"
+                    e["session"] == session
+                    and e["kind"] in {"learning_focus", "theory", "exercise"}
                     for e in snapshot["events"]
                 ),
             }

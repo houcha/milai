@@ -8,7 +8,7 @@ const elements = {
   title: document.querySelector("#learning-title"),
   subtitle: document.querySelector("#learning-subtitle"),
   focus: document.querySelector("#current-focus"),
-  curriculum: document.querySelector("#curriculum"),
+  map: document.querySelector("#learning-map"),
   skills: document.querySelector("#skills"),
   skillCount: document.querySelector("#skill-count"),
   newSession: document.querySelector("#new-session"),
@@ -16,7 +16,7 @@ const elements = {
 
 let busy = false;
 
-const viewNames = { chat: "Conversation", curriculum: "Curriculum", skills: "Skills" };
+const viewNames = { chat: "Conversation", map: "Learning Map", skills: "Skills" };
 
 function renderView() {
   const requested = location.hash.slice(1);
@@ -55,7 +55,53 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function messageNode(role, content, pending = false) {
+function activityNode(activity) {
+  const card = document.createElement("section");
+  card.className = `activity-card ${activity.kind}`;
+  const label = document.createElement("span");
+  label.className = "activity-kind";
+  label.textContent = activity.kind === "theory" ? "Theory" : "Exercise";
+  const title = document.createElement("h3");
+  title.textContent = activity.title;
+  card.append(label, title);
+  if (activity.kind === "theory") {
+    const explanation = document.createElement("p");
+    explanation.textContent = activity.explanation;
+    card.append(explanation);
+    (activity.examples || []).forEach((item) => {
+      const example = document.createElement("div");
+      example.className = "theory-example";
+      const phrase = document.createElement("strong");
+      phrase.textContent = item.example;
+      const note = document.createElement("span");
+      note.textContent = item.explanation;
+      example.append(phrase, note);
+      card.append(example);
+    });
+  } else {
+    if (activity.context) {
+      const context = document.createElement("p");
+      context.className = "activity-context";
+      context.textContent = activity.context;
+      card.append(context);
+    }
+    const task = document.createElement("p");
+    task.className = "activity-task";
+    task.textContent = activity.task;
+    card.append(task);
+  }
+  const skills = document.createElement("div");
+  skills.className = "activity-skills";
+  (activity.skills || []).forEach((skill) => {
+    const chip = document.createElement("span");
+    chip.textContent = skill.role ? `${skill.name} · ${skill.role}` : skill.name;
+    skills.append(chip);
+  });
+  card.append(skills);
+  return card;
+}
+
+function messageNode(role, content, pending = false, activities = []) {
   const wrapper = document.createElement("article");
   wrapper.className = `message ${role}${pending ? " pending" : ""}`;
   const label = document.createElement("span");
@@ -65,11 +111,12 @@ function messageNode(role, content, pending = false) {
   bubble.className = "bubble";
   bubble.textContent = content;
   wrapper.append(label, bubble);
+  activities.forEach((activity) => wrapper.append(activityNode(activity)));
   return wrapper;
 }
 
-function appendMessage(role, content, pending = false) {
-  const node = messageNode(role, content, pending);
+function appendMessage(role, content, pending = false, activities = []) {
+  const node = messageNode(role, content, pending, activities);
   elements.messages.append(node);
   elements.messages.scrollTop = elements.messages.scrollHeight;
   return node;
@@ -84,7 +131,7 @@ function renderConversation(conversation) {
     );
     return;
   }
-  conversation.forEach((item) => appendMessage(item.role, item.content));
+  conversation.forEach((item) => appendMessage(item.role, item.content, false, item.activities || []));
 }
 
 function text(value, fallback = "") {
@@ -99,47 +146,51 @@ function renderLearning(learning) {
   elements.subtitle.textContent = goal || "Tell Milai what you want to use the language for.";
 
   elements.focus.replaceChildren();
-  if (learning.current_lesson) {
+  elements.focus.className = "";
+  const focus = learning.focus;
+  if (focus) {
     const card = document.createElement("div");
     card.className = "focus-card";
     const title = document.createElement("strong");
-    title.textContent = learning.current_lesson.title;
-    const objective = document.createElement("span");
-    objective.textContent = learning.current_lesson.objective || "Current lesson";
-    card.append(title, objective);
-    elements.focus.append(card);
-  } else if (learning.current_focus) {
-    const card = document.createElement("div");
-    card.className = "focus-card";
-    const title = document.createElement("strong");
-    title.textContent = text(learning.current_focus.skill, "Current activity");
-    const task = document.createElement("span");
-    task.textContent = text(learning.current_focus.task, "Practice in progress");
-    card.append(title, task);
+    const targets = (focus.skills || []).filter((item) => item.role === "target");
+    title.textContent = targets.map((item) => item.name).join(", ") || "Current focus";
+    const reason = document.createElement("span");
+    reason.textContent = text(focus.reason, "Learning in progress");
+    card.append(title, reason);
     elements.focus.append(card);
   } else {
     elements.focus.className = "empty-card";
     elements.focus.textContent = "No lesson selected yet.";
   }
 
-  elements.curriculum.replaceChildren();
-  const curriculum = learning.curriculum;
-  if (!curriculum) {
-    elements.curriculum.className = "empty-card";
-    elements.curriculum.textContent = "Your roadmap will appear as Milai learns your goals.";
+  elements.map.replaceChildren();
+  const topics = learning.topics || [];
+  if (!topics.length) {
+    elements.map.className = "empty-card";
+    elements.map.textContent = "Your skill graph will appear as Milai learns your goals.";
   } else {
-    elements.curriculum.className = "";
-    const title = document.createElement("h3");
-    title.className = "curriculum-title";
-    title.textContent = text(curriculum.title, "Your roadmap");
-    const list = document.createElement("ol");
-    list.className = "curriculum-list";
-    (curriculum.outline || []).forEach((item) => {
-      const row = document.createElement("li");
-      row.textContent = item;
-      list.append(row);
+    elements.map.className = "topic-list";
+    topics.forEach((topic) => {
+      const card = document.createElement("article");
+      card.className = "topic-card";
+      const title = document.createElement("h3");
+      title.textContent = topic.name;
+      const purpose = document.createElement("p");
+      purpose.textContent = topic.purpose;
+      const list = document.createElement("ol");
+      list.className = "skill-map";
+      (topic.skills || []).forEach((skill) => {
+        const row = document.createElement("li");
+        const prerequisites = (topic.prerequisites || [])
+          .filter((edge) => edge.dependent_id === skill.id)
+          .map((edge) => (topic.skills || []).find((item) => item.id === edge.prerequisite_id)?.name)
+          .filter(Boolean);
+        row.textContent = `${skill.name} · ${skill.role}${prerequisites.length ? ` · after ${prerequisites.join(", ")}` : ""}`;
+        list.append(row);
+      });
+      card.append(title, purpose, list);
+      elements.map.append(card);
     });
-    elements.curriculum.append(title, list);
   }
 
   const skills = learning.skills || [];
@@ -158,11 +209,12 @@ function renderLearning(learning) {
       title.textContent = skill.name;
       const stats = document.createElement("div");
       stats.className = "skill-stats";
+      const progress = skill.progress || {};
       const values = [
-        [skill.attempts, "attempts", ""],
-        [skill.independent_successes, "independent", "positive"],
-        [skill.assisted_successes, "with help", "positive"],
-        [skill.needs_work, "to revisit", "attention"],
+        [progress.observations, "observations", ""],
+        [progress.independent_successes, "independent", "positive"],
+        [progress.assistance_events, "help events", ""],
+        [progress.needs_work, "to revisit", "attention"],
       ];
       values.filter(([count]) => count).forEach(([count, label, className]) => {
         const badge = document.createElement("span");
@@ -171,6 +223,12 @@ function renderLearning(learning) {
         stats.append(badge);
       });
       card.append(title, stats);
+      if ((progress.contexts || []).length) {
+        const contexts = document.createElement("p");
+        contexts.className = "skill-contexts";
+        contexts.textContent = `Seen in: ${progress.contexts.join(", ")}`;
+        card.append(contexts);
+      }
       elements.skills.append(card);
     });
   }
@@ -209,7 +267,7 @@ elements.composer.addEventListener("submit", async (event) => {
       body: JSON.stringify({ message }),
     });
     pending.remove();
-    appendMessage("assistant", payload.reply);
+    appendMessage("assistant", payload.reply.text, false, payload.reply.activities || []);
     renderLearning(payload.learning);
   } catch (error) {
     pending.remove();

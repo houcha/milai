@@ -1,5 +1,34 @@
 # Decision log
 
+## 2026-09-20 — topic-independent skill graph
+
+- Replace the provisional curriculum record with a systematic, learner-scoped skill
+  graph. Skills are language abilities independent of topics; topics are application
+  contexts that reference skill IDs as core, extension, or contextual.
+- Establish each topic from a High-reasoning private decomposition of its minimum 3–8
+  vital skills. Keep one learner-facing agent and one learner-wide active focus instead
+  of handing interaction between onboarding, planning, and lesson agents.
+- Tag every exercise with all target and supporting skills it requires. Persist actual
+  attempts, skill-specific assistance, and per-skill observations. Summarize evidence
+  without mastery labels or scores.
+- Version/supersede definitions on split, merge, or correction. Preserve observations
+  under old IDs and explicitly repoint topic and active-focus links.
+- Replace free-form exercise repetition with structured theory and exercise artifacts.
+  Tools persist exact content; web and CLI render it in tool-call order. Model final text
+  supplies only framing and feedback.
+- Bound replay to six learner-facing turns/20,000 characters and dynamic state to
+  16,000 characters. Exclude raw tool traffic and source bodies. Retrieve source text
+  through explicit bounded excerpts.
+- Use normalized SQLite schema 2. Legacy state has no safe semantic conversion, so
+  startup fails with an explicit `milai reset --yes` instruction. Reset archives the
+  database and WAL/SHM sidecars before creating new state.
+- Keep one stable model-facing tool inventory. Dynamic `is_enabled` predicates made
+  the conversational workflow implicit without providing an authorization boundary;
+  benchmark before reintroducing them. Document and validate preconditions inside
+  tools and storage. Serialize local function execution with
+  `max_function_tool_concurrency=1` because a provider can return several tool calls
+  in one model generation.
+
 ## 2026-09-15 — initial architecture
 
 - Current cleaned worktree only; no historical commits, branches or previous app read.

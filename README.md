@@ -11,7 +11,8 @@ at Google's OpenAI-compatible endpoint. `GEMINI_API_KEY` is required. For no-spe
 testing, use an AI Studio Free Tier project without billing attached. There are no
 automatic retries or provider/model fallbacks; old NVIDIA variables are ignored.
 Langfuse records usage, not a billing guarantee. Conversation
-uses Low reasoning effort; optional deliberate planning uses High.
+uses Low reasoning effort; a required private topic-decomposition pass uses High once
+for each new topic.
 
 ```sh
 uv run milai probe
@@ -19,24 +20,32 @@ uv run milai chat
 uv run milai chat --session SESSION_ID
 uv run milai web
 uv run milai inspect
+uv run milai reset --yes
 ```
 
 The web interface runs locally at `http://127.0.0.1:8765`. It combines chat with a
-learner profile and current activity beside chat. Open the breadcrumb menu next to
-Milai to switch between Conversation, Curriculum, and Skills. Each view has its own
+learner profile and current focus beside chat. Open the breadcrumb menu next to
+Milai to switch between Conversation, Learning Map, and Skills. Theory and exercises
+appear as exact persisted cards in the conversation. Each view has its own
 link and supports browser back/forward navigation. Use `--session SESSION_ID` to resume a conversation or
 `--port PORT` to select another local port. It binds only to the loopback interface.
 
 Inside chat, `/state` shows learning memory, `/new` starts a conversation while
 retaining evidence, and `/quit` exits. The session ID is printed at startup.
-SQLite data lives in `.milai/learning.sqlite3` (override `MILAI_DATABASE`). Protect
-this file as personal data. This is a local app; there is no shared service or login.
+SQLite data lives in `.milai/learning.sqlite3` (override `MILAI_DATABASE`). Schema 2
+does not silently convert the earlier prototype database: startup explains how to run
+`milai reset --yes`, which archives the database and sidecars before creating a fresh
+one. Protect these files as personal data. This is a local app; there is no shared
+service or login.
 
-The tutor discovers preferences through conversation. It can retrieve learner-supplied public HTTPS
-text/HTML URLs or retain pasted excerpts, create exercises, give help, assess actual
-attempts and adapt future teaching. It keeps source references and separates assisted
-success from independent success. Unsupported sources fail honestly. No web search,
-PDF, audio, video, authenticated pages or redirect following is implemented yet.
+The tutor discovers intent through conversation, creates a reusable graph of precise
+language skills, and links topics to those skills as application contexts. A learner-wide
+focus tracks the current topic and 1–3 target skills. It can present structured theory,
+create multi-skill exercises, give skill-specific help, assess actual attempts, and
+expand or revise the graph as evidence grows. Progress is summarized from observations;
+there is no mastery score. It can also retrieve learner-supplied public HTTPS text/HTML
+or retain pasted excerpts. Unsupported sources fail honestly. No web search, PDF,
+audio, video, authenticated pages, or redirect following is implemented yet.
 
 ## Tracing and validation
 
@@ -57,8 +66,7 @@ Tests mock model and retrieval responses. The probe and acceptance scenario use 
 services. [Evaluation](docs/evaluation.md) explains the separate teaching-quality
 review. [Product brief](docs/product.md), [architecture](docs/architecture.md), and
 [decisions](docs/decisions.md) document scope, milestones and open product decisions.
-The full live Gemini learning scenario passed all seven structural checks, including
-assisted-success evidence and an adapted action after restart. See
-[validation results](docs/validation.md) and the separate
-[teaching-quality review](docs/teaching-review.md): prompt reliability, natural
-examples, and precise assistance labels still need broader testing.
+The archived live Gemini report validates the previous schema and prompt. The current
+skill-graph design has deterministic coverage and still needs a new live pedagogical
+run. See [validation results](docs/validation.md) and the separate historical
+[teaching-quality review](docs/teaching-review.md).

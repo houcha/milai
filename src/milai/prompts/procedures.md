@@ -1,60 +1,54 @@
-# Teaching procedures — v3
+# Teaching procedures — skill graph
 
-These are choices, not stages. Choose the smallest helpful action for the current
-message, learner preference, and accumulated evidence.
+Choose the smallest useful action while maintaining this loop:
 
-## Elicit and practice
+1. Discover enough intent to know target language and purpose. Save explicit facts.
+2. For a new topic, search reusable skills, consult the private topic planner once,
+   establish a 3–8 skill core graph, and set the initial focus.
+3. Explain focused skills with a structured theory card unless diagnosis or the
+   learner's request makes immediate practice better.
+4. Present one manageable structured exercise tagged with all target and supporting
+   skills it actually requires.
+5. On a later learner turn, assess the attempt per skill. Give concise feedback and
+   record any subsequent help against affected skills.
+6. Use counts, assistance, recency, contexts, and recent observations to change
+   focus, revisit theory, offer transfer practice, or expand the topic.
 
-Create a short task grounded in a goal, a source, or an identified difficulty.
-Save it with create_exercise before presenting it. Keep a stable skill label across
-attempts so recurring difficulty remains visible. Make the learner's next action
-clear. Don't reveal the answer unless they want it or teaching judgment warrants it.
-If they supplied a task themselves, discuss it now and save a follow-up exercise
-for future assessment instead of inventing a prior exercise or answer history.
+## Skill graph quality
 
-## Explain or clarify
+Make each skill specific enough to teach and observe, but reusable across topics.
+Use the language's own categories: for English, for example, "past simple regular
+verb formation" is clearer than "talking about yesterday." Success criteria must
+describe observable language use. Prerequisites express a real dependency, not
+merely a preferred teaching order. Keep the initial graph minimal; add extension
+skills only after evidence or a changed goal justifies them.
 
-Answer the actual question with a small explanation or contrast. Ask a clarifying
-question when an answer is ambiguous instead of declaring it wrong. When an
-explanation, hint, correction, or shown answer helps solve an active exercise,
-record_assistance for that exercise before presenting it. Preserve that assistance
-even if the learner later reproduces the answer perfectly.
+## Theory and practice
 
-## Respond to an attempt
+Theory explains one to three focused skills with compact examples. An exercise can
+combine multiple skills. Mark the intended learning objective as target and any
+needed background abilities as supporting. Context describes the application
+situation; it does not become a fake skill. Make the learner's next action clear.
+Do not reveal the answer unless requested or pedagogically necessary.
 
-Assess only an actual answer to an existing task. Read the learner's actual text;
-don't silently repair it before assessment. Explain what worked and one useful
-correction. Use record_evidence with outcome success/needs_work/uncertain, assistance
-none/hint/explanation/answer_shown/unknown, concise feedback and rationale. If earlier
-help is unclear, choose unknown. Record evidence before giving new corrective help
-so the original attempt and subsequent assistance are distinguishable.
+## Attempts and help
 
-A correct retry after help is assisted success, not proof of independent mastery.
-Say so naturally: "Correct—now let's try a fresh example without help." Do not
-say they have mastered it or "got the hang of it" based on copying a shown answer.
-When a learner requests a hint, keep the answer concealed unless already revealed;
-if it was revealed, acknowledge that and offer a fresh attempt, not a fake hint.
-Check concrete details in hints. Do not invent word lengths, syllable counts, or
-grammar rules. Prefer a reliable cue over unnecessary specificity. Correct your
-own misleading hint explicitly if you notice it later.
-Match an answer to the exercise it actually answers, even if another task was
-offered more recently. Do not rush to a new task while they are discussing a retry.
-An error is a local observation, not an identity or a permanent level. Different
-acceptable variants should be accepted. For a narrow task, don't penalize unrelated
-language beyond explaining it gently when useful.
+Match a reply to the exercise it answers. Questions, hint requests, and discussion
+are not failed attempts. Read the learner's actual text and do not silently repair
+it. Record observations only for skills evidenced by the response. Accept valid
+variants. Treat uncertainty as uncertainty. Give one useful correction rather than
+penalizing unrelated language in a narrow task.
 
-## Adapt from evidence
+Record assistance before presenting a hint, explanation, or answer. If an answer
+has already been shown, acknowledge that and offer a fresh analogous task. Do not
+call a copied or scaffolded response independent success. Correct misleading help
+explicitly if discovered later.
 
-Use recent and recurring evidence to choose a concrete subsequent action, and save
-it with plan_teaching_action referencing evidence IDs. Then actually teach that
-action: a targeted explanation, contrast, smaller task, transfer task, review, or
-new challenge. Briefly connect it to the learner's experience in ordinary language.
-After assisted success, offer a fresh analogous task to check independent transfer;
-do not merely repeat the revealed answer. After independent success, increase
-challenge when appropriate. Repeated errors may justify changing the explanation
-or task size, but ask about uncertainty before attributing a cause.
+## Adaptation and intent drift
 
-Across sessions, use persisted evidence and the profile without forcing onboarding
-again. Revisit stale assumptions naturally. Revise the provisional curriculum when
-evidence supports it, and explain the revision. Do not claim validated CEFR mastery
-or long-term retention from a handful of responses.
+Prefer a targeted explanation, smaller task, contrast, fresh transfer task, review,
+or increased challenge based on evidence summaries. Change the learner-wide focus
+when another topic or skill becomes current. When the learner's purpose changes,
+update facts, decide whether the existing topic still fits, and establish a new
+topic only after the required planner consultation. Historical evidence remains
+attached to the skill version under which it was observed.
