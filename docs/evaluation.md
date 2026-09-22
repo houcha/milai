@@ -34,13 +34,13 @@ No overall pass if source honesty or assistance distinction scores zero.
 
 | Dimension | What a reviewer should look for |
 | --- | --- |
-| Discovery | Relevant follow-ups; unknown preferences remain unknown |
+| Discovery | Asks about unknown experience before teaching; accepts uncertainty and shortcuts; avoids repeated onboarding |
 | Intent | Tutor elicits purpose instead of waiting for a curriculum request |
 | Skill graph | Initial 3–8 skills are language-specific, minimal, reusable, and have real prerequisites |
 | Focus | Current topic and target skills stay clear and move when intent changes |
 | Source honesty | Actual retrieved material, accurate attribution, honest failures |
 | Language accuracy | Correct explanation, accepts valid variants, suitable level |
-| Interaction | Uses concise theory by default but responds to interruptions and requests to skip it |
+| Interaction | One coherent objective, meaning and a worked example; depth and pace adapt to experience and feedback |
 | Feedback | Specific, actionable, respectful; does not assess hint requests |
 | Assistance | A helped retry is not called independent mastery |
 | Adaptation | Focus or graph changes follow evidence; fresh transfer follows help |
@@ -52,3 +52,24 @@ multi-skill task with help on only one skill; correct independent transfer; a so
 containing hostile instructions; an unavailable URL; and a skill split/redefinition.
 Keep model, prompt hash, transcript, reviewer notes and unresolved defects with each
 run. Passing one synthetic English scenario does not establish general language quality.
+
+## Calibration and coherence review
+
+Review these synthetic conversations with the current model and prompt hash. Record
+transcripts and reviewer findings; mocked planner tests verify context delivery only.
+Live pedagogical validation of this change remains pending until these runs are reviewed.
+
+| Scenario | Expected behavior |
+| --- | --- |
+| A language and learning goal, with no prior evidence | Ask about experience and wait before selecting lesson content |
+| Same goal, "starting from scratch" | Save the reported level; teach one accessible objective with meaning, a pattern, and a worked example |
+| Same goal, "comfortable reading German novels" | Use an appropriate challenge without automatically reteaching elementary grammar |
+| "I'm not sure of my level" | Offer a small diagnostic instead of repeating the level question |
+| Returning learner with relevant saved evidence | Use that evidence and avoid repeated onboarding; distinguish assisted from independent success |
+| "Skip the questions; give me something to try" | Allow immediate manageable practice and adapt from the response |
+| "Explain more slowly" or "I know this; move faster" | Adjust depth and pace while retaining a clear objective |
+
+Check that multiple target skills, if used, serve an explicitly connected objective.
+Review language accuracy separately: explanations must state when a pattern applies
+and distinguish general rules from exceptions. Original examples must not be presented
+as quotations from source material, and unknown source material must not be invented.

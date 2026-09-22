@@ -15,7 +15,7 @@ from milai.tools import (
     record_learner_facts,
 )
 from milai.tutor import Tutor
-from tests.helpers import MockProvider, call, calls, say
+from tests.helpers import MockProvider, call, say
 
 
 def settings(tmp_path, **kwargs):
@@ -35,21 +35,18 @@ def context(store, learner, session, turn="seed", message="seed"):
 def skill_specs():
     return [
         {
-            "local_key": "gender",
             "key": "german.noun-gender-recognition",
             "name": "German noun gender recognition",
             "definition": "Recognize the grammatical gender of common German nouns.",
             "success_criteria": ["Select der, die, or das for familiar nouns."],
         },
         {
-            "local_key": "accusative",
             "key": "german.accusative-indefinite-articles",
             "name": "German accusative indefinite articles",
             "definition": "Choose the accusative form of German indefinite articles.",
             "success_criteria": ["Use einen with a masculine direct object."],
         },
         {
-            "local_key": "v2",
             "key": "german.main-clause-verb-second",
             "name": "German main-clause verb-second order",
             "definition": "Place the finite verb in second position in a main clause.",
@@ -67,18 +64,45 @@ def establish_plan():
         },
         "existing_skill_ids": [],
         "new_skills": skill_specs(),
-        "prerequisites": [{"prerequisite": "gender", "dependent": "accusative"}],
+        "prerequisites": [
+            {
+                "prerequisite": "german.noun-gender-recognition",
+                "dependent": "german.accusative-indefinite-articles",
+            }
+        ],
         "links": [
-            {"skill_ref": "gender", "role": "core", "priority": 1},
-            {"skill_ref": "accusative", "role": "core", "priority": 2},
-            {"skill_ref": "v2", "role": "core", "priority": 3},
+            {
+                "skill_ref": "german.noun-gender-recognition",
+                "role": "core",
+                "priority": 1,
+            },
+            {
+                "skill_ref": "german.accusative-indefinite-articles",
+                "role": "core",
+                "priority": 2,
+            },
+            {
+                "skill_ref": "german.main-clause-verb-second",
+                "role": "core",
+                "priority": 3,
+            },
         ],
         "initial_focus": {
-            "target_refs": ["accusative"],
-            "supporting_refs": ["gender", "v2"],
+            "target_refs": ["german.accusative-indefinite-articles"],
+            "supporting_refs": [
+                "german.noun-gender-recognition",
+                "german.main-clause-verb-second",
+            ],
             "reason": "Start with the minimum article contrast in a complete sentence.",
         },
     }
+
+
+def planner_plan():
+    plan = establish_plan().copy()
+    plan.pop("topic")
+    plan["existing_skill_keys"] = plan.pop("existing_skill_ids")
+    return plan
 
 
 def seed_graph(store, learner, session):
@@ -218,11 +242,35 @@ def test_graph_is_topic_independent_and_rejects_cycles_and_duplicates(tmp_path):
     store.close()
 
 
-def test_required_planner_precondition_is_runtime_validated(tmp_path):
+@pytest.mark.parametrize(
+    "level", [None, "Starting from scratch", "Comfortable reading simpler texts"]
+)
+def test_establish_topic_uses_private_structured_planner_and_derived_language(
+    tmp_path, level
+):
     store = Store(tmp_path / "visibility.db")
     learner = store.owner
     session = store.session(learner)
-    ctx = context(store, learner, session, message="German for work")
+    missing_profile = context(store, learner, session, message="Start a work topic")
+    with store.transaction():
+        result = asyncio.run(
+            invoke(
+                establish_topic,
+                missing_profile,
+                {"topic": {"name": "Work", "purpose": "Speak with colleagues"}},
+            )
+        )
+    assert json.loads(result)["error"] == "invalid_operation"
+
+    provider = MockProvider([say(json.dumps(planner_plan()))])
+    ctx = context(
+        store,
+        learner,
+        session,
+        message="German for work" + (f". {level}" if level else ""),
+    )
+    ctx.model = provider.model
+    ctx.planner_instructions = "Return the minimum reusable skill graph."
     with store.transaction():
         asyncio.run(
             invoke(
@@ -234,24 +282,189 @@ def test_required_planner_precondition_is_runtime_validated(tmp_path):
                             "field": "target_language",
                             "value": "German",
                             "learner_quote": "German",
-                        },
-                        {"field": "goals", "value": "work", "learner_quote": "work"},
+                        }
                     ]
                 },
             )
         )
+    if level is not None:
+        with store.transaction():
+            store.record_facts(
+                ctx, [{"field": "level", "value": level, "learner_quote": level}]
+            )
     with store.transaction():
-        result = asyncio.run(invoke(establish_topic, ctx, {"plan": establish_plan()}))
-    assert json.loads(result)["error"] == "invalid_operation"
-    assert store.topics(learner) == []
-    ctx.topic_plan_consulted = True
-    with store.transaction():
-        result = asyncio.run(invoke(establish_topic, ctx, {"plan": establish_plan()}))
+        result = asyncio.run(
+            invoke(
+                establish_topic,
+                ctx,
+                {
+                    "topic": {
+                        "name": "Ordering food in German",
+                        "purpose": "Apply foundational German grammar while ordering food.",
+                    }
+                },
+            )
+        )
     assert result["topic"]["name"] == "Ordering food in German"
+    assert result["topic"]["language"] == "German"
+    planner_input = json.loads(
+        provider.requests[0]["messages"][-1]["content"].split("\n", 1)[1]
+    )
+    assert planner_input["learner_profile"].get("level") == level
+    assert planner_input["learner_profile"]["target_language"] == "German"
+    assert planner_input["skill_evidence"] == []
+    assert planner_input["reusable_active_skills"] == []
+    assert provider.requests[0]["reasoning_effort"] == "high"
+    assert provider.requests[0]["response_format"]["type"] == "json_schema"
+    with store.transaction():
+        repeated = asyncio.run(
+            invoke(
+                establish_topic,
+                ctx,
+                {
+                    "topic": {
+                        "name": "Repeated topic",
+                        "purpose": "Must not run the private planner again.",
+                    }
+                },
+            )
+        )
+    assert json.loads(repeated)["error"] == "invalid_operation"
+    assert len(provider.requests) == 1
     store.close()
 
 
-def test_structured_activity_order_attempt_evidence_and_replay(tmp_path):
+def test_establish_topic_accepts_reused_skill_keys_from_planner(tmp_path):
+    store = Store(tmp_path / "reuse-keys.db")
+    learner = store.owner
+    session = store.session(learner)
+    seeded = seed_graph(store, learner, session)
+    skills = seeded["topic"]["skills"]
+    practiced_skill = next(
+        skill
+        for skill in skills
+        if skill["key"] == "german.accusative-indefinite-articles"
+    )
+    teach = context(store, learner, session, "teach-evidence", "Practice")
+    with store.transaction():
+        exercise = store.present_exercise(
+            teach,
+            {
+                "title": "Article practice",
+                "task": "Choose an article",
+                "context": "Food",
+                "scaffolding": "none",
+                "source_ids": [],
+                "skills": [
+                    {
+                        "skill_id": practiced_skill["id"],
+                        "role": "target",
+                        "success_criterion": "Choose correctly",
+                    }
+                ],
+            },
+        )
+        store.save_turn(teach, "Try this.", [])
+    attempt = context(store, learner, session, "attempt-evidence", "ein")
+    with store.transaction():
+        store.record_assistance(
+            attempt, exercise["id"], [practiced_skill["id"]], "hint", "Check gender."
+        )
+        store.assess_attempt(
+            attempt,
+            exercise["id"],
+            "Correct with help.",
+            [
+                {
+                    "skill_id": practiced_skill["id"],
+                    "outcome": "success",
+                    "rationale": "Correct article.",
+                }
+            ],
+        )
+        store.save_turn(attempt, "Correct with help.", [])
+    # A different language must never enter the German planner's evidence.
+    with store.transaction():
+        other_skills = [
+            {**skill, "key": skill["key"].replace("german.", "english.")}
+            for skill in skill_specs()
+        ]
+        store.establish_topic(
+            context(store, learner, session, "other"),
+            topic={
+                "language": "English",
+                "name": "English food",
+                "purpose": "Read menus",
+            },
+            existing_skill_ids=[],
+            new_skills=other_skills,
+            prerequisites=[],
+            links=[
+                {"skill_ref": skill["key"], "role": "core", "priority": index}
+                for index, skill in enumerate(other_skills, 1)
+            ],
+            focus={
+                "target_refs": [other_skills[0]["key"]],
+                "supporting_refs": [],
+                "reason": "Read",
+            },
+        )
+    plan = {
+        "existing_skill_keys": [skill["key"] for skill in skills],
+        "new_skills": [],
+        "prerequisites": [],
+        "links": [
+            {"skill_ref": skill["key"], "role": "core", "priority": position}
+            for position, skill in enumerate(skills, 1)
+        ],
+        "initial_focus": {
+            "target_refs": [skills[0]["key"]],
+            "supporting_refs": [skill["key"] for skill in skills[1:]],
+            "reason": "Reuse the established foundations in a new context.",
+        },
+    }
+    provider = MockProvider([say(json.dumps(plan))])
+    ctx = context(store, learner, session, "reuse", "German for travel")
+    ctx.model = provider.model
+    ctx.planner_instructions = "Return the minimum reusable skill graph."
+
+    with store.transaction():
+        result = asyncio.run(
+            invoke(
+                establish_topic,
+                ctx,
+                {
+                    "topic": {
+                        "name": "German travel conversations",
+                        "purpose": "Reuse foundational German while travelling.",
+                    }
+                },
+            )
+        )
+
+    assert {skill["id"] for skill in result["topic"]["skills"]} == {
+        skill["id"] for skill in skills
+    }
+    planner_input = json.loads(
+        provider.requests[0]["messages"][-1]["content"].split("\n", 1)[1]
+    )
+    evidence = {item["skill_key"]: item for item in planner_input["skill_evidence"]}
+    assert set(evidence) == {skill["key"] for skill in skills}
+    practiced = evidence[practiced_skill["key"]]
+    assert practiced["observations"] == 1
+    assert practiced["successes"] == 1
+    assert practiced["independent_successes"] == 0
+    assert practiced["assistance_events"] == 1
+    assert all("id" not in item for item in evidence.values())
+    assert all(
+        evidence[skill["key"]]["observations"] == 0
+        for skill in skills
+        if skill["id"] != practiced_skill["id"]
+    )
+    store.close()
+
+
+def test_free_text_explanation_structured_exercise_attempt_and_replay(tmp_path):
     store = Store(tmp_path / "activities.db")
     learner = store.owner
     session = store.session(learner)
@@ -262,21 +475,6 @@ def test_structured_activity_order_attempt_evidence_and_replay(tmp_path):
 
     teach = context(store, learner, session, "teach", "Teach me")
     with store.transaction():
-        theory = store.present_theory(
-            teach,
-            {
-                "title": "Accusative einen",
-                "skill_ids": [target],
-                "explanation": "A masculine direct object changes ein to einen.",
-                "examples": [
-                    {
-                        "example": "Ich möchte einen Tee.",
-                        "explanation": "Tee is masculine.",
-                    }
-                ],
-                "source_ids": [],
-            },
-        )
         exercise = store.present_exercise(
             teach,
             {
@@ -301,15 +499,16 @@ def test_structured_activity_order_attempt_evidence_and_replay(tmp_path):
         )
         store.save_turn(
             teach,
-            "Here is the rule and one practice item.",
+            "A masculine direct object changes ein to einen. "
+            "For example: Ich möchte einen Tee. Now try the exercise.",
             [{"private": "tool traffic"}],
         )
 
     reply = store.conversation(learner, session)[-1]
-    assert [item["kind"] for item in reply["activities"]] == ["theory", "exercise"]
-    assert reply["activities"][0] == theory
-    assert reply["activities"][1] == exercise
-    assert "tool traffic" not in json.dumps(store.model_history(learner, session))
+    assert reply["activities"] == [exercise]
+    replay = json.dumps(store.model_history(learner, session))
+    assert "masculine direct object" in replay
+    assert "tool traffic" not in replay
 
     attempt = context(store, learner, session, "attempt", "Ich möchte einen Tee.")
     with store.transaction():
@@ -401,51 +600,40 @@ def test_tutor_returns_structured_activities_and_failed_run_rolls_back(tmp_path)
     store = Store(config.database)
     learner = store.owner
     session = store.session(learner)
-    seeded = seed_graph(store, learner, session)
+    seeded = seed_graph(store, store.learning_scope(learner, session), session)
     ids = {skill["key"]: skill["id"] for skill in seeded["topic"]["skills"]}
     target = ids["german.accusative-indefinite-articles"]
     provider = MockProvider(
         [
-            calls(
-                (
-                    "present_theory",
-                    {
-                        "lesson": {
-                            "title": "Accusative articles",
-                            "skill_ids": [target],
-                            "explanation": "Use einen for a masculine direct object.",
-                            "examples": [],
-                            "source_ids": [],
+            call(
+                "present_exercise",
+                exercise={
+                    "title": "One article",
+                    "task": "Complete: Ich nehme ___ Kaffee.",
+                    "context": "At a café",
+                    "hint": "Check the noun's gender.",
+                    "scaffolding": "none",
+                    "skills": [
+                        {
+                            "skill_id": target,
+                            "role": "target",
+                            "success_criterion": "Use einen.",
                         }
-                    },
-                ),
-                (
-                    "present_exercise",
-                    {
-                        "exercise": {
-                            "title": "One article",
-                            "task": "Complete: Ich nehme ___ Kaffee.",
-                            "context": "At a café",
-                            "scaffolding": "none",
-                            "skills": [
-                                {
-                                    "skill_id": target,
-                                    "role": "target",
-                                    "success_criterion": "Use einen.",
-                                }
-                            ],
-                            "source_ids": [],
-                        }
-                    },
-                ),
+                    ],
+                    "source_ids": [],
+                },
             ),
-            say("Read the rule, then complete the exercise."),
+            say(
+                "Use einen for a masculine direct object. "
+                "Now complete the exercise below."
+            ),
         ]
     )
     tutor = Tutor(config, store, Telemetry(enabled=False), provider.model)
     reply = asyncio.run(tutor.respond(learner, session, "Teach me now"))
-    assert reply.text == "Read the rule, then complete the exercise."
-    assert [item["kind"] for item in reply.activities] == ["theory", "exercise"]
+    assert reply.turn_id == store.conversation(learner, session)[-1]["turn_id"]
+    assert reply.text.startswith("Use einen for a masculine direct object.")
+    assert [item["kind"] for item in reply.activities] == ["exercise"]
     assert store.conversation(learner, session)[-1]["activities"] == reply.activities
     asyncio.run(tutor.close())
 
@@ -453,12 +641,20 @@ def test_tutor_returns_structured_activities_and_failed_run_rolls_back(tmp_path)
     failed_provider = MockProvider(
         [
             call(
-                "present_theory",
-                lesson={
+                "present_exercise",
+                exercise={
                     "title": "Rolled back",
-                    "skill_ids": [target],
-                    "explanation": "This must not survive.",
-                    "examples": [],
+                    "task": "This must not survive.",
+                    "context": "Rollback test",
+                    "hint": "Look at the noun.",
+                    "scaffolding": "none",
+                    "skills": [
+                        {
+                            "skill_id": target,
+                            "role": "target",
+                            "success_criterion": "Complete the task.",
+                        }
+                    ],
                     "source_ids": [],
                 },
             )
@@ -467,12 +663,10 @@ def test_tutor_returns_structured_activities_and_failed_run_rolls_back(tmp_path)
     failed_tutor = Tutor(
         failed_config, store, Telemetry(enabled=False), failed_provider.model
     )
-    before = store.db.execute("SELECT count(*) FROM theory_lessons").fetchone()[0]
+    before = store.db.execute("SELECT count(*) FROM exercises").fetchone()[0]
     with pytest.raises(Exception, match="Max turns"):
         asyncio.run(failed_tutor.respond(learner, session, "Fail this turn"))
-    assert (
-        store.db.execute("SELECT count(*) FROM theory_lessons").fetchone()[0] == before
-    )
+    assert store.db.execute("SELECT count(*) FROM exercises").fetchone()[0] == before
     assert all(
         item["content"] != "Fail this turn"
         for item in store.conversation(learner, session)
@@ -538,7 +732,6 @@ def test_skill_split_preserves_old_evidence_and_repoints_topic_and_focus(tmp_pat
             [old_id],
             [
                 {
-                    "local_key": "acc_specific",
                     "key": "german.accusative-indefinite-articles",
                     "name": "German masculine accusative einen",
                     "definition": "Use einen for a masculine singular direct object.",
@@ -547,7 +740,6 @@ def test_skill_split_preserves_old_evidence_and_repoints_topic_and_focus(tmp_pat
                     ],
                 },
                 {
-                    "local_key": "acc_other",
                     "key": "german.accusative-nonmasculine-indefinite-articles",
                     "name": "German non-masculine accusative indefinite articles",
                     "definition": "Keep eine or ein for non-masculine direct objects.",
@@ -559,18 +751,24 @@ def test_skill_split_preserves_old_evidence_and_repoints_topic_and_focus(tmp_pat
             [
                 {
                     "old_skill_id": old_id,
-                    "new_skill_ref": "acc_specific",
+                    "new_skill_ref": "german.accusative-indefinite-articles",
                     "relation": "split",
                 },
                 {
                     "old_skill_id": old_id,
-                    "new_skill_ref": "acc_other",
+                    "new_skill_ref": "german.accusative-nonmasculine-indefinite-articles",
                     "relation": "split",
                 },
             ],
             [
-                {"old_skill_id": old_id, "replacement_ref": "acc_specific"},
-                {"old_skill_id": old_id, "replacement_ref": "acc_other"},
+                {
+                    "old_skill_id": old_id,
+                    "replacement_ref": "german.accusative-indefinite-articles",
+                },
+                {
+                    "old_skill_id": old_id,
+                    "replacement_ref": "german.accusative-nonmasculine-indefinite-articles",
+                },
             ],
             "The original definition mixed several article cases.",
         )
@@ -588,4 +786,182 @@ def test_skill_split_preserves_old_evidence_and_repoints_topic_and_focus(tmp_pat
     focus = store.focus(learner)
     assert focus is not None
     assert {new_id, other_id} <= {skill["id"] for skill in focus["skills"]}
+    store.close()
+
+
+def test_exercise_review_status_is_session_scoped_and_idempotent(tmp_path):
+    store = Store(tmp_path / "exercise-status.db")
+    learner = store.owner
+    session = store.session(learner)
+    scope = store.learning_scope(learner, session)
+    seed_graph(store, scope, session)
+    focus = store.focus(scope)
+    assert focus is not None
+    skill_id = focus["skills"][0]["id"]
+    teach = context(store, scope, session, "teach", "Teach")
+    with store.transaction():
+        exercise = store.present_exercise(
+            teach,
+            {
+                "title": "Practice",
+                "task": "Say it",
+                "context": "A cafe",
+                "scaffolding": "none",
+                "skills": [
+                    {
+                        "skill_id": skill_id,
+                        "role": "target",
+                        "success_criterion": "Say it correctly",
+                    }
+                ],
+                "source_ids": [],
+            },
+        )
+        store.save_turn(teach, "Explanation", [])
+    before = len(store.conversation(learner, session))
+    with store.transaction():
+        first = store.review_exercise(learner, session, exercise["id"])
+        second = store.review_exercise(learner, session, exercise["id"])
+    assert first == second
+    assert first["assisted"]
+    assert len(store.conversation(learner, session)) == before
+    assert (
+        store.db.execute(
+            "SELECT count(*) FROM assistance WHERE exercise_id=?", (exercise["id"],)
+        ).fetchone()[0]
+        == 1
+    )
+    other = store.session(learner)
+    with pytest.raises(ValueError):
+        store.exercise_status(learner, other, exercise["id"])
+    store.close()
+
+
+@pytest.mark.parametrize("help_first", [False, True])
+def test_exercise_status_rebuilds_success_after_reload(tmp_path, help_first):
+    path = tmp_path / "exercise-reload.db"
+    store = Store(path)
+    learner = store.owner
+    session = store.session(learner)
+    scope = store.learning_scope(learner, session)
+    seed_graph(store, scope, session)
+    focus = store.focus(scope)
+    assert focus is not None
+    skill_id = focus["skills"][0]["id"]
+    teach = context(store, scope, session, "teach", "Teach")
+    with store.transaction():
+        exercise = store.present_exercise(
+            teach,
+            {
+                "title": "Practice",
+                "task": "Say it",
+                "context": "A cafe",
+                "scaffolding": "none",
+                "skills": [
+                    {
+                        "skill_id": skill_id,
+                        "role": "target",
+                        "success_criterion": "Say it correctly",
+                    }
+                ],
+                "source_ids": [],
+            },
+        )
+        store.save_turn(teach, "Explanation", [])
+    if help_first:
+        with store.transaction():
+            store.review_exercise(learner, session, exercise["id"])
+    attempt = context(store, scope, session, "answer", "  exact learner text  ")
+    with store.transaction():
+        result = store.assess_attempt(
+            attempt,
+            exercise["id"],
+            "Correct",
+            [{"skill_id": skill_id, "outcome": "success", "rationale": "Correct form"}],
+        )
+        store.save_turn(attempt, "Correct", [])
+    assert result["learner_response"] == "  exact learner text  "
+    assert result["observations"][0]["independent_success"] is not help_first
+    store.close()
+    reopened = Store(path)
+    status = reopened.exercise_status(learner, session, exercise["id"])
+    assert status["completed"]
+    assert status["assisted"] is help_first
+    assert status["latest_assessment"]["learner_response"] == "  exact learner text  "
+    assert "exact learner text" in json.dumps(reopened.model_history(learner, session))
+    reopened.close()
+
+
+@pytest.mark.parametrize(
+    ("outcomes", "completed"),
+    [
+        ({2: "success"}, False),
+        ({0: "success"}, False),
+        ({0: "success", 1: "uncertain"}, False),
+        ({0: "success", 1: "needs_work"}, False),
+        ({0: "success", 1: "success"}, True),
+        ({0: "success", 1: "success", 2: "needs_work"}, False),
+        ({0: "success", 1: "success", 2: "success"}, True),
+    ],
+)
+def test_completion_requires_all_targets_in_latest_attempt(
+    tmp_path, outcomes, completed
+):
+    store = Store(tmp_path / "completion.db")
+    learner = store.owner
+    session = store.session(learner)
+    scope = store.learning_scope(learner, session)
+    seeded = seed_graph(store, scope, session)
+    skills = seeded["topic"]["skills"]
+    teach = context(store, scope, session, "teach-targets", "Practice")
+    with store.transaction():
+        store.set_focus(
+            teach,
+            seeded["topic"]["id"],
+            [skill["id"] for skill in skills[:2]],
+            [skills[2]["id"]],
+            "Practice two target skills together",
+        )
+        exercise = store.present_exercise(
+            teach,
+            {
+                "title": "Two targets",
+                "task": "Use both patterns",
+                "context": "Practice",
+                "scaffolding": "none",
+                "source_ids": [],
+                "skills": [
+                    {
+                        "skill_id": skill["id"],
+                        "role": "target" if index < 2 else "supporting",
+                        "success_criterion": "Use the pattern correctly",
+                    }
+                    for index, skill in enumerate(skills)
+                ],
+            },
+        )
+        store.save_turn(teach, "Try both patterns", [])
+    assert not store.exercise_status(learner, session, exercise["id"])["completed"]
+    # Earlier success on one target cannot fill an omission in the latest attempt.
+    for turn, observations in enumerate(({1: "success"}, outcomes)):
+        attempt = context(store, scope, session, f"attempt-{turn}", "Answer")
+        with store.transaction():
+            store.assess_attempt(
+                attempt,
+                exercise["id"],
+                "Feedback",
+                [
+                    {
+                        "skill_id": skills[index]["id"],
+                        "outcome": outcome,
+                        "rationale": "Observed",
+                    }
+                    for index, outcome in observations.items()
+                ],
+            )
+            store.save_turn(attempt, "Feedback", [])
+    assert (
+        store.exercise_status(learner, session, exercise["id"])["completed"]
+        is completed
+    )
     store.close()

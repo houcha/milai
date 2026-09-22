@@ -20,7 +20,7 @@ hooks = [
 repo = "https://github.com/crate-ci/typos"
 rev = "v1.45.0"
 hooks = [
-  { id = "typos" },
+  { id = "typos", exclude = "^src/milai/web/markdown[.]bundle[.]js$" },
 ]
 
 [[repos]]

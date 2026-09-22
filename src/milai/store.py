@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-SCHEMA_VERSION = "2"
+SCHEMA_VERSION = "3"
 
 
 def identifier() -> str:
@@ -115,25 +115,9 @@ CREATE TABLE focus_skills (
     focus_id TEXT NOT NULL REFERENCES focuses(id), skill_id TEXT NOT NULL REFERENCES skills(id),
     role TEXT NOT NULL CHECK(role IN ('target', 'supporting')), PRIMARY KEY(focus_id, skill_id)
 );
-CREATE TABLE theory_lessons (
-    id TEXT PRIMARY KEY, learner TEXT NOT NULL, topic_id TEXT NOT NULL REFERENCES topics(id),
-    title TEXT NOT NULL, explanation TEXT NOT NULL, created_turn TEXT NOT NULL, created TEXT NOT NULL
-);
-CREATE TABLE theory_lesson_skills (
-    lesson_id TEXT NOT NULL REFERENCES theory_lessons(id), skill_id TEXT NOT NULL REFERENCES skills(id),
-    PRIMARY KEY(lesson_id, skill_id)
-);
-CREATE TABLE theory_examples (
-    lesson_id TEXT NOT NULL REFERENCES theory_lessons(id), position INTEGER NOT NULL,
-    example TEXT NOT NULL, explanation TEXT NOT NULL, PRIMARY KEY(lesson_id, position)
-);
-CREATE TABLE theory_sources (
-    lesson_id TEXT NOT NULL REFERENCES theory_lessons(id), source_id TEXT NOT NULL REFERENCES sources(id),
-    PRIMARY KEY(lesson_id, source_id)
-);
 CREATE TABLE exercises (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, topic_id TEXT NOT NULL REFERENCES topics(id),
-    title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL,
+    title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL, hint TEXT,
     scaffolding TEXT NOT NULL CHECK(scaffolding IN ('none', 'cues', 'worked_example')),
     created_turn TEXT NOT NULL, created TEXT NOT NULL
 );
@@ -168,10 +152,9 @@ CREATE TABLE skill_observations (
     created TEXT NOT NULL, UNIQUE(attempt_id, skill_id)
 );
 CREATE INDEX observations_skill ON skill_observations(learner, skill_id, created);
-CREATE TABLE turn_presentations (
+CREATE TABLE turn_exercises (
     turn_id TEXT NOT NULL REFERENCES turns(id), position INTEGER NOT NULL,
-    kind TEXT NOT NULL CHECK(kind IN ('theory', 'exercise')), activity_id TEXT NOT NULL,
-    PRIMARY KEY(turn_id, position)
+    exercise_id TEXT NOT NULL REFERENCES exercises(id), PRIMARY KEY(turn_id, position)
 );
 """
 
@@ -212,6 +195,36 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
+        # Add session ownership without resetting existing conversations. The old
+        # shared learning state belongs to the most recently used legacy session.
+        if "session_scopes" not in tables:
+            with self.transaction():
+                self.db.execute(
+                    "CREATE TABLE IF NOT EXISTS session_scopes ("
+                    "session TEXT PRIMARY KEY REFERENCES sessions(id), "
+                    "scope TEXT NOT NULL UNIQUE, title TEXT NOT NULL DEFAULT '')"
+                )
+                seen = set()
+                for row in self.db.execute(
+                    "SELECT s.id, s.learner FROM sessions s ORDER BY "
+                    "EXISTS (SELECT 1 FROM turns WHERE session=s.id) DESC, "
+                    "coalesce((SELECT max(created) FROM turns WHERE session=s.id), s.created) DESC, s.rowid DESC"
+                ).fetchall():
+                    scope = (
+                        row["learner"]
+                        if row["learner"] not in seen
+                        else f"session:{row['id']}"
+                    )
+                    seen.add(row["learner"])
+                    self.db.execute(
+                        "INSERT INTO session_scopes(session, scope) VALUES (?, ?)",
+                        (row["id"], scope),
+                    )
+        if "hint" not in {
+            row[1] for row in self.db.execute("PRAGMA table_info(exercises)")
+        }:
+            self.db.execute("ALTER TABLE exercises ADD COLUMN hint TEXT")
+
     @classmethod
     def reset(cls, path: Path) -> list[Path]:
         """Archive an existing database and sidecars, then create schema v2."""
@@ -239,17 +252,103 @@ class Store:
             self.authorize(learner, session)
             return session
         session = identifier()
-        self.db.execute(
-            "INSERT INTO sessions(id, learner, created) VALUES (?, ?, ?)",
-            (session, learner, now()),
-        )
+        with self.savepoint():
+            self.db.execute(
+                "INSERT INTO sessions(id, learner, created) VALUES (?, ?, ?)",
+                (session, learner, now()),
+            )
+            self.db.execute(
+                "INSERT INTO session_scopes(session, scope) VALUES (?, ?)",
+                (session, f"session:{session}"),
+            )
         return session
+
+    def learning_scope(self, learner: str, session: str) -> str:
+        self.authorize(learner, session)
+        return self.db.execute(
+            "SELECT scope FROM session_scopes WHERE session=?", (session,)
+        ).fetchone()[0]
+
+    def sessions(self, learner: str) -> list[dict]:
+        return [
+            dict(row)
+            for row in self.db.execute(
+                "SELECT s.id, s.created, coalesce(nullif(sc.title, ''), "
+                "(SELECT substr(message, 1, 80) FROM turns WHERE session=s.id ORDER BY rowid LIMIT 1), "
+                "'New learning session') AS title, "
+                "(SELECT count(*) FROM turns WHERE session=s.id) AS turns "
+                "FROM sessions s JOIN session_scopes sc ON sc.session=s.id "
+                "WHERE s.learner=? ORDER BY s.rowid DESC",
+                (learner,),
+            )
+        ]
+
+    def rename_session(self, learner: str, session: str, title: str) -> None:
+        self.authorize(learner, session)
+        if not isinstance(title, str) or not 1 <= len(title.strip()) <= 80:
+            raise ValueError("Use a session name between 1 and 80 characters")
+        self.db.execute(
+            "UPDATE session_scopes SET title=? WHERE session=?",
+            (title.strip(), session),
+        )
+
+    def delete_session(self, learner: str, session: str) -> None:
+        scope = self.learning_scope(learner, session)
+        with self.transaction():
+            # Delete dependent records before their parents, retaining other sessions.
+            for table, parent, column in (
+                ("turn_exercises", "exercises", "exercise_id"),
+                ("assistance_skills", "assistance", "assistance_id"),
+                ("exercise_sources", "exercises", "exercise_id"),
+                ("exercise_skills", "exercises", "exercise_id"),
+                ("focus_skills", "focuses", "focus_id"),
+                ("topic_skills", "topics", "topic_id"),
+                ("skill_supersessions", "skill_changes", "change_id"),
+            ):
+                self.db.execute(
+                    f"DELETE FROM {table} WHERE {column} IN (SELECT id FROM {parent} WHERE learner=?)",
+                    (scope,),
+                )
+            for table in (
+                "skill_observations",
+                "attempts",
+                "assistance",
+                "exercises",
+                "focuses",
+                "skill_prerequisites",
+                "skill_changes",
+                "topics",
+                "skills",
+                "sources",
+                "learner_facts",
+            ):
+                self.db.execute(f"DELETE FROM {table} WHERE learner=?", (scope,))
+            self.db.execute(
+                "DELETE FROM turn_exercises WHERE turn_id IN (SELECT id FROM turns WHERE session=?)",
+                (session,),
+            )
+            self.db.execute(
+                "DELETE FROM events WHERE session=? OR learner=?", (session, scope)
+            )
+            self.db.execute("DELETE FROM turns WHERE session=?", (session,))
+            self.db.execute("DELETE FROM session_scopes WHERE session=?", (session,))
+            self.db.execute("DELETE FROM sessions WHERE id=?", (session,))
+
+    def latest_session(self, learner: str) -> str | None:
+        row = self.db.execute(
+            "SELECT s.id FROM sessions s WHERE s.learner=? "
+            "AND EXISTS (SELECT 1 FROM turns t WHERE t.session=s.id) "
+            "ORDER BY s.rowid DESC LIMIT 1",
+            (learner,),
+        ).fetchone()
+        return row[0] if row else None
 
     def authorize(self, learner: str, session: str) -> None:
         row = self.db.execute(
-            "SELECT learner FROM sessions WHERE id=?", (session,)
+            "SELECT s.learner, sc.scope FROM sessions s LEFT JOIN session_scopes sc ON sc.session=s.id WHERE s.id=?",
+            (session,),
         ).fetchone()
-        if row is None or row[0] != learner:
+        if row is None or learner not in (row[0], row[1]):
             raise PermissionError("Session is unavailable for this learner")
 
     @contextmanager
@@ -300,7 +399,6 @@ class Store:
             "skills",
             "topics",
             "focuses",
-            "theory_lessons",
             "exercises",
             "assistance",
             "attempts",
@@ -500,8 +598,9 @@ class Store:
             if skill["language"] != language:
                 raise InvalidReference("Skill language does not match the topic")
             resolved[skill_id] = skill_id
+            resolved[skill["key"]] = skill_id
         for spec in new_specs:
-            if spec["local_key"] in resolved:
+            if spec["key"] in resolved:
                 raise ValueError("Duplicate skill reference")
             if spec["key"] in created_keys:
                 raise ValueError("New skill keys must be unique within one operation")
@@ -515,7 +614,7 @@ class Store:
                 )
             skill_id = self._create_skill(ctx, language, spec)
             created_keys.add(spec["key"])
-            resolved[spec["local_key"]] = skill_id
+            resolved[spec["key"]] = skill_id
             resolved[skill_id] = skill_id
         return resolved
 
@@ -615,7 +714,7 @@ class Store:
         if not 3 <= core <= 8:
             raise ValueError("A new topic needs 3–8 core skills")
         supplied = set(existing_skill_ids) | {
-            self._resolve(s["local_key"], resolved) for s in new_skills
+            self._resolve(s["key"], resolved) for s in new_skills
         }
         if supplied != linked:
             raise ValueError("Every supplied skill must be linked to the topic")
@@ -676,7 +775,7 @@ class Store:
                 "INSERT INTO topic_skills VALUES (?, ?, ?, ?, ?)",
                 (topic_id, skill_id, link["role"], link["priority"], now()),
             )
-        new_ids = {self._resolve(skill["local_key"], resolved) for skill in new_skills}
+        new_ids = {self._resolve(skill["key"], resolved) for skill in new_skills}
         if not new_ids <= linked:
             raise ValueError("Every new expansion skill must be linked exactly once")
         already_linked = {
@@ -911,7 +1010,7 @@ class Store:
 
     def topics(self, learner: str) -> list[dict]:
         rows = self.db.execute(
-            "SELECT id FROM topics WHERE learner=? AND status='active' ORDER BY created",
+            "SELECT id FROM topics WHERE learner=? AND status='active' ORDER BY created, rowid",
             (learner,),
         ).fetchall()
         return [self.topic(learner, row[0]) for row in rows]
@@ -952,49 +1051,6 @@ class Store:
             if self._owned("sources", learner, source_id)["status"] != "available":
                 raise InvalidReference("Only available sources can support an activity")
 
-    def present_theory(self, ctx: Any, lesson: dict) -> dict:
-        focus = self.focus(ctx.learner)
-        if focus is None:
-            raise ValueError("Set a learning focus before presenting theory")
-        focus_ids = {item["id"] for item in focus["skills"] if item["role"] == "target"}
-        skill_ids = lesson["skill_ids"]
-        if not 1 <= len(skill_ids) <= 3 or not set(skill_ids) <= focus_ids:
-            raise InvalidReference(
-                "Theory must address 1–3 target skills in the active focus"
-            )
-        self._validate_sources(ctx.learner, lesson["source_ids"])
-        lesson_id = identifier()
-        self.db.execute(
-            "INSERT INTO theory_lessons VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                lesson_id,
-                ctx.learner,
-                focus["topic_id"],
-                lesson["title"],
-                lesson["explanation"],
-                ctx.turn_id,
-                now(),
-            ),
-        )
-        self.db.executemany(
-            "INSERT INTO theory_lesson_skills VALUES (?, ?)",
-            [(lesson_id, skill_id) for skill_id in skill_ids],
-        )
-        self.db.executemany(
-            "INSERT INTO theory_examples VALUES (?, ?, ?, ?)",
-            [
-                (lesson_id, position, example["example"], example["explanation"])
-                for position, example in enumerate(lesson["examples"])
-            ],
-        )
-        self.db.executemany(
-            "INSERT INTO theory_sources VALUES (?, ?)",
-            [(lesson_id, source_id) for source_id in lesson["source_ids"]],
-        )
-        self._event(ctx, "theory", lesson_id)
-        ctx.presentations.append(("theory", lesson_id))
-        return self.activity(ctx.learner, "theory", lesson_id)
-
     def present_exercise(self, ctx: Any, exercise: dict) -> dict:
         focus = self.focus(ctx.learner)
         if focus is None:
@@ -1018,7 +1074,7 @@ class Store:
         self._validate_sources(ctx.learner, exercise["source_ids"])
         exercise_id = identifier()
         self.db.execute(
-            "INSERT INTO exercises VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO exercises (id, learner, topic_id, title, task, context, hint, scaffolding, created_turn, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 exercise_id,
                 ctx.learner,
@@ -1026,6 +1082,7 @@ class Store:
                 exercise["title"],
                 exercise["task"],
                 exercise["context"],
+                exercise.get("hint"),
                 exercise["scaffolding"],
                 ctx.turn_id,
                 now(),
@@ -1043,15 +1100,15 @@ class Store:
             [(exercise_id, source_id) for source_id in exercise["source_ids"]],
         )
         self._event(ctx, "exercise", exercise_id)
-        ctx.presentations.append(("exercise", exercise_id))
-        return self.activity(ctx.learner, "exercise", exercise_id)
+        ctx.exercise_ids.append(exercise_id)
+        return self.exercise(ctx.learner, exercise_id)
 
     def record_assistance(
         self, ctx: Any, exercise_id: str, skill_ids: list[str], level: str, content: str
     ) -> dict:
         exercise = self._owned("exercises", ctx.learner, exercise_id)
         if not self.db.execute(
-            "SELECT 1 FROM turn_presentations WHERE kind='exercise' AND activity_id=?",
+            "SELECT 1 FROM turn_exercises WHERE exercise_id=?",
             (exercise_id,),
         ).fetchone():
             raise InvalidReference("The exercise was not presented in a committed turn")
@@ -1099,7 +1156,7 @@ class Store:
                 "Cannot assess an exercise before the learner can attempt it"
             )
         if not self.db.execute(
-            "SELECT 1 FROM turn_presentations WHERE kind='exercise' AND activity_id=?",
+            "SELECT 1 FROM turn_exercises WHERE exercise_id=?",
             (exercise_id,),
         ).fetchone():
             raise InvalidReference("The exercise was not presented in a committed turn")
@@ -1176,80 +1233,203 @@ class Store:
             "observations": saved,
         }
 
-    def activity(self, learner: str, kind: str, activity_id: str) -> dict:
-        if kind == "theory":
-            row = self._owned("theory_lessons", learner, activity_id)
-            skills = [
-                self.skill(learner, item[0])
-                for item in self.db.execute(
-                    "SELECT skill_id FROM theory_lesson_skills WHERE lesson_id=?",
-                    (activity_id,),
-                )
-            ]
-            examples = [
-                {"example": item[0], "explanation": item[1]}
-                for item in self.db.execute(
-                    "SELECT example, explanation FROM theory_examples WHERE lesson_id=? ORDER BY position",
-                    (activity_id,),
-                )
-            ]
-            sources = [
-                item[0]
-                for item in self.db.execute(
-                    "SELECT source_id FROM theory_sources WHERE lesson_id=?",
-                    (activity_id,),
-                )
-            ]
-            return {
-                "id": activity_id,
-                "kind": "theory",
-                "title": row["title"],
-                "explanation": row["explanation"],
-                "skills": [{"id": s["id"], "name": s["name"]} for s in skills],
-                "examples": examples,
-                "source_ids": sources,
-            }
-        if kind == "exercise":
-            row = self._owned("exercises", learner, activity_id)
-            skills = []
+    def exercise(self, learner: str, exercise_id: str) -> dict:
+        row = self._owned("exercises", learner, exercise_id)
+        skills = []
+        for item in self.db.execute(
+            "SELECT skill_id, role, success_criterion FROM exercise_skills WHERE exercise_id=? "
+            "ORDER BY CASE role WHEN 'target' THEN 0 ELSE 1 END",
+            (exercise_id,),
+        ):
+            skill = self.skill(learner, item["skill_id"])
+            skills.append(
+                {
+                    "id": skill["id"],
+                    "name": skill["name"],
+                    "role": item["role"],
+                    "success_criterion": item["success_criterion"],
+                }
+            )
+        sources = [
+            item[0]
             for item in self.db.execute(
-                "SELECT skill_id, role, success_criterion FROM exercise_skills WHERE exercise_id=? "
-                "ORDER BY CASE role WHEN 'target' THEN 0 ELSE 1 END",
-                (activity_id,),
-            ):
-                skill = self.skill(learner, item["skill_id"])
-                skills.append(
-                    {
-                        "id": skill["id"],
-                        "name": skill["name"],
-                        "role": item["role"],
-                        "success_criterion": item["success_criterion"],
-                    }
+                "SELECT source_id FROM exercise_sources WHERE exercise_id=?",
+                (exercise_id,),
+            )
+        ]
+        return {
+            "id": exercise_id,
+            "kind": "exercise",
+            "title": row["title"],
+            "task": row["task"],
+            "context": row["context"],
+            "scaffolding": row["scaffolding"],
+            "skills": skills,
+            "source_ids": sources,
+        }
+
+    def exercise_hint(self, learner: str, session: str, exercise_id: str) -> dict:
+        status = self.exercise_status(learner, session, exercise_id)
+        if status["completed"]:
+            raise ValueError("This exercise is already complete")
+        scope = self.learning_scope(learner, session)
+        row = self._owned("exercises", scope, exercise_id)
+        hint = row["hint"]
+        if not hint:
+            return {"hint": None, "status": status}
+        if not self.db.execute(
+            "SELECT 1 FROM assistance WHERE exercise_id=? AND level='hint' AND content=? LIMIT 1",
+            (exercise_id, hint),
+        ).fetchone():
+            assistance_id = identifier()
+            self.db.execute(
+                "INSERT INTO assistance VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (assistance_id, scope, exercise_id, "hint", hint, identifier(), now()),
+            )
+            self.db.executemany(
+                "INSERT INTO assistance_skills VALUES (?, ?)",
+                [
+                    (assistance_id, skill["id"])
+                    for skill in self.exercise(scope, exercise_id)["skills"]
+                ],
+            )
+            self.db.execute(
+                "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    identifier(),
+                    scope,
+                    session,
+                    identifier(),
+                    assistance_id,
+                    "assistance",
+                    now(),
+                    "application-hint",
+                ),
+            )
+        return {
+            "hint": hint,
+            "status": self.exercise_status(learner, session, exercise_id),
+        }
+
+    def exercise_status(self, learner: str, session: str, exercise_id: str) -> dict:
+        self.authorize(learner, session)
+        scope = self.learning_scope(learner, session)
+        exercise = self.exercise(scope, exercise_id)
+        target_ids = {
+            skill["id"] for skill in exercise["skills"] if skill["role"] == "target"
+        }
+        if not self.db.execute(
+            "SELECT 1 FROM turn_exercises p JOIN turns t ON t.id=p.turn_id "
+            "WHERE p.exercise_id=? AND t.session=?",
+            (exercise_id, session),
+        ).fetchone():
+            raise InvalidReference("Exercise is unavailable in this session")
+        rows = self.db.execute(
+            "SELECT a.id, a.learner_response, a.feedback FROM attempts a "
+            "JOIN turns t ON t.id=a.turn_id WHERE a.exercise_id=? AND t.session=? "
+            "ORDER BY a.rowid",
+            (exercise_id, session),
+        ).fetchall()
+        assessments = []
+        for row in rows:
+            assessments.append(
+                {
+                    "id": row["id"],
+                    "learner_response": row["learner_response"],
+                    "feedback": row["feedback"],
+                    "observations": [
+                        dict(item)
+                        for item in self.db.execute(
+                            "SELECT skill_id, outcome, rationale, independent_success "
+                            "FROM skill_observations WHERE attempt_id=?",
+                            (row["id"],),
+                        )
+                    ],
+                }
+            )
+        assessment = assessments[-1] if assessments else None
+        assisted = (
+            self.db.execute(
+                "SELECT 1 FROM assistance WHERE exercise_id=? LIMIT 1", (exercise_id,)
+            ).fetchone()
+            is not None
+        )
+        return {
+            "latest_assessment": assessment,
+            "assessments": assessments,
+            "assisted": assisted,
+            "completed": bool(
+                assessment
+                and target_ids
+                <= {
+                    item["skill_id"]
+                    for item in assessment["observations"]
+                    if item["outcome"] == "success"
+                }
+                and all(
+                    item["outcome"] == "success" for item in assessment["observations"]
                 )
-            sources = [
-                item[0]
-                for item in self.db.execute(
-                    "SELECT source_id FROM exercise_sources WHERE exercise_id=?",
-                    (activity_id,),
-                )
-            ]
-            return {
-                "id": activity_id,
-                "kind": "exercise",
-                "title": row["title"],
-                "task": row["task"],
-                "context": row["context"],
-                "scaffolding": row["scaffolding"],
-                "skills": skills,
-                "source_ids": sources,
-            }
-        raise InvalidReference("Unknown activity kind")
+            ),
+        }
+
+    def exercise_statuses(self, learner: str, session: str) -> dict:
+        self.authorize(learner, session)
+        ids = self.db.execute(
+            "SELECT p.exercise_id FROM turn_exercises p JOIN turns t ON t.id=p.turn_id "
+            "WHERE t.session=?",
+            (session,),
+        )
+        return {row[0]: self.exercise_status(learner, session, row[0]) for row in ids}
+
+    def review_exercise(self, learner: str, session: str, exercise_id: str) -> dict:
+        self.exercise_status(learner, session, exercise_id)
+        scope = self.learning_scope(learner, session)
+        existing = self.db.execute(
+            "SELECT 1 FROM assistance WHERE exercise_id=? AND level='explanation' "
+            "AND content='Reviewed explanation in conversation' LIMIT 1",
+            (exercise_id,),
+        ).fetchone()
+        if not existing:
+            assistance_id = identifier()
+            self.db.execute(
+                "INSERT INTO assistance VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    assistance_id,
+                    scope,
+                    exercise_id,
+                    "explanation",
+                    "Reviewed explanation in conversation",
+                    identifier(),
+                    now(),
+                ),
+            )
+            self.db.executemany(
+                "INSERT INTO assistance_skills VALUES (?, ?)",
+                [
+                    (assistance_id, skill["id"])
+                    for skill in self.exercise(scope, exercise_id)["skills"]
+                ],
+            )
+            self.db.execute(
+                "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    identifier(),
+                    scope,
+                    session,
+                    identifier(),
+                    assistance_id,
+                    "assistance",
+                    now(),
+                    "application-review",
+                ),
+            )
+        return self.exercise_status(learner, session, exercise_id)
 
     def _turn_activities(self, learner: str, turn_id: str) -> list[dict]:
         return [
-            self.activity(learner, row["kind"], row["activity_id"])
+            self.exercise(learner, row["exercise_id"])
             for row in self.db.execute(
-                "SELECT kind, activity_id FROM turn_presentations WHERE turn_id=? ORDER BY position",
+                "SELECT exercise_id FROM turn_exercises WHERE turn_id=? ORDER BY position",
                 (turn_id,),
             )
         ]
@@ -1268,56 +1448,77 @@ class Store:
                 ctx.prompt_version,
             ),
         )
-        for position, (kind, activity_id) in enumerate(ctx.presentations):
-            activity = self.activity(ctx.learner, kind, activity_id)
-            table = "theory_lessons" if kind == "theory" else "exercises"
-            row = self._owned(table, ctx.learner, activity["id"])
+        for position, exercise_id in enumerate(ctx.exercise_ids):
+            row = self._owned("exercises", ctx.learner, exercise_id)
             if row["created_turn"] != ctx.turn_id:
                 raise InvalidReference(
-                    "Only activities created in this turn can be presented"
+                    "Only exercises created in this turn can be presented"
                 )
             self.db.execute(
-                "INSERT INTO turn_presentations VALUES (?, ?, ?, ?)",
-                (ctx.turn_id, position, kind, activity_id),
+                "INSERT INTO turn_exercises VALUES (?, ?, ?)",
+                (ctx.turn_id, position, exercise_id),
             )
 
-    def conversation(self, learner: str, session: str, limit: int = 50) -> list[dict]:
+    def conversation(
+        self, learner: str, session: str, limit: int | None = 50
+    ) -> list[dict]:
         self.authorize(learner, session)
-        rows = self.db.execute(
-            "SELECT id, created, message, reply FROM turns WHERE session=? ORDER BY rowid DESC LIMIT ?",
-            (session, limit),
-        ).fetchall()
+        query = "SELECT id, learner, created, message, reply FROM turns WHERE session=? ORDER BY rowid DESC"
+        parameters: tuple = (session,)
+        if limit is not None:
+            query += " LIMIT ?"
+            parameters = (session, limit)
+        rows = self.db.execute(query, parameters).fetchall()
         messages = []
         for row in reversed(rows):
             messages.extend(
                 (
                     {
                         "role": "user",
+                        "turn_id": row["id"],
                         "content": row["message"],
                         "created": row["created"],
                     },
                     {
                         "role": "assistant",
+                        "turn_id": row["id"],
                         "content": row["reply"],
-                        "activities": self._turn_activities(learner, row["id"]),
+                        "activities": self._turn_activities(row["learner"], row["id"]),
                         "created": row["created"],
                     },
                 )
             )
         return messages
 
+    def topic_anchors(self, learner: str, session: str) -> dict[str, str]:
+        """Browser navigation links, derived only from committed session turns."""
+        self.authorize(learner, session)
+        scope = self.learning_scope(learner, session)
+        rows = self.db.execute(
+            "SELECT e.entity_id, e.turn_id FROM events e "
+            "JOIN turns t ON t.id=e.turn_id AND t.session=e.session "
+            "JOIN topics p ON p.id=e.entity_id AND p.learner=e.learner "
+            "WHERE e.learner=? AND e.session=? AND e.kind='topic' "
+            "ORDER BY t.rowid, e.rowid",
+            (scope, session),
+        )
+        anchors: dict[str, str] = {}
+        for row in rows:
+            anchors.setdefault(row["entity_id"], row["turn_id"])
+        return anchors
+
     def model_history(
         self, learner: str, session: str, max_turns: int = 6, max_chars: int = 20_000
     ) -> list[dict]:
         self.authorize(learner, session)
         rows = self.db.execute(
-            "SELECT id, message, reply FROM turns WHERE session=? ORDER BY rowid DESC LIMIT ?",
+            "SELECT id, learner, message, reply FROM turns WHERE session=? ORDER BY rowid DESC LIMIT ?",
             (session, max_turns),
         ).fetchall()
         selected: list[tuple[sqlite3.Row, str]] = []
         size = 0
         for row in rows:
-            activities = self._turn_activities(learner, row["id"])
+            activities = self._turn_activities(row["learner"], row["id"])
             assistant = row["reply"]
             if activities:
                 assistant += "\n\nPresented activities:\n" + _json(activities)
@@ -1418,12 +1619,12 @@ class Store:
 
     def active_exercise(self, learner: str) -> dict | None:
         row = self.db.execute(
-            "SELECT e.id FROM exercises e JOIN turn_presentations p "
-            "ON p.activity_id=e.id AND p.kind='exercise' "
+            "SELECT e.id FROM exercises e JOIN turn_exercises p "
+            "ON p.exercise_id=e.id "
             "WHERE e.learner=? ORDER BY e.rowid DESC LIMIT 1",
             (learner,),
         ).fetchone()
-        return self.activity(learner, "exercise", row[0]) if row else None
+        return self.exercise(learner, row[0]) if row else None
 
     def prompt_state(self, learner: str, max_chars: int = 16_000) -> dict:
         focus = self.focus(learner)
@@ -1615,6 +1816,13 @@ class Store:
 
     def inspect(self, learner: str) -> dict:
         return {
+            "learning_sessions": [
+                {
+                    **session,
+                    "state": self.snapshot(self.learning_scope(learner, session["id"])),
+                }
+                for session in self.sessions(learner)
+            ],
             "schema_version": SCHEMA_VERSION,
             "state": self.snapshot(learner),
             "events": [

@@ -7,12 +7,12 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from openai import RateLimitError
+from openai import APITimeoutError, RateLimitError
 
 from milai.config import Settings
 from milai.observability import Telemetry
 from milai.probe import probe
-from milai.store import SchemaMismatch, Store
+from milai.store import SCHEMA_VERSION, SchemaMismatch, Store
 from milai.tutor import Tutor, TutorReply
 from milai.web import serve
 
@@ -42,13 +42,15 @@ async def chat(settings: Settings, session: str | None):
             if message.strip() == "/state":
                 print(
                     json.dumps(
-                        store.snapshot(store.owner), indent=2, ensure_ascii=False
+                        store.snapshot(store.learning_scope(store.owner, session)),
+                        indent=2,
+                        ensure_ascii=False,
                     )
                 )
                 continue
             if message.strip() == "/new":
                 session = store.session(store.owner)
-                print(f"New conversation: {session}; learning memory retained.")
+                print(f"New session: {session}; a fresh learning path.")
                 continue
             try:
                 reply = await tutor.respond(store.owner, session, message)
@@ -58,6 +60,11 @@ async def chat(settings: Settings, session: str | None):
                     "Provider quota reached; this turn's learning changes were rolled "
                     "back. Wait for the quota to reset before sending it again. "
                     "No paid fallback was used."
+                )
+            except (APITimeoutError, TimeoutError):
+                print(
+                    "Model provider timed out; this turn was not saved. "
+                    "Try again shortly."
                 )
             except Exception as exc:
                 print(
@@ -74,14 +81,9 @@ def print_reply(reply: TutorReply) -> None:
         print(f"Tutor: {reply.text}")
     for activity in reply.activities:
         print(f"\n[{activity['kind'].upper()}] {activity['title']}")
-        if activity["kind"] == "theory":
-            print(activity["explanation"])
-            for example in activity["examples"]:
-                print(f"  • {example['example']} — {example['explanation']}")
-        else:
-            if activity.get("context"):
-                print(f"Context: {activity['context']}")
-            print(activity["task"])
+        if activity.get("context"):
+            print(f"Context: {activity['context']}")
+        print(activity["task"])
         skills = ", ".join(item["name"] for item in activity.get("skills", []))
         if skills:
             print(f"Skills: {skills}")
@@ -116,7 +118,7 @@ def main():
             archived = Store.reset(database)
             if archived:
                 print("Archived: " + ", ".join(str(path) for path in archived))
-            print(f"Created schema 2 at {database}")
+            print(f"Created schema {SCHEMA_VERSION} at {database}")
         elif args.command == "inspect":
             store = Store(database)
             try:

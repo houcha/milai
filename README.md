@@ -23,26 +23,45 @@ uv run milai inspect
 uv run milai reset --yes
 ```
 
-The web interface runs locally at `http://127.0.0.1:8765`. It combines chat with a
-learner profile and current focus beside chat. Open the breadcrumb menu next to
-Milai to switch between Conversation, Learning Map, and Skills. Theory and exercises
-appear as exact persisted cards in the conversation. Each view has its own
-link and supports browser back/forward navigation. Use `--session SESSION_ID` to resume a conversation or
-`--port PORT` to select another local port. It binds only to the loopback interface.
+The web interface runs locally at `http://127.0.0.1:8765`. Use the **Sessions**
+link to create or select a session; Rename and Delete appear beside each
+session in that view. Selecting a session returns to its conversation.
 
-Inside chat, `/state` shows learning memory, `/new` starts a conversation while
-retaining evidence, and `/quit` exits. The session ID is printed at startup.
-SQLite data lives in `.milai/learning.sqlite3` (override `MILAI_DATABASE`). Schema 2
+The left sidebar shows that session's topics as a chronological learning path,
+with the current topic highlighted. Clicking a topic jumps to its original
+conversation without changing the tutor's focus. **Skills** is at the bottom of
+the sidebar. On small screens, the path stays visible above the conversation.
+Exercises open from a button into a temporary view that hides the conversation
+and path; returning to the explanation records assistance. Each session owns its
+conversation, topics, skills, focus, and practice evidence.
+
+The web UI replays the latest non-empty session on load. Use `--session SESSION_ID`
+to open a particular session or `--port PORT` to select another local port.
+It binds only to the loopback interface. Tutor replies use a locally bundled
+Markdown-It and KaTeX renderer, including math notation. The checked-in bundle
+works without Node.js at runtime; after editing `markdown-renderer.js`, rebuild it
+with `npm ci && npm run build:web` and run `npm run test:web`.
+Inside terminal chat, `/state` shows the
+current session’s learning memory, `/new` starts a fresh learning session, and
+`/quit` exits. The session ID is printed at startup.
+
+Existing schema 3 databases gain session ownership automatically. Since their old
+learning state was shared, it stays with the most recently used session; other
+existing conversations retain their text and start a separate learning path.
+`milai inspect` includes each session’s state under `learning_sessions`.
+
+SQLite data lives in `.milai/learning.sqlite3` (override `MILAI_DATABASE`). Schema 3
 does not silently convert the earlier prototype database: startup explains how to run
 `milai reset --yes`, which archives the database and sidecars before creating a fresh
 one. Protect these files as personal data. This is a local app; there is no shared
 service or login.
 
 The tutor discovers intent through conversation, creates a reusable graph of precise
-language skills, and links topics to those skills as application contexts. A learner-wide
-focus tracks the current topic and 1–3 target skills. It can present structured theory,
-create multi-skill exercises, give skill-specific help, assess actual attempts, and
-expand or revise the graph as evidence grows. Progress is summarized from observations;
+language skills, and links topics to those skills as application contexts. A session-wide
+focus tracks the current topic and 1–3 target skills. It explains freely in
+conversational text, creates structured multi-skill exercises, gives skill-specific
+help, assesses actual attempts, and expands or revises the graph as evidence grows.
+Progress is summarized from observations;
 there is no mastery score. It can also retrieve learner-supplied public HTTPS text/HTML
 or retain pasted excerpts. Unsupported sources fail honestly. No web search, PDF,
 audio, video, authenticated pages, or redirect following is implemented yet.

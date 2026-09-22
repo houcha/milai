@@ -1,97 +1,75 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Milai · Language learning studio</title>
-    <link rel="stylesheet" href="/styles.css">
-    <script src="/app.js" defer></script>
-  </head>
-  <body>
-    <div class="app-shell">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Milai</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="path-rail" aria-label="Learning path">
+      <a class="brand" href="#chat"><span class="brand-mark">m.</span><strong>milai</strong></a>
+      <section id="path-panel" aria-labelledby="path-heading">
+        <h2 id="path-heading">Learning path</h2>
+        <p id="path-empty" class="path-empty">Topics will appear as you learn.</p>
+        <ol id="learning-path" class="topic-chain"></ol>
+      </section>
+      <a id="skills-link" class="skills-link" href="#skills">Skills</a>
+    </aside>
+    <div class="studio">
       <header class="topbar">
-        <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a class="brand" href="#chat" aria-label="Milai home">
-          <span class="brand-mark">M</span>
-          <span>
-            <strong>Milai</strong>
-            <small>language learning studio</small>
-          </span>
-        </a>
-        <span class="breadcrumb-divider" aria-hidden="true">/</span>
-        <details id="view-menu" class="view-menu">
-          <summary><span id="current-view">Conversation</span> <span aria-hidden="true">⌄</span></summary>
-          <div class="view-links">
-            <a href="#chat" aria-current="page">Conversation</a>
-            <a href="#map">Learning Map</a>
-            <a href="#skills">Skills</a>
-          </div>
-        </details>
-        </nav>
-        <div class="topbar-actions">
-          <span class="connection"><i></i> Local &amp; private</span>
-          <button id="new-session" class="quiet-button" type="button">New conversation</button>
+        <div class="session-header">
+          <a id="sessions-link" href="#sessions">← Sessions</a>
+          <h1 id="session-heading"><a id="session-label" href="#chat">New learning session</a></h1>
         </div>
       </header>
-
       <main class="workspace">
-        <aside class="learning-panel" data-view="chat" aria-label="Learning overview">
-          <section class="intro-block">
-            <p class="eyebrow">Your direction</p>
-            <h1 id="learning-title">Building your learning path</h1>
-            <p id="learning-subtitle">Tell Milai what you want to use the language for.</p>
-          </section>
-
-          <section class="panel-section" aria-labelledby="focus-heading">
-            <div class="section-heading">
-              <h2 id="focus-heading">Current focus</h2>
-              <span class="live-badge">Now</span>
-            </div>
-            <div id="current-focus" class="empty-card">No lesson selected yet.</div>
-          </section>
-
-        </aside>
-
-          <section class="detail-view" data-view="map" aria-labelledby="map-heading" hidden>
-            <div class="section-heading">
-              <h2 id="map-heading">Learning Map</h2>
-              <span class="muted-label">Topics &amp; prerequisites</span>
-            </div>
-            <div id="learning-map" class="empty-card">Your skill graph will appear as Milai learns your goals.</div>
-          </section>
-
-          <section class="detail-view" data-view="skills" aria-labelledby="skills-heading" hidden>
-            <div class="section-heading">
-              <h2 id="skills-heading">Skills and evidence</h2>
-              <span id="skill-count" class="muted-label">0</span>
-            </div>
-            <div id="skills" class="skills-list">
-              <div class="empty-card">Evidence from your practice will appear here.</div>
-            </div>
-          </section>
-
         <section class="chat-panel" data-view="chat" aria-label="Tutor conversation">
-          <div class="chat-heading">
-            <div>
-              <p class="eyebrow">Conversation</p>
-              <h2>Your tutor</h2>
-            </div>
-            <span id="session-label" class="session-label"></span>
-          </div>
-
           <div id="messages" class="messages" aria-live="polite"></div>
-
           <form id="composer" class="composer">
             <label for="message" class="sr-only">Message Milai</label>
-            <textarea id="message" maxlength="8000" rows="1" placeholder="Tell Milai what you want to learn…"></textarea>
-            <button id="send" type="submit" aria-label="Send message">
-              <span>Send</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 14-7-4.8 14-2.7-5.4L5 12Zm6.5 1.6L19 5"/></svg>
-            </button>
+            <textarea id="message" maxlength="8000" rows="2" placeholder="Follow your curiosity…"></textarea>
+            <button id="send" type="submit" aria-label="Send message">Send <span aria-hidden="true">↗</span></button>
           </form>
-          <p id="notice" class="notice" role="status"></p>
+          <p class="composer-hint">Enter to send · Shift + Enter for a new line</p>
+        </section>
+        <section id="exercise-view" class="exercise-view" aria-label="Exercise" hidden>
+          <p class="eyebrow">Practice</p><h2 id="exercise-title"></h2>
+          <div id="exercise-context" class="markdown"></div><div id="exercise-task" class="markdown"></div>
+          <div id="exercise-history" aria-live="polite"></div>
+          <form id="exercise-form"><label for="exercise-answer">Your answer</label>
+            <textarea id="exercise-answer" maxlength="8000" rows="4"></textarea>
+            <button id="exercise-submit" type="submit">Submit</button></form>
+          <div class="exercise-actions"><button id="exercise-hint" type="button">Hint</button>
+            <button id="exercise-review" type="button">Review explanation</button>
+            <button id="exercise-back" type="button">Back to conversation</button>
+            <button id="exercise-continue" type="button" hidden>Continue</button></div>
+          <p id="exercise-status" role="status" aria-live="polite"></p>
+          <p class="exercise-review-note">Reviewing the explanation will count as practice with help.</p>
+        </section>
+        <section class="detail-view" data-view="sessions" aria-labelledby="sessions-heading" hidden>
+          <div class="sessions-heading"><h1 id="sessions-heading">Sessions</h1><button id="new-session" class="new-session" type="button">New session</button></div>
+          <div id="sessions" class="session-list"></div>
+        </section>
+        <section class="detail-view" data-view="skills" aria-labelledby="skills-heading" hidden>
+          <p class="eyebrow">What you’re getting better at</p><h2 id="skills-heading">Small steps. Real progress.</h2>
+          <p class="view-description">The abilities you practice across this session’s topics. <span id="skill-count">0</span> skills explored.</p>
+          <div id="skills" class="skills-list"></div>
         </section>
       </main>
+      <p id="notice" class="notice" role="status"></p>
     </div>
-  </body>
+  </div>
+  <dialog id="session-dialog">
+    <form id="session-dialog-form">
+      <p class="eyebrow">Your sessions</p><h2 id="dialog-title">Rename session</h2>
+      <p id="dialog-description"></p>
+      <label id="session-name-label" for="session-name">Session name</label>
+      <input id="session-name" maxlength="80" autocomplete="off">
+      <div class="dialog-actions"><button id="dialog-cancel" class="quiet-button" type="button">Cancel</button><button id="dialog-confirm" class="new-session" type="submit">Save</button></div>
+    </form>
+  </dialog>
+</body>
 </html>

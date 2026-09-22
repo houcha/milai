@@ -6,7 +6,7 @@ from contextlib import suppress
 from importlib.resources import files
 from urllib.parse import urlsplit
 
-from openai import RateLimitError
+from openai import APITimeoutError, RateLimitError
 
 from milai.config import Settings
 from milai.observability import Telemetry
@@ -52,15 +52,30 @@ class WebApplication:
                 "text/javascript; charset=utf-8",
                 asset_root.joinpath("app.js"),
             ),
+            "/exercise-controller.js": (
+                "text/javascript; charset=utf-8",
+                asset_root.joinpath("exercise-controller.js"),
+            ),
+            "/markdown.bundle.js": (
+                "text/javascript; charset=utf-8",
+                asset_root.joinpath("markdown.bundle.js"),
+            ),
         }
 
     def bootstrap(self) -> dict:
         return {
             "session": self.session,
+            "topic_anchors": self.store.topic_anchors(self.learner, self.session),
+            "sessions": self.store.sessions(self.learner),
             "conversation": self.store.conversation(
-                self.learner, self.session, limit=50
+                self.learner, self.session, limit=None
             ),
-            "learning": learning_view(self.store.learning_view(self.learner)),
+            "exercise_status": self.store.exercise_statuses(self.learner, self.session),
+            "learning": learning_view(
+                self.store.learning_view(
+                    self.store.learning_scope(self.learner, self.session)
+                )
+            ),
         }
 
     async def handle(
@@ -93,7 +108,11 @@ class WebApplication:
                 async with self.lock:
                     await self.json_response(writer, 200, self.bootstrap())
                 return
-            if method == "POST" and path in {"/api/chat", "/api/session"}:
+            if method == "POST" and path in {
+                "/api/chat",
+                "/api/session",
+                "/api/exercise",
+            }:
                 if not self.valid_origin(headers.get("origin")):
                     await self.respond(writer, 403, b"Invalid origin")
                     return
@@ -109,10 +128,14 @@ class WebApplication:
                     return
                 body = await reader.readexactly(length)
                 payload = json.loads(body or b"{}")
+                if not isinstance(payload, dict):
+                    raise ValueError("Expected an object")
                 if path == "/api/chat":
                     await self.chat(writer, payload)
+                elif path == "/api/exercise":
+                    await self.exercise(writer, payload)
                 else:
-                    await self.new_session(writer)
+                    await self.manage_session(writer, payload)
                 return
             await self.respond(writer, 404, b"Not found")
         except (ValueError, json.JSONDecodeError, asyncio.IncompleteReadError):
@@ -147,10 +170,25 @@ class WebApplication:
             return
         try:
             async with self.lock:
+                if payload.get("session", self.session) != self.session:
+                    raise ValueError(
+                        "The active session changed. Reopen your session and retry."
+                    )
                 reply = await self.tutor.respond(self.learner, self.session, message)
                 result = {
                     "reply": reply.model_dump(mode="json"),
-                    "learning": learning_view(self.store.learning_view(self.learner)),
+                    "topic_anchors": self.store.topic_anchors(
+                        self.learner, self.session
+                    ),
+                    "sessions": self.store.sessions(self.learner),
+                    "exercise_status": self.store.exercise_statuses(
+                        self.learner, self.session
+                    ),
+                    "learning": learning_view(
+                        self.store.learning_view(
+                            self.store.learning_scope(self.learner, self.session)
+                        )
+                    ),
                 }
             await self.json_response(writer, 200, result)
         except RateLimitError:
@@ -160,6 +198,15 @@ class WebApplication:
                 {
                     "error": "Provider quota reached. Wait for it to reset; "
                     "this turn was not saved."
+                },
+            )
+        except (APITimeoutError, TimeoutError):
+            await self.json_response(
+                writer,
+                504,
+                {
+                    "error": "The model provider did not respond in time. "
+                    "Your message was not saved; try again shortly."
                 },
             )
         except ValueError as exc:
@@ -172,11 +219,128 @@ class WebApplication:
                 {"error": "The turn failed and its learning changes were rolled back."},
             )
 
-    async def new_session(self, writer: asyncio.StreamWriter) -> None:
-        async with self.lock:
-            self.session = self.store.session(self.learner)
-            result = self.bootstrap()
-        await self.json_response(writer, 200, result)
+    async def exercise(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        try:
+            async with self.lock:
+                if payload.get("session") != self.session:
+                    raise ValueError(
+                        "The active session changed. Reopen your session and retry."
+                    )
+                exercise_id, action = payload.get("exercise_id"), payload.get("action")
+                if not isinstance(exercise_id, str) or action not in {
+                    "answer",
+                    "hint",
+                    "review",
+                }:
+                    raise ValueError("Choose an exercise action")
+                self.store.exercise_status(self.learner, self.session, exercise_id)
+                if action == "hint":
+                    with self.store.transaction():
+                        prepared = self.store.exercise_hint(
+                            self.learner, self.session, exercise_id
+                        )
+                    if prepared["hint"]:
+                        result = prepared
+                    else:
+                        result = await self._model_exercise_action(
+                            exercise_id, action, payload
+                        )
+                elif action == "review":
+                    with self.store.transaction():
+                        status = self.store.review_exercise(
+                            self.learner, self.session, exercise_id
+                        )
+                    result = {"status": status}
+                else:
+                    result = await self._model_exercise_action(
+                        exercise_id, action, payload
+                    )
+            await self.json_response(writer, 200, result)
+        except RateLimitError:
+            await self.json_response(
+                writer,
+                429,
+                {"error": "Provider quota reached. This action was not saved."},
+            )
+        except (APITimeoutError, TimeoutError):
+            await self.json_response(
+                writer,
+                504,
+                {
+                    "error": "The model provider did not respond in time. "
+                    "This action was not saved; try again shortly."
+                },
+            )
+        except (ValueError, PermissionError) as exc:
+            await self.json_response(writer, 400, {"error": str(exc)})
+        except Exception as exc:
+            print(f"Exercise action failed: {type(exc).__name__}")
+            await self.json_response(
+                writer,
+                500,
+                {"error": "The action failed and its changes were rolled back."},
+            )
+
+    async def _model_exercise_action(
+        self, exercise_id: str, action: str, payload: dict
+    ) -> dict:
+        message = (
+            payload.get("text", "")
+            if action == "answer"
+            else "Please give me a hint for this exercise."
+        )
+        if not isinstance(message, str):
+            raise ValueError("Answer must be text")
+        reply = await self.tutor.respond(
+            self.learner, self.session, message, (exercise_id, action)
+        )
+        return {
+            "reply": reply.model_dump(mode="json"),
+            "topic_anchors": self.store.topic_anchors(self.learner, self.session),
+            "sessions": self.store.sessions(self.learner),
+            "status": self.store.exercise_status(
+                self.learner, self.session, exercise_id
+            ),
+            "exercise_status": self.store.exercise_statuses(self.learner, self.session),
+            "learning": learning_view(
+                self.store.learning_view(
+                    self.store.learning_scope(self.learner, self.session)
+                )
+            ),
+        }
+
+    async def manage_session(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        try:
+            async with self.lock:
+                action = payload.get("action", "create")
+                session = payload.get("session")
+                if action == "create":
+                    self.session = self.store.session(self.learner)
+                elif action in {"select", "delete", "rename"}:
+                    if not isinstance(session, str):
+                        raise ValueError("Choose a session")
+                    self.store.authorize(self.learner, session)
+                    if action == "select":
+                        self.session = session
+                    elif action == "rename":
+                        self.store.rename_session(
+                            self.learner, session, payload.get("title", "")
+                        )
+                    else:
+                        self.store.delete_session(self.learner, session)
+                        if session == self.session:
+                            remaining = self.store.sessions(self.learner)
+                            self.session = (
+                                remaining[0]["id"]
+                                if remaining
+                                else self.store.session(self.learner)
+                            )
+                else:
+                    raise ValueError("Unknown session action")
+                result = self.bootstrap()
+            await self.json_response(writer, 200, result)
+        except (ValueError, PermissionError) as exc:
+            await self.json_response(writer, 400, {"error": str(exc)})
 
     async def json_response(
         self, writer: asyncio.StreamWriter, status: int, payload: dict
@@ -207,6 +371,7 @@ class WebApplication:
             429: "Too Many Requests",
             431: "Request Header Fields Too Large",
             500: "Internal Server Error",
+            504: "Gateway Timeout",
         }
         headers = [
             f"HTTP/1.1 {status} {reasons[status]}",
@@ -233,7 +398,8 @@ async def serve(settings: Settings, session: str | None, port: int) -> None:
     telemetry = Telemetry()
     tutor = Tutor(settings, store, telemetry)
     try:
-        session = store.session(store.owner, session)
+        selected = session or store.latest_session(store.owner)
+        session = store.session(store.owner, selected)
         application = WebApplication(store, tutor, session, port)
         server = await asyncio.start_server(
             application.handle, HOST, port, limit=MAX_HEADER_BYTES

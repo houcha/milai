@@ -52,24 +52,17 @@ def test_reset_requires_acknowledgement_and_archives_database(
     monkeypatch.setattr("sys.argv", ["milai", "reset", "--yes"])
     cli.main()
     output = capsys.readouterr().out
-    assert "Archived:" in output and "Created schema 2" in output
+    assert "Archived:" in output and "Created schema 3" in output
     assert list(tmp_path.glob("learning.db.legacy-*.bak"))
     reopened = Store(path)
     reopened.close()
 
 
-def test_cli_renders_persisted_theory_and_exercise_blocks(capsys):
+def test_cli_renders_free_text_explanation_and_persisted_exercise(capsys):
     cli.print_reply(
         TutorReply(
             text="First the rule, then practice.",
             activities=[
-                {
-                    "kind": "theory",
-                    "title": "Past simple",
-                    "explanation": "Regular verbs usually add -ed.",
-                    "examples": [{"example": "walked", "explanation": "walk + ed"}],
-                    "skills": [{"name": "Regular past formation"}],
-                },
                 {
                     "kind": "exercise",
                     "title": "Yesterday",
@@ -81,6 +74,6 @@ def test_cli_renders_persisted_theory_and_exercise_blocks(capsys):
         )
     )
     output = capsys.readouterr().out
-    assert "[THEORY] Past simple" in output
+    assert "First the rule, then practice." in output
     assert "[EXERCISE] Yesterday" in output
     assert "Complete: I ___ to the station" in output

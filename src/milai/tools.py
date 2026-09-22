@@ -65,9 +65,6 @@ class LearnerFact(BaseModel):
 
 
 class SkillSpec(BaseModel):
-    local_key: str = Field(
-        min_length=1, max_length=80, pattern=r"^[a-z0-9][a-z0-9_-]*$"
-    )
     key: str = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9][a-z0-9_.-]*$")
     name: str = Field(min_length=1, max_length=160)
     definition: str = Field(min_length=1, max_length=800)
@@ -75,7 +72,6 @@ class SkillSpec(BaseModel):
 
 
 class TopicSpec(BaseModel):
-    language: str = Field(min_length=1, max_length=100)
     name: str = Field(min_length=1, max_length=200)
     purpose: str = Field(min_length=1, max_length=800)
 
@@ -95,15 +91,6 @@ class FocusSpec(BaseModel):
     target_refs: list[str] = Field(min_length=1, max_length=3)
     supporting_refs: list[str] = Field(default_factory=list, max_length=5)
     reason: str = Field(min_length=1, max_length=800)
-
-
-class EstablishTopicInput(BaseModel):
-    topic: TopicSpec
-    existing_skill_ids: list[str] = Field(default_factory=list, max_length=8)
-    new_skills: list[SkillSpec] = Field(default_factory=list, max_length=8)
-    prerequisites: list[Prerequisite] = Field(default_factory=list, max_length=20)
-    links: list[TopicSkill] = Field(min_length=3, max_length=12)
-    initial_focus: FocusSpec
 
 
 class ExpandTopicInput(BaseModel):
@@ -141,19 +128,6 @@ class FocusInput(BaseModel):
     reason: str = Field(min_length=1, max_length=800)
 
 
-class TheoryExample(BaseModel):
-    example: str = Field(min_length=1, max_length=800)
-    explanation: str = Field(min_length=1, max_length=800)
-
-
-class TheoryLesson(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    skill_ids: list[str] = Field(min_length=1, max_length=3)
-    explanation: str = Field(min_length=1, max_length=2400)
-    examples: list[TheoryExample] = Field(default_factory=list, max_length=4)
-    source_ids: list[str] = Field(default_factory=list, max_length=5)
-
-
 class ExerciseSkill(BaseModel):
     skill_id: str
     role: Literal["target", "supporting"]
@@ -164,6 +138,11 @@ class Exercise(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     task: str = Field(min_length=1, max_length=2400)
     context: str = Field(min_length=1, max_length=800)
+    hint: str = Field(
+        min_length=1,
+        max_length=800,
+        description="A useful cue that does not give away the answer",
+    )
     scaffolding: Literal["none", "cues", "worked_example"]
     skills: list[ExerciseSkill] = Field(min_length=1, max_length=6)
     source_ids: list[str] = Field(default_factory=list, max_length=5)
@@ -190,25 +169,21 @@ class Context:
     message: str
     prompt_version: str
     model: Model | None = None
-    procedure: str = ""
+    planner_instructions: str = ""
     trace_content: bool = False
-    planning_calls: int = 0
-    topic_plan_consulted: bool = False
+    topic_planning_calls: int = 0
     max_tools: int = 20
     calls: int = 0
     event_ids: list[str] = field(default_factory=list)
-    presentations: list[tuple[str, str]] = field(default_factory=list)
+    exercise_ids: list[str] = field(default_factory=list)
+    exercise_interaction: tuple[str, str] | None = None
+    assessments: list[dict] = field(default_factory=list)
 
     def check(self) -> None:
         self.store.authorize(self.learner, self.session)
         self.calls += 1
         if self.calls > self.max_tools:
             raise RuntimeError("Tool budget exhausted")
-
-
-def _profile_ready(context: Context) -> bool:
-    profile = context.store.profile(context.learner)
-    return bool(profile.get("target_language") and profile.get("goals"))
 
 
 @function_tool(failure_error_function=tool_error)
@@ -241,63 +216,84 @@ async def search_skills(
     return {"skills": c.store.search_skills(c.learner, language, query, limit)}
 
 
+class _TopicPlan(BaseModel):
+    """Structured output produced only by the private topic planner."""
+
+    existing_skill_keys: list[str] = Field(default_factory=list, max_length=8)
+    new_skills: list[SkillSpec] = Field(default_factory=list, max_length=8)
+    prerequisites: list[Prerequisite] = Field(default_factory=list, max_length=20)
+    links: list[TopicSkill] = Field(min_length=3, max_length=12)
+    initial_focus: FocusSpec
+
+
+def _existing_skill_ids(keys: list[str], candidates: list[dict]) -> list[str]:
+    """Resolve planner-visible stable keys to learner-owned database IDs."""
+    known = {skill["key"]: skill["id"] for skill in candidates}
+    return [known.get(key, key) for key in keys]
+
+
 @function_tool(failure_error_function=tool_error)
-async def consult_topic_planner(
-    ctx: RunContextWrapper[Context], topic_question: str
-) -> str:
-    """Required once before creating a topic; privately derive its minimum viable skill graph."""
+async def establish_topic(ctx: RunContextWrapper[Context], topic: TopicSpec) -> dict:
+    """Plan and atomically establish a topic's minimum skill graph and initial focus."""
     c = ctx.context
     c.check()
-    if not _profile_ready(c):
+    profile = c.store.profile(c.learner)
+    language_fact = profile.get("target_language")
+    if language_fact is None:
+        raise ValueError("Record the target language before establishing a topic")
+    if c.model is None or not c.planner_instructions:
+        raise RuntimeError("Topic planner is unavailable")
+    c.topic_planning_calls += 1
+    if c.topic_planning_calls > 1:
         raise ValueError(
-            "Record target language and learning purpose before planning a topic"
+            "Topic establishment can be planned only once per learner turn"
         )
-    c.planning_calls += 1
-    if c.planning_calls > 1 or not 1 <= len(topic_question) <= 2000 or c.model is None:
-        raise ValueError("One bounded topic-planning call is allowed per turn")
-    adviser = Agent(
+    target_language = language_fact["value"]
+    candidates = c.store.search_skills(c.learner, target_language, "", 30)
+    candidate_keys = {skill["id"]: skill["key"] for skill in candidates}
+    evidence = [
+        {
+            "skill_key": candidate_keys[summary["id"]],
+            **{key: value for key, value in summary.items() if key != "id"},
+        }
+        for summary in c.store.progress(c.learner, list(candidate_keys))
+    ]
+    planner = Agent(
         name="Topic skill-graph planner",
-        instructions=c.procedure
-        + (
-            "\nYou are a private high-reasoning planner. Propose the minimum 3–8 language skills "
-            "needed for basic understanding of the learner's topic. Skills must be linguistic, "
-            "specific, reusable across topics, and independently testable. The topic supplies "
-            "application context only. Include prerequisite edges and an initial 1–3 skill focus. "
-            "Reuse active skill IDs when definitions match. Return advice only; you cannot persist."
-        ),
+        instructions=c.planner_instructions,
         model=c.model,
+        output_type=_TopicPlan,
         model_settings=ModelSettings(
             max_tokens=8192, reasoning=Reasoning(effort="high")
         ),
     )
-    result = await Runner.run(
-        adviser,
-        topic_question
-        + "\nBounded learner state:\n"
-        + json.dumps(c.store.prompt_state(c.learner), ensure_ascii=False),
+    planned = await Runner.run(
+        planner,
+        "Plan this topic from the supplied application data:\n"
+        + json.dumps(
+            {
+                "target_language": target_language,
+                "learner_profile": {
+                    field: fact["value"] for field, fact in profile.items()
+                },
+                "skill_evidence": evidence,
+                "topic": topic.model_dump(),
+                "reusable_active_skills": [
+                    {
+                        field: skill[field]
+                        for field in ("key", "name", "definition", "success_criteria")
+                    }
+                    for skill in candidates
+                ],
+            },
+            ensure_ascii=False,
+        ),
         max_turns=1,
         run_config=RunConfig(trace_include_sensitive_data=c.trace_content),
     )
-    c.topic_plan_consulted = True
-    return str(result.final_output)
-
-
-@function_tool(failure_error_function=tool_error)
-async def establish_topic(
-    ctx: RunContextWrapper[Context], plan: EstablishTopicInput
-) -> dict:
-    """Atomically create a topic, its independent skills and edges, and the first learning focus."""
-    c = ctx.context
-    c.check()
-    if not _profile_ready(c) or not c.topic_plan_consulted:
-        raise ValueError(
-            "Consult the topic planner after recording target language and purpose"
-        )
-    target_language = c.store.profile(c.learner)["target_language"]["value"]
-    if plan.topic.language.casefold() != target_language.casefold():
-        raise ValueError(
-            "The topic language must match the learner's current target language"
-        )
+    plan = planned.final_output
+    if not isinstance(plan, _TopicPlan):
+        raise RuntimeError("Topic planner returned an unexpected result")
     for skill in plan.new_skills:
         if any(len(criterion) > 500 for criterion in skill.success_criteria):
             raise ValueError(
@@ -306,14 +302,13 @@ async def establish_topic(
     with c.store.savepoint():
         result = c.store.establish_topic(
             c,
-            plan.topic.model_dump(),
-            plan.existing_skill_ids,
+            {"language": target_language, **topic.model_dump()},
+            _existing_skill_ids(plan.existing_skill_keys, candidates),
             [item.model_dump() for item in plan.new_skills],
             [item.model_dump() for item in plan.prerequisites],
             [item.model_dump() for item in plan.links],
             plan.initial_focus.model_dump(),
         )
-    c.topic_plan_consulted = False
     return result
 
 
@@ -368,7 +363,7 @@ async def supersede_skills(
 async def set_learning_focus(
     ctx: RunContextWrapper[Context], focus: FocusInput
 ) -> dict:
-    """Set the learner-wide active topic and its 1–3 target skills plus support skills."""
+    """Set the session-wide active topic and its 1–3 target skills plus support skills."""
     c = ctx.context
     c.check()
     return c.store.set_focus(
@@ -378,14 +373,6 @@ async def set_learning_focus(
         focus.supporting_skill_ids,
         focus.reason,
     )
-
-
-@function_tool(failure_error_function=tool_error)
-async def present_theory(ctx: RunContextWrapper[Context], lesson: TheoryLesson) -> dict:
-    """Persist and queue a theory card; the application renders this exact content in tool order."""
-    c = ctx.context
-    c.check()
-    return c.store.present_theory(c, lesson.model_dump())
 
 
 @function_tool(failure_error_function=tool_error)
@@ -407,6 +394,8 @@ async def record_assistance(
     """Record help against the exact exercise skills it assisted before giving that help."""
     c = ctx.context
     c.check()
+    if c.exercise_interaction and c.exercise_interaction[0] != exercise_id:
+        raise ValueError("Assistance must match the selected exercise and action")
     if not 1 <= len(content) <= 2400 or not 1 <= len(skill_ids) <= 6:
         raise ValueError("Assistance content or skill count exceeds bounds")
     return c.store.record_assistance(c, exercise_id, skill_ids, level, content)
@@ -419,12 +408,19 @@ async def assess_attempt(
     """Save the actual learner reply and per-skill observations for a prior exercise."""
     c = ctx.context
     c.check()
-    return c.store.assess_attempt(
+    if c.exercise_interaction and c.exercise_interaction != (
+        assessment.exercise_id,
+        "answer",
+    ):
+        raise ValueError("Assessment must match the selected exercise answer")
+    result = c.store.assess_attempt(
         c,
         assessment.exercise_id,
         assessment.feedback,
         [item.model_dump() for item in assessment.observations],
     )
+    c.assessments.append(result)
+    return result
 
 
 @function_tool(failure_error_function=tool_error)
@@ -492,12 +488,10 @@ async def get_source_excerpt(
 TOOLS: list[Tool] = [
     record_learner_facts,
     search_skills,
-    consult_topic_planner,
     establish_topic,
     expand_topic,
     supersede_skills,
     set_learning_focus,
-    present_theory,
     present_exercise,
     record_assistance,
     assess_attempt,

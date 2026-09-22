@@ -19,7 +19,7 @@ MESSAGES = [
     "I like technology and walking. What else do you need to know?",
     "I prefer short public web pages and original exercises. "
     "Please retrieve https://example.com as a short reading warmup, "
-    "identify the essential skills, then give me a tiny theory lesson and original "
+    "identify the essential skills, then give me a tiny explanation and original "
     "past-tense exercise: Yesterday I ___ to the park (go).",
     "Yesterday I goed to the park.",
     "Why isn't goed right? Give me a hint before I try again.",
@@ -53,8 +53,7 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                 print(f"Tutor: {reply.text}", flush=True)
                 for activity in reply.activities:
                     print(
-                        f"[{activity['kind']}] {activity['title']}: "
-                        f"{activity.get('task') or activity.get('explanation')}",
+                        f"[{activity['kind']}] {activity['title']}: {activity['task']}",
                         flush=True,
                     )
                 print(flush=True)
@@ -65,7 +64,7 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                         "trace_id": telemetry.last_trace_id,
                     }
                 )
-            snapshot = store.inspect(learner)
+            snapshot = store.inspect(store.learning_scope(learner, session))
             state = snapshot["state"]
             checks = {
                 "profile_saved": all(
@@ -92,7 +91,6 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                 "live_source_available": any(
                     s["status"] == "available" for s in state["sources"]
                 ),
-                "theory_saved": any(e["kind"] == "theory" for e in snapshot["events"]),
                 "exercise_saved": any(
                     e["kind"] == "exercise" for e in snapshot["events"]
                 ),
@@ -105,7 +103,7 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                 ),
                 "adapted_action_after_restart": any(
                     e["session"] == session
-                    and e["kind"] in {"learning_focus", "theory", "exercise"}
+                    and e["kind"] in {"learning_focus", "exercise"}
                     for e in snapshot["events"]
                 ),
             }
@@ -132,7 +130,9 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                             "kind": "live-synthetic-incomplete",
                             "model": settings.model,
                             "transcript": transcript,
-                            "learning": store.inspect(learner),
+                            "learning": store.inspect(
+                                store.learning_scope(learner, session)
+                            ),
                             "failed_trace_id": telemetry.last_trace_id,
                         },
                         indent=2,

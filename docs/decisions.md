@@ -13,13 +13,13 @@
   without mastery labels or scores.
 - Version/supersede definitions on split, merge, or correction. Preserve observations
   under old IDs and explicitly repoint topic and active-focus links.
-- Replace free-form exercise repetition with structured theory and exercise artifacts.
-  Tools persist exact content; web and CLI render it in tool-call order. Model final text
-  supplies only framing and feedback.
+- Keep explanations as natural assistant prose in the persisted transcript. Structure
+  only exercises, whose stable IDs and skill contracts support later assistance and
+  assessment. Web and CLI render those exercises after the response text.
 - Bound replay to six learner-facing turns/20,000 characters and dynamic state to
   16,000 characters. Exclude raw tool traffic and source bodies. Retrieve source text
   through explicit bounded excerpts.
-- Use normalized SQLite schema 2. Legacy state has no safe semantic conversion, so
+- Use normalized SQLite schema 3. Legacy state has no safe semantic conversion, so
   startup fails with an explicit `milai reset --yes` instruction. Reset archives the
   database and WAL/SHM sidecars before creating new state.
 - Keep one stable model-facing tool inventory. Dynamic `is_enabled` predicates made
@@ -28,6 +28,10 @@
   tools and storage. Serialize local function execution with
   `max_function_tool_concurrency=1` because a provider can return several tool calls
   in one model generation.
+- Make topic planning private to `establish_topic`. The learner-facing tutor supplies
+  topic intent once; a nested High-reasoning agent returns a typed skill graph, and the
+  application derives language, validates references, and persists it atomically. Do
+  not expose a free-text planning tool or transient "planner consulted" state.
 
 ## 2026-09-15 — initial architecture
 

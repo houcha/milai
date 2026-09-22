@@ -1,0 +1,16 @@
+{
+  "name": "milai-web-assets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:web": "esbuild src/milai/web/markdown-renderer.js --bundle --minify --format=esm --platform=browser --outfile=src/milai/web/markdown.bundle.js",
+    "test:web": "node --test tests/test_markdown.mjs tests/test_exercise_controller.mjs tests/test_web_views.mjs"
+  },
+  "dependencies": {
+    "@mdit/plugin-katex": "1.1.1",
+    "markdown-it": "15.0.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
