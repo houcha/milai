@@ -7,7 +7,7 @@ const exercise = createExerciseController((body) => api("/api/exercise", {
 const exerciseView = document.querySelector("#exercise-view");
 const exerciseAnswer = document.querySelector("#exercise-answer");
 let conversationScroll = 0;
-let topicAnchors = {};
+let lessonAnchors = {};
 let currentView = "chat";
 const scrollPositions = new Map();
 
@@ -76,7 +76,7 @@ async function submitExercise() {
     if (result.reply) {
       appendMessage("user", answer);
       appendMessage("assistant", result.reply.text, false, result.reply.activities || [], result.reply.turn_id);
-      topicAnchors = result.topic_anchors || {};
+      lessonAnchors = result.lesson_anchors || {};
       renderSessions(result.sessions);
       renderLearning(result.learning);
     }
@@ -168,7 +168,7 @@ async function renderView() {
   }
 }
 
-async function jumpToTopic(topicId) {
+async function jumpToLesson(lessonId) {
   if (busy) return;
   setBusy(true);
   try { leaveExercise(); }
@@ -176,10 +176,10 @@ async function jumpToTopic(topicId) {
   finally { setBusy(false); }
   location.hash = "chat";
   await renderView();
-  const turnId = topicAnchors[topicId];
+  const turnId = lessonAnchors[lessonId];
   const target = turnId && document.getElementById(`turn-${turnId}`);
   if (!target) {
-    elements.notice.textContent = "The original discussion for this topic is unavailable.";
+    elements.notice.textContent = "The original discussion for this lesson is unavailable.";
     return;
   }
   elements.notice.textContent = "";
@@ -195,6 +195,34 @@ async function api(path, options = {}) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "Request failed");
   return payload;
+}
+
+async function streamChat(message, onEvent) {
+  const response = await fetch("/api/chat/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, session: activeSession }),
+  });
+  if (!response.ok || !response.body) throw new Error("Could not start the chat stream");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let completed = false;
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line) continue;
+      const event = JSON.parse(line);
+      if (event.type === "error") throw new Error(event.error);
+      onEvent(event);
+      if (event.type === "complete") completed = true;
+    }
+    if (done) break;
+  }
+  if (!completed) throw new Error("The chat stream ended before the turn was saved");
 }
 
 function activityNode(activity) {
@@ -295,21 +323,21 @@ function text(value, fallback = "") {
 }
 
 function renderLearning(learning) {
-  const topics = learning.topics || [];
+  const lessons = learning.lessons || [];
   elements.path.replaceChildren();
-  document.querySelector("#path-empty").hidden = topics.length > 0;
-  for (const topic of topics) {
+  document.querySelector("#path-empty").hidden = lessons.length > 0;
+  for (const lesson of lessons) {
     const item = document.createElement("li");
     const link = document.createElement("button");
     link.type = "button";
-    link.className = "topic-link";
-    link.textContent = topic.name;
+    link.className = "lesson-link";
+    link.textContent = lesson.title;
     link.disabled = busy;
-    if (topic.id === learning.focus?.topic_id) {
+    if (lesson.id === learning.active_lesson?.id) {
       link.setAttribute("aria-current", "step");
       item.classList.add("current");
     }
-    link.addEventListener("click", () => jumpToTopic(topic.id));
+    link.addEventListener("click", () => jumpToLesson(lesson.id));
     item.append(link);
     elements.path.append(item);
   }
@@ -333,7 +361,7 @@ function renderLearning(learning) {
       const progress = skill.progress || {};
       const values = [
         [progress.observations, "observations", ""],
-        [progress.independent_successes, "independent", "positive"],
+        [progress.independent_since_difficulty, "independent since last difficulty", "positive"],
         [progress.assistance_events, "help events", ""],
         [progress.needs_work, "to revisit", "attention"],
       ];
@@ -343,6 +371,10 @@ function renderLearning(learning) {
         badge.textContent = `${count} ${label}`;
         stats.append(badge);
       });
+      const mastery = document.createElement("span");
+      mastery.className = skill.mastered ? "positive" : "";
+      mastery.textContent = skill.mastered ? "Mastered" : "In progress";
+      stats.prepend(mastery);
       card.append(title, stats);
       if ((progress.contexts || []).length) {
         const contexts = document.createElement("p");
@@ -362,7 +394,7 @@ function setBusy(value) {
   for (const selector of ["#exercise-submit", "#exercise-continue"]) {
     document.querySelector(selector).disabled = value;
   }
-  document.querySelectorAll("#new-session, .session-list button, .topic-link, .suggestions button, .exercise-launch").forEach((button) => { button.disabled = value; });
+  document.querySelectorAll("#new-session, .session-list button, .lesson-link, .suggestions button, .exercise-launch").forEach((button) => { button.disabled = value; });
 }
 
 async function bootstrap() {
@@ -388,17 +420,30 @@ elements.composer.addEventListener("submit", async (event) => {
   const pending = appendMessage("assistant", "Thinking with your learning history…", true);
   setBusy(true);
   try {
-    const payload = await api("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, session: activeSession }),
+    const bubble = pending.querySelector(".bubble");
+    let plannerDraft = "";
+    let replyDraft = "";
+    await streamChat(message, (event) => {
+      if (event.type === "stage") bubble.textContent = event.text;
+      if (event.type === "planner_delta") {
+        plannerDraft += event.text;
+        bubble.textContent = `Draft lesson plan (not saved yet):\n${plannerDraft}`;
+      }
+      if (event.type === "reply_delta") {
+        replyDraft += event.text;
+        bubble.textContent = `Draft reply (not saved yet):\n${replyDraft}`;
+      }
+      if (event.type === "complete") {
+        const payload = event.result;
+        pending.remove();
+        appendMessage("assistant", payload.reply.text, false, payload.reply.activities || [], payload.reply.turn_id);
+        lessonAnchors = payload.lesson_anchors || {};
+        renderLearning(payload.learning);
+        exercise.setStatuses(payload.exercise_status || {});
+        renderSessions(payload.sessions);
+      }
+      elements.messages.scrollTop = elements.messages.scrollHeight;
     });
-    pending.remove();
-    appendMessage("assistant", payload.reply.text, false, payload.reply.activities || [], payload.reply.turn_id);
-    topicAnchors = payload.topic_anchors || {};
-    renderLearning(payload.learning);
-    exercise.setStatuses(payload.exercise_status || {});
-    renderSessions(payload.sessions);
   } catch (error) {
     elements.message.value = message;
     pending.previousElementSibling?.remove();
@@ -462,7 +507,7 @@ function renderSessions(sessions) {
 function applySession(payload) {
   if (activeSession) drafts.set(activeSession, elements.message.value);
   activeSession = payload.session;
-  topicAnchors = payload.topic_anchors || {};
+  lessonAnchors = payload.lesson_anchors || {};
   exercise.setSession(activeSession, payload.exercise_status || {});
   elements.message.value = drafts.get(activeSession) || "";
   renderSessions(payload.sessions);
@@ -508,7 +553,7 @@ function openSessionDialog(action, session) {
   dialogSession = session.id;
   const renaming = action === "rename";
   document.querySelector("#dialog-title").textContent = renaming ? "Rename session" : "Delete session?";
-  document.querySelector("#dialog-description").textContent = renaming ? session.title : `Delete “${session.title}” and its conversation, topics, and skill evidence? This cannot be undone.`;
+  document.querySelector("#dialog-description").textContent = renaming ? session.title : `Delete “${session.title}” and its conversation, lessons, and skill evidence? This cannot be undone.`;
   document.querySelector("#session-name").hidden = !renaming;
   document.querySelector("#session-name-label").hidden = !renaming;
   document.querySelector("#session-name").required = renaming;

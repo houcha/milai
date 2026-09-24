@@ -19,7 +19,7 @@ MESSAGES = [
     "I like technology and walking. What else do you need to know?",
     "I prefer short public web pages and original exercises. "
     "Please retrieve https://example.com as a short reading warmup, "
-    "identify the essential skills, then give me a tiny explanation and original "
+    "choose one useful language skill, then give me an explanation and original "
     "past-tense exercise: Yesterday I ___ to the park (go).",
     "Yesterday I goed to the park.",
     "Why isn't goed right? Please explain before I try again.",
@@ -28,7 +28,7 @@ MESSAGES = [
 ]
 
 
-async def run(settings: Settings, pause: float = 30, report: Path | None = None):
+async def run(settings: Settings, pause: float = 0, report: Path | None = None):
     telemetry = Telemetry()
     transcript = []
     # Isolate synthetic evidence from the real learner database.
@@ -38,15 +38,22 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
         learner = store.owner
         session = store.session(learner)
         tutor = Tutor(config, store, telemetry)
+        events_before_restart: set[str] = set()
         try:
             for index, message in enumerate(MESSAGES):
                 if index and pause:
                     await asyncio.sleep(pause)
                 if index == len(MESSAGES) - 1:
+                    events_before_restart = {
+                        row[0]
+                        for row in store.db.execute(
+                            "SELECT id FROM events WHERE session=?", (session,)
+                        )
+                    }
                     await tutor.close()
                     store.close()
                     store = Store(config.database)
-                    session = store.session(learner)
+                    session = store.session(learner, session)
                     tutor = Tutor(config, store, telemetry)
                 print(f"Learner: {message}", flush=True)
                 reply = await tutor.respond(learner, session, message)
@@ -78,16 +85,8 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                         "source_preferences",
                     )
                 ),
-                "topic_skill_graph": bool(state["topics"])
-                and 3
-                <= len(
-                    [
-                        skill
-                        for skill in state["topics"][0]["skills"]
-                        if skill["role"] == "core"
-                    ]
-                )
-                <= 8,
+                "lesson_focus": bool(state["lessons"])
+                and all(lesson["focus_skill_id"] for lesson in state["lessons"]),
                 "live_source_available": any(
                     s["status"] == "available" for s in state["sources"]
                 ),
@@ -103,7 +102,8 @@ async def run(settings: Settings, pause: float = 30, report: Path | None = None)
                 ),
                 "adapted_action_after_restart": any(
                     e["session"] == session
-                    and e["kind"] in {"learning_focus", "exercise"}
+                    and e["id"] not in events_before_restart
+                    and e["kind"] in {"lesson", "exercise"}
                     for e in snapshot["events"]
                 ),
             }
@@ -149,8 +149,8 @@ def main():
     parser.add_argument(
         "--pause",
         type=float,
-        default=30,
-        help="Seconds between synthetic learner turns (default: 30)",
+        default=0,
+        help="Seconds between synthetic learner turns (default: 0)",
     )
     parser.add_argument("--report", type=Path, help="Save the synthetic JSON report")
     args = parser.parse_args()

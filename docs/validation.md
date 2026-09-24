@@ -1,9 +1,20 @@
-# Validation report — 2026-09-16
+# Validation reports
+
+## 2026-09-24 — Skill-focused lessons
+
+- The full offline suite passed: 45 Python tests, browser tests, Ruff, and ty.
+  The Responses mock supplies a platform value directly so its short-lived event
+  loops close reliably on this Python 3.14 environment.
+- No live model or teaching-quality result is claimed for this redesign.
+- An offline distribution build could not resolve `setuptools>=69` from the local
+  uv cache; packaging verification remains pending.
+
+## 2026-09-16 — Historical report
 
 > Historical report: this validates the curriculum/evidence prototype preserved in
-> the linked artifacts. The 2026-09-20 topic-independent skill-graph redesign replaces
-> that schema and prompt. Its offline checks are maintained in the current test suite;
-> a new live teaching-quality run has not yet been recorded.
+> the linked artifacts. The 2026-09-24 lesson redesign replaces that schema and
+> prompt. Its offline checks are maintained in the current test suite; a new live
+> teaching-quality run has not yet been recorded.
 
 ## Completed
 

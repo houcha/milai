@@ -15,6 +15,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {})) {
       attributes: {}, listeners: {},
       classList: { add() {}, toggle() {} },
       append(...children) { this.children.push(...children); },
+      prepend(...children) { this.children.unshift(...children); },
       replaceChildren(...children) { this.children = children; },
       addEventListener(name, handler) { this.listeners[name] = handler; },
       setAttribute(name, value) { this.attributes[name] = value; },
@@ -104,7 +105,7 @@ test("exercise answer shows progress and renders feedback", async () => {
   assert.equal(app.node("#exercise-submit").disabled, true);
   resolve({ok: true, json: async () => ({
     status: {completed: false, assessments: []}, reply: {text: "Try **-st**.", activities: []},
-    sessions: [], learning: {}, topic_anchors: {},
+    sessions: [], learning: {}, lesson_anchors: {},
   })});
   await request;
   assert.equal(app.node("#messages").children.at(-1).children[1].innerHTML, "Try **-st**.");
@@ -146,15 +147,15 @@ test("switching sessions from completed practice restores chat without a hash ch
 });
 
 
-test("topic links jump to committed discussion without sending a message", async () => {
+test("lesson links jump to committed discussion without sending a message", async () => {
   const app = application();
   app.run(`applySession({
-    session: "one", sessions: [], exercise_status: {}, topic_anchors: {old: "turn-old"},
+    session: "one", sessions: [], exercise_status: {}, lesson_anchors: {old: "turn-old"},
     conversation: [{role: "assistant", content: "Earlier explanation", turn_id: "turn-old"}],
-    learning: {topics: [{id: "old", name: "Earlier topic"}, {id: "current", name: "Current topic"}], focus: {topic_id: "current"}}
+    learning: {lessons: [{id: "old", title: "German · Pronouns"}, {id: "current", title: "German · Verbs"}], active_lesson: {id: "current"}}
   }); elements.message.value = "unsent draft";`);
   const links = app.node("#learning-path").children.map((item) => item.children[0]);
-  assert.equal(links[0].textContent, "Earlier topic");
+  assert.equal(links[0].textContent, "German · Pronouns");
   assert.equal(links[1].attributes["aria-current"], "step");
   await links[0].listeners.click();
   assert.equal(app.node("#messages").children[0].scrolled, true);
@@ -163,6 +164,18 @@ test("topic links jump to committed discussion without sending a message", async
   assert.equal(app.requests.length, 0);
   await links[1].listeners.click();
   assert.match(app.node("#notice").textContent, /unavailable/);
+});
+
+test("skills show derived mastery beside current evidence", () => {
+  const app = application();
+  app.run(`renderLearning({lessons: [], skills: [{
+    id: "pronouns", name: "Subject pronouns", mastered: true,
+    progress: {independent_since_difficulty: 2, observations: 3}
+  }]})`);
+  const card = app.node("#skills").children[0];
+  assert.equal(card.children[0].textContent, "Subject pronouns");
+  assert.equal(card.children[1].children[0].textContent, "Mastered");
+  assert.equal(card.children[1].children[0].className, "positive");
 });
 
 test("visiting Sessions and returning preserves draft and conversation position", async () => {
@@ -182,7 +195,7 @@ for (const action of ["rename", "delete", "select", "create"]) {
     const app = application("#sessions", async () => ({ok: true, json: async () => ({
       session: action === "select" || action === "create" ? "other" : "active",
       sessions: [{id: "active", title: "Active"}, {id: "other", title: "Other"}],
-      conversation: [], learning: {}, exercise_status: {}, topic_anchors: {},
+      conversation: [], learning: {}, exercise_status: {}, lesson_anchors: {},
     })}));
     app.run(`activeSession = "active"; renderSessions([{id: "active", title: "Active"}, {id: "other", title: "Other"}]);`);
     const row = app.node("#sessions").children[1];
@@ -221,7 +234,7 @@ test("navigation after an assessed answer does not call the exercise API", async
 test("renaming from Sessions does not overwrite the saved chat scroll", async () => {
   const app = application("#sessions", async () => ({ok: true, json: async () => ({
     session: "one", sessions: [{id: "one", title: "Updated"}],
-    conversation: [], learning: {}, exercise_status: {}, topic_anchors: {},
+    conversation: [], learning: {}, exercise_status: {}, lesson_anchors: {},
   })}));
   app.run('activeSession = "one"; scrollPositions.set("one", 321);');
   // Hidden scroll containers may report zero in a real browser.

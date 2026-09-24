@@ -1,5 +1,45 @@
 # Decision log
 
+## 2026-09-24 — Skill-focused lessons replace topics
+
+- Replace topics, topic links, and focus history with chronological lessons. A lesson
+  has one language skill as its focus and remains active across turns. The path title
+  is derived from language and skill; revisits create a separate Review entry.
+- Plan only the next skill, with no 3–8 skill inventory. Prerequisite edges remain
+  a DAG. Every ancestor prerequisite must be mastered before teaching a dependent
+  new skill, even after an explicit advanced request. The tutor explains the detour.
+- Mastery is two independent successes on distinct exercises since the latest
+  `needs_work` observation. Scaffolded, assisted, and uncertain outcomes do not
+  qualify. Practice has one current-lesson target and may use prior lesson skills
+  as support. Repeated difficulty or a learner request can trigger a review lesson.
+- Store schema 4 requires an explicit archival reset from schema 3. No migration is
+  attempted. The browser path and skill view now show lessons and derived mastery.
+- Earlier decisions below describe the prior topic model and are retained as history.
+
+## 2026-09-24 — Tutor-selected teaching examples
+
+- The tutor supplies examples that fit the learner's goal and level. Once language,
+  purpose, and starting point are known, it should teach instead of requesting
+  optional details as a prerequisite.
+- When authentic material is relevant, the tutor may analyze a confidently
+  recalled title or very short phrase with natural attribution. Recalled wording
+  is not a verified source and has no saved source ID. Close reading still uses a
+  learner-pasted passage or learner-supplied URL; retrieval does not expand into
+  web search.
+
+## 2026-09-24 — GPT-6 Luna Responses migration
+
+- Replace the Gemini Chat Completions provider with OpenAI's Responses API and
+  `gpt-6-luna`. Keep Low reasoning for tutoring and High for private topic planning;
+  Chat Completions cannot combine Luna tool calls with those reasoning settings.
+- Use `OPENAI_API_KEY`, `OPENAI_MODEL`, and `OPENAI_BASE_URL`; the existing Gemini
+  variables are ignored. Keep the existing local SQLite history and no-retry policy.
+- Send `store=false` and include encrypted reasoning content for in-run tool
+  continuation. The Agents SDK supplies response usage to OpenInference, which
+  masks input/output before Langfuse export unless content tracing is enabled.
+- The uncommitted 300-second request and turn timeouts are retained. Live requests
+  require a paid OpenAI project; offline mocks do not establish model quality.
+
 ## 2026-09-24 — submit before continuing
 
 - Remove Review explanation and Back to conversation from the practice view. Neither

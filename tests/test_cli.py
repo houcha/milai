@@ -52,7 +52,7 @@ def test_reset_requires_acknowledgement_and_archives_database(
     monkeypatch.setattr("sys.argv", ["milai", "reset", "--yes"])
     cli.main()
     output = capsys.readouterr().out
-    assert "Archived:" in output and "Created schema 3" in output
+    assert "Archived:" in output and "Created schema 4" in output
     assert list(tmp_path.glob("learning.db.legacy-*.bak"))
     reopened = Store(path)
     reopened.close()

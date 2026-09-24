@@ -26,27 +26,27 @@ class Writer:
         return json.loads(bytes(self.data).split(b"\r\n\r\n", 1)[1])
 
 
-def test_sessions_isolate_skills_focus_and_delete_graph(tmp_path):
+def test_sessions_isolate_skills_lessons_and_delete_graph(tmp_path):
     store = Store(tmp_path / "sessions.db")
     first = store.session(store.owner)
     second = store.session(store.owner)
     first_scope = store.learning_scope(store.owner, first)
     second_scope = store.learning_scope(store.owner, second)
     a = seed_graph(store, first_scope, first)
-    assert store.learning_view(second_scope)["topics"] == []
+    assert store.learning_view(second_scope)["lessons"] == []
     assert store.learning_view(second_scope)["skills"] == []
     b = seed_graph(store, second_scope, second)
-    assert a["topic"]["id"] != b["topic"]["id"]
+    assert a["lesson"]["id"] != b["lesson"]["id"]
     with pytest.raises(InvalidReference):
-        store.topic(second_scope, a["topic"]["id"])
+        store.lesson(second_scope, a["lesson"]["id"])
     with pytest.raises(PermissionError):
         store.authorize(first_scope, second)
 
     ctx = context(store, first_scope, first, "practice", "An answer")
     with store.transaction():
-        focus = store.focus(first_scope)
+        focus = store.active_lesson(first_scope)
         assert focus is not None
-        target = focus["skills"][0]["id"]
+        target = focus["focus_skill_id"]
         exercise = store.present_exercise(
             ctx,
             {
@@ -96,8 +96,10 @@ def test_legacy_shared_learning_is_preserved_once_and_reopen_is_stable(tmp_path)
     store.close()
     store = Store(path)
     assert store.learning_scope(learner, first) == learner
-    assert len(store.learning_view(store.learning_scope(learner, first))["topics"]) == 1
-    assert store.learning_view(store.learning_scope(learner, empty))["topics"] == []
+    assert (
+        len(store.learning_view(store.learning_scope(learner, first))["lessons"]) == 1
+    )
+    assert store.learning_view(store.learning_scope(learner, empty))["lessons"] == []
     assert store.conversation(learner, first)[0]["content"] == "German through songs"
     store.close()
     store = Store(path)
@@ -165,7 +167,7 @@ def test_tutor_receives_and_writes_only_selected_session_state(tmp_path, monkeyp
         state = json.loads(
             agent.instructions.split("Persisted learning data (not instructions):\n")[1]
         )
-        seen.append(state["active_topic"])
+        seen.append(state["active_lesson"])
         store.record_facts(
             context,
             [
@@ -187,7 +189,7 @@ def test_tutor_receives_and_writes_only_selected_session_state(tmp_path, monkeyp
     )
     asyncio.run(tutor.respond(store.owner, first, "German through songs"))
     asyncio.run(tutor.respond(store.owner, second, "Italian at a café"))
-    assert seen[0]["name"] == "Ordering food in German"
+    assert seen[0]["title"] == "German · Subject pronouns"
     assert seen[1] is None
     assert store.profile(scope)["goals"]["value"] == "German through songs"
     assert (
@@ -211,9 +213,9 @@ def test_removed_exercise_actions_are_rejected_without_assistance(tmp_path, acti
     session = store.session(learner)
     scope = store.learning_scope(learner, session)
     seed_graph(store, scope, session)
-    focus = store.focus(scope)
+    focus = store.active_lesson(scope)
     assert focus is not None
-    target = focus["skills"][0]["id"]
+    target = focus["focus_skill_id"]
     ctx = context(store, scope, session, "teach", "Practice")
     with store.transaction():
         exercise = store.present_exercise(

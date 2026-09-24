@@ -1,164 +1,91 @@
 # Architecture
 
-`CLI/Web -> Tutor -> OpenAI Agents SDK Runner -> Gemini OpenAI-compatible API`
+`CLI/Web -> Tutor -> OpenAI Agents SDK Runner -> OpenAI Responses API`
 
-Milai has one learner-facing conversational agent. It discovers intent, maintains a
-learning focus, explains, exercises, assesses, and adapts. When it calls
-`establish_topic`, that tool invokes a nested read-only planner with High reasoning and
-structured output; normal interaction uses Low reasoning. The application validates and
-persists the proposed graph atomically. The planner cannot write state or talk to the
-learner. This keeps the conversation coherent without asking separate agents to hand
-off learner context.
+Milai has one learner-facing tutor. The tutor discovers intent, explains, exercises,
+assesses, and adapts. `start_lesson` invokes a private read-only structured planner
+when the focused skill changes. The application validates and persists the result
+atomically. The planner has no write authority or learner-facing reply.
 
-## Learning model
+## Learning state
 
-A **skill** is a learner- and language-scoped ability that can be taught and observed,
-such as English past simple formation or German accusative indefinite articles. It is
-independent of any topic. A **topic** supplies one coherent application context derived from the learner’s
-goals or chosen material, and references reusable skill IDs with `core`,
-`extension`, or `contextual` roles. Prerequisite edges form a directed acyclic graph.
+Each session has a skill graph and a chronological lesson list. A skill is a
+language-specific, reusable ability with a definition and observable success
+criteria. Directed prerequisite edges must be acyclic. A lesson references exactly
+one focus skill. The latest lesson is active until a new lesson is created. Repeating
+a focus skill creates a new Review entry while preserving the earlier entry. Titles
+are derived from language and skill, so a context or source cannot become a lesson
+title.
 
-Every new topic starts with the minimum 3–8 core skills needed for basic understanding.
-The graph expands only as the learner advances or their purpose changes. There is one
-session-wide active focus: a topic, 1–3 target skill IDs, and optional supporting skill
-IDs. Exercises reference a set of skills with `target` or `supporting` roles because a
-real task usually draws on several abilities. Context never becomes a vague skill.
+New skills can be taught only after every ancestor prerequisite is mastered. Mastery
+is derived from observations: two independent successes on distinct exercises since
+the latest `needs_work`. An independent success requires an unscaffolded exercise
+and no skill-specific assistance. `uncertain` and assisted success do not count.
+The gate is checked in storage, including when a learner requests advanced material.
+The planner selects the earliest eligible prerequisite when needed.
+Two consecutive `needs_work` observations on distinct exercises flag an earlier
+active skill for review. Assessment atomically opens its Review lesson and returns
+it to the tutor for learner-facing explanation.
 
-Skills are versioned rather than edited in place. A split, merge, or redefinition marks
-old definitions superseded, records explicit old-to-new relations, and repoints topic
-and active-focus links. Old attempts and observations retain their original skill IDs.
-Progress is a summary of observation counts, outcomes, assistance, recency, and
-application contexts. The app does not infer a mastery stage or numeric score.
+An exercise belongs to the active lesson and has exactly one target skill, the
+lesson focus. Supporting skills must have appeared in earlier lessons and use the
+same language. Observations, assistance, and attempts keep their skill IDs. Skill
+supersession preserves historical lessons and evidence; the next lesson can use a
+replacement skill. Progress summaries remain derived from evidence.
 
-## Agent loop and stable tools
+## Tutor loop and tools
 
-One `Tutor.respond` call is one learner turn. The Runner may make several model calls:
-a generation can request one or more tools, the SDK executes them, appends results, and
-calls the model again until it emits final text. Multiple generation spans therefore do
-not mean multiple learner messages. `ToolExecutionConfig(max_function_tool_concurrency=1)`
-serializes local writes even if a provider returns several independent calls together.
-Calls that need an ID from another result must still occur in a later generation.
+One `Tutor.respond` call is one learner turn. The Runner can make multiple model
+calls and tool calls before final prose. Local writes are serialized with
+`ToolExecutionConfig(max_function_tool_concurrency=1)`. A SQLite transaction wraps
+the full turn; per-tool savepoints make correctable validation failures no-write.
+The final reply and structured exercises commit together.
 
-The tutor receives one stable tool inventory on every model iteration. Applicability
-is part of each tool contract and is validated again by the application and storage.
-This keeps control flow visible in one place and avoids an implicit state machine made
-from dynamic tool predicates. Premature or invalid calls return a bounded, no-write
-error that the model can correct within the existing turn and tool budgets:
+The stable tool inventory covers profile facts, skill search, `start_lesson`, skill
+supersession, exercise presentation, assistance, attempt assessment, bounded recall,
+and source handling. `start_lesson` takes lesson intent, derives target language from
+saved facts, and gives the planner the profile, learner message, active lesson,
+reusable skills, prerequisite mastery, and evidence. Its typed output selects one
+existing skill key or one new skill specification with direct prerequisites. Storage
+checks ownership, duplicates, language, DAG constraints, and prerequisite mastery.
+The learner-facing tutor explains any prerequisite detour in plain language.
 
-| Capability | Tool | Precondition and effect |
-| --- | --- | --- |
-| Explicit profile memory | `record_learner_facts` | Always; batches facts with exact quotes from the current message |
-| Reuse existing abilities | `search_skills` | Always; searches active learner-owned skill definitions |
-| Create a topic graph | `establish_topic` | Requires target language and purpose; internally plans, validates, and atomically creates skills, DAG edges, topic links, and focus |
-| Grow or repair the graph | `expand_topic`, `supersede_skills` | Requires learner-owned topic/skill references; validates duplicates, replacements, and cycles |
-| Move the pointer | `set_learning_focus` | Requires a learner-owned topic; target and support IDs must belong to it |
-| Structured exercise | `present_exercise` | Requires an active focus; persists the exact task and its skill contract for later assistance and assessment |
-| Help and evidence | `record_assistance`, `assess_attempt` | Requires an explicitly referenced, previously presented exercise; both are skill-specific |
-| Bounded recall | `recall_learning_context` | Always; returns the same bounded state shape used by the prompt |
-| Source handling | `retrieve_source`, `save_pasted_source`, `get_source_excerpt` | Always; retrieval remains learner-authorized and excerpts are bounded |
+The tutor receives up to six learner-facing turns or 20,000 characters of replay.
+Dynamic learning state is capped at 16,000 characters and includes profile, active
+lesson, recent lessons, skill catalog and mastery, active exercise, recent focus
+evidence, and source metadata. Full source bodies and raw tool traffic are excluded.
+The tutor requests bounded source excerpts when needed. Web chat streams provisional
+planner and reply text; only the committed response replaces the draft.
 
-`establish_topic` is deliberately a composite command. Its public input is only the
-topic name and purpose. Target language comes from persisted learner facts, and the
-private planner receives those values plus saved profile values (including free-form
-`level`), the bounded active skill catalog, and progress summaries for only those
-candidate skills. Summaries use stable skill keys rather than database IDs and
-preserve the distinction between assisted and independent success. Missing level
-and evidence remain valid: discovery is a prompt policy, not a tool precondition. Its typed
-output is validated before storage writes begin. A successful call still stores skills
-separately from topics. `plan_teaching_action` is absent: adaptation is expressed by
-graph/focus changes and the explanation or exercise that implements them, so a detached
-rationale record cannot claim a later action it does not identify.
+The browser opens a presented task through **Start exercise**. Answer turns carry
+selected exercise ID as application context. Questions without assessment stay
+clarifications. A successful latest assessment closes the task. Continue returns
+to conversation after an answered turn without recording assistance. Exercise
+status is rebuilt from attempts and assistance after reload.
 
-## Structured replies and transactions
+## Storage and navigation
 
-The web conversation opens a presented task only through **Start exercise**. Its
-temporary exercise view hides the conversation and learning sidebar while retaining
-the chat scroll position and unsent drafts in browser memory. Answer actions use
-the ordinary tutor transaction and persist learner-facing turns. The selected
-exercise ID is application context, separate from learner text; assessment
-tools may save observations only for an answer to that exercise. A response with no
-saved assessment remains a clarification. The practice view has no exit action
-until the learner submits an answer and receives a reply. Continue then returns to
-the conversation without recording assistance; an unsuccessful answer can also be retried.
-Exercise status is rebuilt from attempts and assistance on reload; a successful latest
-assessment closes the task. Feedback protects later retries with
-assistance while leaving the assessment just completed unchanged.
+SQLite schema 4 has normalized tables for sessions, turns, events, facts, sources,
+skills, prerequisites, supersessions, lessons, exercises, exercise skills and sources,
+assistance, attempts, observations, and ordered turn exercises. Opaque IDs are
+checked against the session's learning scope. The model cannot choose a learner,
+session, database, or event provenance. Opening an older schema fails with an
+explicit `milai reset --yes` instruction. Reset archives the database and WAL/SHM
+sidecars before creating fresh schema 4.
 
-`Tutor.respond` returns `{text, activities}`. The final model text carries explanations,
-examples, feedback, framing, and questions without a separate theory schema. Exercises
-remain structured because later attempts and assistance need a stable ID and exact skill
-contract. The run context records exercise IDs in tool-call order. When the model
-finishes, the same SQLite transaction saves the transcript and exercise presentation
-links; the web and CLI render the persisted tasks verbatim. A failed or timed-out run
-rolls back learning writes, exercises, events, and transcript together. Per-tool
-savepoints also prevent a correctable graph error from leaving partial entities while
-the model retries.
+The lesson sidebar is chronological; its latest entry is current. Clicking a lesson
+jumps to its original committed assistant turn without changing focus. Session-scoped
+`lesson_anchors` derive those links from audit events joined to committed turns.
+Sessions own create, select, rename, and delete controls. Deleting one session's
+learning state leaves other sessions intact.
 
-An attempt can reference only an exercise from an earlier turn. The server stores the
-actual current learner message. Each observation references one exercise skill; skills
-the response did not reveal remain unobserved. Independent success requires a successful
-observation, an unscaffolded exercise, and no recorded assistance for that skill. Help
-on one skill does not erase independent evidence for another skill in the same task.
+## Sources and observability
 
-## Storage, replay, and schema lifecycle
-
-SQLite schema 3 uses normalized tables for facts, sources, skills, prerequisites,
-supersessions, topics, topic links, focus history, exercises, assistance,
-attempts, skill observations, sessions, turns, ordered exercises, and audit events.
-Opaque IDs are always checked against the application-injected learner. The model
-cannot choose a learner, session, database, or event provenance.
-
-The model receives at most six learner-facing turns or 20,000 characters. Replay
-contains only the saved learner and assistant prose; structured exercises come from
-the bounded learning state or the selected exercise ID. Raw SDK tool
-traffic is retained for inspection but never replayed. Dynamic state is capped at
-16,000 characters and contains current profile values, topic summaries, the active
-topic graph, current focus and exercise, evidence summaries, and at most five recent
-focus observations. Full source bodies are excluded; the model requests bounded
-excerpts when needed. If space is tight, other-topic summaries, older observations,
-and source metadata are removed before the active core graph.
-
-Schema changes are explicit. Opening a legacy or unknown database fails with a command
-to run `milai reset --yes`. Reset archives the database and WAL/SHM sidecars with a UTC
-timestamp before creating schema 3. There is no implicit migration or deletion.
-Older schema 3 databases may retain unused hint columns and assistance rows; current
-exercise creation and interaction paths neither create nor reveal hints.
-
-## Source and observability boundaries
-
-Each Gemini HTTP request has a 120-second timeout; a complete tutor turn has a
-300-second limit. These limits cover slow sequential model generations without
-retrying a timed-out request. A failed turn rolls back its learning writes.
-
-Retrieval accepts learner-supplied or previously retained public HTTPS URLs, uses
-bounded reads and timeouts, validates public DNS addresses, pins the connection, and
-disallows redirects. It sends no application credentials, cookies, or ambient proxy
-configuration. Source content is untrusted data and never grants tools or changes
-instructions.
-
-Langfuse's supported `OpenAIAgentsInstrumentor` exports framework model and tool spans;
-it is instrumentation around SDK internals, not application control flow. Milai adds one
-application turn span containing pseudonymous IDs, prompt hash, and committed event IDs.
-Content is hidden by default. Generation input/output appears on the generation span
-when content tracing is enabled; session-level trace rows need not duplicate it.
-
-## References
-
-- [OpenAI Agents SDK](https://developers.openai.com/api/docs/guides/agents/sdk)
-- [Agents results and state](https://developers.openai.com/api/docs/guides/agents/results)
-- [Langfuse Agents integration](https://langfuse.com/integrations/frameworks/openai-agents)
-
-The implementation is also checked against the installed Agents SDK because provider
-adapter behavior can evolve between releases.
-
-## Browser navigation
-
-Conversation and Skills belong to the selected session. A separate Sessions view
-owns create/select/rename/delete controls. The topic sidebar is chronological
-(`created`, then insertion order), with the current focus highlighted. Topic clicks
-navigate to the original assistant turn without a model call or focus mutation.
-`topic_anchors` maps topic IDs to committed turn IDs using session-scoped audit events;
-browser conversation items and tutor replies expose `turn_id` for DOM anchors.
-Missing historical anchors are reported as unavailable. Model-history replay is
-unchanged. Temporary exercises hide the path and require an answered turn before
-navigation reveals learning content. No schema migration is needed.
+Retrieval accepts learner-supplied or saved public HTTPS URLs, uses bounded reads
+and timeouts, pins public DNS addresses, and disallows redirects. Source text is
+untrusted data. Langfuse's Agents instrumentation exports framework spans; Milai
+adds one turn span with pseudonymous IDs, prompt hash, and committed event IDs.
+Content is masked by default unless `MILAI_TRACE_CONTENT=true`. Responses use
+`store=false` with encrypted reasoning items for tool continuation. Each model
+request and tutor turn has a 300-second timeout; failed turns roll back learning
+writes and transcript together.

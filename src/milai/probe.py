@@ -34,10 +34,16 @@ async def probe(settings: Settings, telemetry: Telemetry) -> dict:
             model=model,
             tools=[read_probe_value],
             model_settings=ModelSettings(
-                max_tokens=4096, reasoning=Reasoning(effort="low")
+                max_tokens=4096,
+                reasoning=Reasoning(effort="low"),
+                store=False,
+                response_include=["reasoning.encrypted_content"],
             ),
         )
-        config = RunConfig(workflow_name="model-compatibility-probe")
+        config = RunConfig(
+            workflow_name="model-compatibility-probe",
+            trace_include_sensitive_data=True,
+        )
         with telemetry.turn("synthetic-probe", "synthetic-probe", "probe-v1"):
             async with asyncio.timeout(settings.timeout):
                 first = await Runner.run(
@@ -58,7 +64,10 @@ async def probe(settings: Settings, telemetry: Telemetry) -> dict:
                     agent.clone(
                         tools=[],
                         model_settings=ModelSettings(
-                            max_tokens=4096, reasoning=Reasoning(effort="high")
+                            max_tokens=4096,
+                            reasoning=Reasoning(effort="high"),
+                            store=False,
+                            response_include=["reasoning.encrypted_content"],
                         ),
                     ),
                     continued.to_input_list()

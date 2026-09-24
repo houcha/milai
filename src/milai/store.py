@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-SCHEMA_VERSION = "3"
+SCHEMA_VERSION = "4"
 
 
 def identifier() -> str:
@@ -95,28 +95,14 @@ CREATE TABLE skill_supersessions (
     relation TEXT NOT NULL CHECK(relation IN ('redefined', 'split', 'merged')),
     PRIMARY KEY(change_id, old_skill_id, new_skill_id)
 );
-CREATE TABLE topics (
+CREATE TABLE lessons (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, language TEXT NOT NULL,
-    name TEXT NOT NULL, purpose TEXT NOT NULL,
-    status TEXT NOT NULL CHECK(status IN ('active', 'archived')), created TEXT NOT NULL
+    focus_skill_id TEXT NOT NULL REFERENCES skills(id),
+    reason TEXT NOT NULL, created TEXT NOT NULL
 );
-CREATE INDEX topics_learner ON topics(learner, status, created);
-CREATE TABLE topic_skills (
-    topic_id TEXT NOT NULL REFERENCES topics(id), skill_id TEXT NOT NULL REFERENCES skills(id),
-    role TEXT NOT NULL CHECK(role IN ('core', 'extension', 'contextual')),
-    priority INTEGER NOT NULL, created TEXT NOT NULL, PRIMARY KEY(topic_id, skill_id)
-);
-CREATE TABLE focuses (
-    id TEXT PRIMARY KEY, learner TEXT NOT NULL, topic_id TEXT NOT NULL REFERENCES topics(id),
-    reason TEXT NOT NULL, active INTEGER NOT NULL CHECK(active IN (0, 1)), created TEXT NOT NULL
-);
-CREATE UNIQUE INDEX one_active_focus ON focuses(learner) WHERE active=1;
-CREATE TABLE focus_skills (
-    focus_id TEXT NOT NULL REFERENCES focuses(id), skill_id TEXT NOT NULL REFERENCES skills(id),
-    role TEXT NOT NULL CHECK(role IN ('target', 'supporting')), PRIMARY KEY(focus_id, skill_id)
-);
+CREATE INDEX lessons_learner ON lessons(learner, created);
 CREATE TABLE exercises (
-    id TEXT PRIMARY KEY, learner TEXT NOT NULL, topic_id TEXT NOT NULL REFERENCES topics(id),
+    id TEXT PRIMARY KEY, learner TEXT NOT NULL, lesson_id TEXT NOT NULL REFERENCES lessons(id),
     title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL,
     scaffolding TEXT NOT NULL CHECK(scaffolding IN ('none', 'cues', 'worked_example')),
     created_turn TEXT NOT NULL, created TEXT NOT NULL
@@ -244,7 +230,7 @@ class Store:
 
     @classmethod
     def reset(cls, path: Path) -> list[Path]:
-        """Archive an existing database and sidecars, then create schema v2."""
+        """Archive an existing database and sidecars, then create schema v4."""
         path = Path(path)
         archived: list[Path] = []
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
@@ -318,8 +304,6 @@ class Store:
                 ("assistance_skills", "assistance", "assistance_id"),
                 ("exercise_sources", "exercises", "exercise_id"),
                 ("exercise_skills", "exercises", "exercise_id"),
-                ("focus_skills", "focuses", "focus_id"),
-                ("topic_skills", "topics", "topic_id"),
                 ("skill_supersessions", "skill_changes", "change_id"),
             ):
                 self.db.execute(
@@ -331,10 +315,9 @@ class Store:
                 "attempts",
                 "assistance",
                 "exercises",
-                "focuses",
                 "skill_prerequisites",
                 "skill_changes",
-                "topics",
+                "lessons",
                 "skills",
                 "sources",
                 "learner_facts",
@@ -414,8 +397,7 @@ class Store:
         allowed = {
             "sources",
             "skills",
-            "topics",
-            "focuses",
+            "lessons",
             "exercises",
             "assistance",
             "attempts",
@@ -613,7 +595,7 @@ class Store:
         for skill_id in existing_ids:
             skill = self.skill(ctx.learner, skill_id, active=True)
             if skill["language"] != language:
-                raise InvalidReference("Skill language does not match the topic")
+                raise InvalidReference("Skill language does not match the lesson")
             resolved[skill_id] = skill_id
             resolved[skill["key"]] = skill_id
         for spec in new_specs:
@@ -642,180 +624,113 @@ class Store:
         except KeyError as error:
             raise InvalidReference(f"Unknown skill reference: {ref}") from error
 
-    def _set_focus(
+    def mastery_evidence(self, learner: str, skill_id: str) -> int:
+        """Count distinct independent exercises since the last difficulty observation."""
+        self.skill(learner, skill_id)
+        rows = self.db.execute(
+            "SELECT exercise_id, outcome, independent_success FROM skill_observations "
+            "WHERE learner=? AND skill_id=? ORDER BY rowid",
+            (learner, skill_id),
+        )
+        successes: set[str] = set()
+        for row in rows:
+            if row["outcome"] == "needs_work":
+                successes.clear()
+            elif row["independent_success"]:
+                successes.add(row["exercise_id"])
+        return len(successes)
+
+    def mastered(self, learner: str, skill_id: str) -> bool:
+        return self.mastery_evidence(learner, skill_id) >= 2
+
+    def prerequisites(self, learner: str, skill_id: str) -> list[str]:
+        """Return all ancestors in prerequisite-first order."""
+        self.skill(learner, skill_id, active=True)
+        result: list[str] = []
+        seen: set[str] = set()
+
+        def visit(dependent: str) -> None:
+            for row in self.db.execute(
+                "SELECT prerequisite_id FROM skill_prerequisites "
+                "WHERE learner=? AND dependent_id=? ORDER BY rowid",
+                (learner, dependent),
+            ):
+                ancestor = row[0]
+                if ancestor not in seen:
+                    seen.add(ancestor)
+                    visit(ancestor)
+                    result.append(ancestor)
+
+        visit(skill_id)
+        return result
+
+    def start_lesson(
         self,
         ctx: Any,
-        topic_id: str,
-        targets: list[str],
-        supporting: list[str],
+        language: str,
+        existing_skill_id: str | None,
+        new_skill: dict | None,
+        prerequisite_ids: list[str],
         reason: str,
     ) -> dict:
-        self._owned("topics", ctx.learner, topic_id)
-        if (
-            not 1 <= len(targets) <= 3
-            or len(supporting) > 5
-            or len(set(targets + supporting)) != len(targets + supporting)
-        ):
-            raise ValueError(
-                "A focus needs 1–3 unique targets and distinct support skills"
+        if self.db.execute(
+            "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
+            (ctx.learner, ctx.turn_id),
+        ).fetchone():
+            raise ValueError("A lesson was already started in this learner turn")
+        if (existing_skill_id is None) == (new_skill is None):
+            raise ValueError("Choose exactly one existing or new lesson skill")
+        if existing_skill_id:
+            if prerequisite_ids:
+                raise ValueError("Existing skill prerequisites cannot be changed here")
+            skill = self.skill(ctx.learner, existing_skill_id, active=True)
+            skill_id = existing_skill_id
+        else:
+            if new_skill is None:
+                raise ValueError("Choose exactly one existing or new lesson skill")
+            if len(prerequisite_ids) != len(set(prerequisite_ids)):
+                raise ValueError("Prerequisites must be unique")
+            for prerequisite_id in prerequisite_ids:
+                prerequisite = self.skill(ctx.learner, prerequisite_id, active=True)
+                if prerequisite["language"] != language:
+                    raise InvalidReference("Prerequisite language differs from lesson")
+                if not self.mastered(ctx.learner, prerequisite_id):
+                    raise ValueError(
+                        "Teach and master prerequisite skills before this lesson"
+                    )
+            skill_id = self._resolve_skills(ctx, language, [], [new_skill])[
+                new_skill["key"]
+            ]
+            skill = self.skill(ctx.learner, skill_id)
+            edges = [(item, skill_id) for item in prerequisite_ids]
+            self._validate_edges(ctx.learner, edges)
+            self.db.executemany(
+                "INSERT INTO skill_prerequisites VALUES (?, ?, ?, ?)",
+                [(ctx.learner, a, b, now()) for a, b in edges],
             )
-        linked = {
-            row[0]
-            for row in self.db.execute(
-                "SELECT skill_id FROM topic_skills WHERE topic_id=?", (topic_id,)
-            )
-        }
-        if not set(targets + supporting) <= linked:
-            raise InvalidReference("Every focus skill must be linked to its topic")
-        for skill_id in targets + supporting:
-            self.skill(ctx.learner, skill_id, active=True)
-        self.db.execute("UPDATE focuses SET active=0 WHERE learner=?", (ctx.learner,))
-        focus_id = identifier()
-        self.db.execute(
-            "INSERT INTO focuses VALUES (?, ?, ?, ?, 1, ?)",
-            (focus_id, ctx.learner, topic_id, reason, now()),
-        )
-        self.db.executemany(
-            "INSERT INTO focus_skills VALUES (?, ?, ?)",
-            [(focus_id, skill_id, "target") for skill_id in targets]
-            + [(focus_id, skill_id, "supporting") for skill_id in supporting],
-        )
-        self._event(ctx, "learning_focus", focus_id)
-        return self.focus(ctx.learner) or {}
-
-    def establish_topic(
-        self,
-        ctx: Any,
-        topic: dict,
-        existing_skill_ids: list[str],
-        new_skills: list[dict],
-        prerequisites: list[dict],
-        links: list[dict],
-        focus: dict,
-    ) -> dict:
-        resolved = self._resolve_skills(
-            ctx, topic["language"], existing_skill_ids, new_skills
-        )
-        resolved_edges = [
-            (
-                self._resolve(edge["prerequisite"], resolved),
-                self._resolve(edge["dependent"], resolved),
-            )
-            for edge in prerequisites
+        if skill["language"] != language:
+            raise InvalidReference("Skill language does not match the lesson")
+        unmet = [
+            item
+            for item in self.prerequisites(ctx.learner, skill_id)
+            if not self.mastered(ctx.learner, item)
         ]
-        self._validate_edges(ctx.learner, resolved_edges)
-        topic_id = identifier()
+        if unmet:
+            raise ValueError("Teach and master all prerequisite skills first")
+        active = self.active_lesson(ctx.learner)
+        if active and active["focus_skill_id"] == skill_id:
+            raise ValueError("This skill is already the active lesson; continue it")
+        previous = self.db.execute(
+            "SELECT 1 FROM lessons WHERE learner=? AND focus_skill_id=? LIMIT 1",
+            (ctx.learner, skill_id),
+        ).fetchone()
+        lesson_id = identifier()
         self.db.execute(
-            "INSERT INTO topics VALUES (?, ?, ?, ?, ?, 'active', ?)",
-            (
-                topic_id,
-                ctx.learner,
-                topic["language"],
-                topic["name"],
-                topic["purpose"],
-                now(),
-            ),
+            "INSERT INTO lessons VALUES (?, ?, ?, ?, ?, ?)",
+            (lesson_id, ctx.learner, language, skill_id, reason, now()),
         )
-        linked: set[str] = set()
-        core = 0
-        for link in links:
-            skill_id = self._resolve(link["skill_ref"], resolved)
-            if skill_id in linked:
-                raise ValueError("A skill can be linked to a topic only once")
-            linked.add(skill_id)
-            core += link["role"] == "core"
-            self.db.execute(
-                "INSERT INTO topic_skills VALUES (?, ?, ?, ?, ?)",
-                (topic_id, skill_id, link["role"], link["priority"], now()),
-            )
-        if not 3 <= core <= 8:
-            raise ValueError("A new topic needs 3–8 core skills")
-        supplied = set(existing_skill_ids) | {
-            self._resolve(s["key"], resolved) for s in new_skills
-        }
-        if supplied != linked:
-            raise ValueError("Every supplied skill must be linked to the topic")
-        self.db.executemany(
-            "INSERT OR IGNORE INTO skill_prerequisites VALUES (?, ?, ?, ?)",
-            [(ctx.learner, a, b, now()) for a, b in resolved_edges],
-        )
-        self._event(ctx, "topic", topic_id)
-        focus_result = self._set_focus(
-            ctx,
-            topic_id,
-            [self._resolve(ref, resolved) for ref in focus["target_refs"]],
-            [self._resolve(ref, resolved) for ref in focus["supporting_refs"]],
-            focus["reason"],
-        )
-        return {
-            "topic": self.topic(ctx.learner, topic_id),
-            "focus": focus_result,
-            "resolved_skill_ids": {
-                key: value for key, value in resolved.items() if key != value
-            },
-        }
-
-    def expand_topic(
-        self,
-        ctx: Any,
-        topic_id: str,
-        existing_skill_ids: list[str],
-        new_skills: list[dict],
-        prerequisites: list[dict],
-        links: list[dict],
-        rationale: str,
-    ) -> dict:
-        topic = self._owned("topics", ctx.learner, topic_id)
-        resolved = self._resolve_skills(
-            ctx, topic["language"], existing_skill_ids, new_skills
-        )
-        edges = [
-            (
-                self._resolve(e["prerequisite"], resolved),
-                self._resolve(e["dependent"], resolved),
-            )
-            for e in prerequisites
-        ]
-        self._validate_edges(ctx.learner, edges)
-        linked: set[str] = set()
-        for link in links:
-            skill_id = self._resolve(link["skill_ref"], resolved)
-            if skill_id in linked:
-                raise ValueError("A skill can be linked to a topic only once")
-            linked.add(skill_id)
-            if self.db.execute(
-                "SELECT 1 FROM topic_skills WHERE topic_id=? AND skill_id=?",
-                (topic_id, skill_id),
-            ).fetchone():
-                raise ValueError("This skill is already linked to the topic")
-            self.db.execute(
-                "INSERT INTO topic_skills VALUES (?, ?, ?, ?, ?)",
-                (topic_id, skill_id, link["role"], link["priority"], now()),
-            )
-        new_ids = {self._resolve(skill["key"], resolved) for skill in new_skills}
-        if not new_ids <= linked:
-            raise ValueError("Every new expansion skill must be linked exactly once")
-        already_linked = {
-            row[0]
-            for row in self.db.execute(
-                "SELECT skill_id FROM topic_skills WHERE topic_id=?", (topic_id,)
-            )
-        }
-        if not set(existing_skill_ids) <= already_linked | linked:
-            raise ValueError(
-                "Existing expansion skills must already belong to the topic or be newly linked"
-            )
-        self.db.executemany(
-            "INSERT OR IGNORE INTO skill_prerequisites VALUES (?, ?, ?, ?)",
-            [(ctx.learner, a, b, now()) for a, b in edges],
-        )
-        change_id = identifier()
-        self.db.execute(
-            "INSERT INTO skill_changes VALUES (?, ?, ?, ?)",
-            (change_id, ctx.learner, rationale, now()),
-        )
-        self._event(ctx, "topic_expansion", change_id)
-        return self.topic(ctx.learner, topic_id)
+        self._event(ctx, "lesson", lesson_id)
+        return self.lesson(ctx.learner, lesson_id, review=bool(previous))
 
     def supersede_skills(
         self,
@@ -886,72 +801,7 @@ class Store:
             "INSERT INTO skill_supersessions VALUES (?, ?, ?, ?)",
             [(change_id, a, b, relation) for a, b, relation in relation_rows],
         )
-        for old_id, replacement_ids in replacement_map.items():
-            for row in self.db.execute(
-                "SELECT topic_id, role, priority FROM topic_skills WHERE skill_id=?",
-                (old_id,),
-            ).fetchall():
-                self.db.execute(
-                    "DELETE FROM topic_skills WHERE topic_id=? AND skill_id=?",
-                    (row["topic_id"], old_id),
-                )
-                for position, replacement_id in enumerate(replacement_ids):
-                    conflict = self.db.execute(
-                        "SELECT role, priority FROM topic_skills WHERE topic_id=? AND skill_id=?",
-                        (row["topic_id"], replacement_id),
-                    ).fetchone()
-                    if not conflict:
-                        self.db.execute(
-                            "INSERT INTO topic_skills VALUES (?, ?, ?, ?, ?)",
-                            (
-                                row["topic_id"],
-                                replacement_id,
-                                row["role"],
-                                row["priority"] + position,
-                                now(),
-                            ),
-                        )
-                    else:
-                        roles = {"core": 0, "extension": 1, "contextual": 2}
-                        best_role = min(
-                            (row["role"], conflict["role"]),
-                            key=lambda role: roles.get(str(role), 99),
-                        )
-                        self.db.execute(
-                            "UPDATE topic_skills SET role=?, priority=min(priority, ?) "
-                            "WHERE topic_id=? AND skill_id=?",
-                            (
-                                best_role,
-                                row["priority"],
-                                row["topic_id"],
-                                replacement_id,
-                            ),
-                        )
-            for row in self.db.execute(
-                "SELECT focus_id, role FROM focus_skills WHERE skill_id=?", (old_id,)
-            ).fetchall():
-                self.db.execute(
-                    "DELETE FROM focus_skills WHERE focus_id=? AND skill_id=?",
-                    (row["focus_id"], old_id),
-                )
-                for replacement_id in replacement_ids:
-                    existing_focus = self.db.execute(
-                        "SELECT role FROM focus_skills WHERE focus_id=? AND skill_id=?",
-                        (row["focus_id"], replacement_id),
-                    ).fetchone()
-                    if not existing_focus:
-                        self.db.execute(
-                            "INSERT INTO focus_skills VALUES (?, ?, ?)",
-                            (row["focus_id"], replacement_id, row["role"]),
-                        )
-                    elif (
-                        row["role"] == "target"
-                        and existing_focus["role"] == "supporting"
-                    ):
-                        self.db.execute(
-                            "UPDATE focus_skills SET role='target' WHERE focus_id=? AND skill_id=?",
-                            (row["focus_id"], replacement_id),
-                        )
+        for old_id in old:
             self.db.execute(
                 "UPDATE skills SET status='superseded' WHERE id=?", (old_id,)
             )
@@ -995,73 +845,71 @@ class Store:
             ],
         }
 
-    def topic(self, learner: str, topic_id: str) -> dict:
-        topic = self._owned("topics", learner, topic_id)
-        skills = []
-        for row in self.db.execute(
-            "SELECT s.*, ts.role, ts.priority FROM topic_skills ts JOIN skills s ON s.id=ts.skill_id "
-            "WHERE ts.topic_id=? ORDER BY ts.priority, s.name",
-            (topic_id,),
-        ):
-            item = self._skill_dict(row)
-            item.update(role=row["role"], priority=row["priority"])
-            skills.append(item)
-        ids = {item["id"] for item in skills}
-        edges = [
-            {"prerequisite_id": row[0], "dependent_id": row[1]}
-            for row in self.db.execute(
-                "SELECT prerequisite_id, dependent_id FROM skill_prerequisites WHERE learner=?",
-                (learner,),
-            )
-            if row[0] in ids and row[1] in ids
-        ]
-        return {
-            "id": topic["id"],
-            "language": topic["language"],
-            "name": topic["name"],
-            "purpose": topic["purpose"],
-            "status": topic["status"],
-            "skills": skills,
-            "prerequisites": edges,
-        }
-
-    def topics(self, learner: str) -> list[dict]:
-        rows = self.db.execute(
-            "SELECT id FROM topics WHERE learner=? AND status='active' ORDER BY created, rowid",
-            (learner,),
-        ).fetchall()
-        return [self.topic(learner, row[0]) for row in rows]
-
-    def focus(self, learner: str) -> dict | None:
-        row = self.db.execute(
-            "SELECT * FROM focuses WHERE learner=? AND active=1", (learner,)
-        ).fetchone()
-        if row is None:
-            return None
-        skills = [
-            {**self.skill(learner, skill["skill_id"]), "role": skill["role"]}
-            for skill in self.db.execute(
-                "SELECT skill_id, role FROM focus_skills WHERE focus_id=? "
-                "ORDER BY CASE role WHEN 'target' THEN 0 ELSE 1 END",
-                (row["id"],),
-            )
-        ]
-        return {
-            "id": row["id"],
-            "topic_id": row["topic_id"],
-            "reason": row["reason"],
-            "skills": skills,
-        }
-
-    def set_focus(
-        self,
-        ctx: Any,
-        topic_id: str,
-        targets: list[str],
-        supporting: list[str],
-        reason: str,
+    def lesson(
+        self, learner: str, lesson_id: str, *, review: bool | None = None
     ) -> dict:
-        return self._set_focus(ctx, topic_id, targets, supporting, reason)
+        row = self._owned("lessons", learner, lesson_id)
+        skill = self.skill(learner, row["focus_skill_id"])
+        if review is None:
+            review = bool(
+                self.db.execute(
+                    "SELECT 1 FROM lessons WHERE learner=? AND focus_skill_id=? "
+                    "AND rowid < (SELECT rowid FROM lessons WHERE id=?) LIMIT 1",
+                    (learner, row["focus_skill_id"], lesson_id),
+                ).fetchone()
+            )
+        return {
+            "id": lesson_id,
+            "language": row["language"],
+            "title": ("Review: " if review else "")
+            + f"{row['language']} · {skill['name']}",
+            "focus_skill_id": skill["id"],
+            "skill": skill,
+            "reason": row["reason"],
+            "review": review,
+            "created": row["created"],
+        }
+
+    def lessons(self, learner: str) -> list[dict]:
+        rows = self.db.execute(
+            "SELECT id FROM lessons WHERE learner=? ORDER BY rowid", (learner,)
+        )
+        return [self.lesson(learner, row[0]) for row in rows]
+
+    def active_lesson(self, learner: str) -> dict | None:
+        row = self.db.execute(
+            "SELECT id FROM lessons WHERE learner=? ORDER BY rowid DESC LIMIT 1",
+            (learner,),
+        ).fetchone()
+        return self.lesson(learner, row[0]) if row else None
+
+    def review_due(self, learner: str) -> list[dict]:
+        """Find earlier lesson skills missed on two consecutive distinct exercises."""
+        active = self.active_lesson(learner)
+        rows = self.db.execute(
+            "SELECT DISTINCT focus_skill_id FROM lessons WHERE learner=?",
+            (learner,),
+        )
+        due = []
+        for row in rows:
+            skill_id = row[0]
+            if active and skill_id == active["focus_skill_id"]:
+                continue
+            skill = self.skill(learner, skill_id)
+            if skill["status"] != "active":
+                continue
+            recent = self.db.execute(
+                "SELECT outcome, exercise_id FROM skill_observations "
+                "WHERE learner=? AND skill_id=? ORDER BY rowid DESC LIMIT 2",
+                (learner, skill_id),
+            ).fetchall()
+            if (
+                len(recent) == 2
+                and all(item["outcome"] == "needs_work" for item in recent)
+                and recent[0]["exercise_id"] != recent[1]["exercise_id"]
+            ):
+                due.append({"skill_id": skill_id, "name": skill["name"]})
+        return due
 
     def _validate_sources(self, learner: str, source_ids: list[str]) -> None:
         for source_id in source_ids:
@@ -1069,33 +917,39 @@ class Store:
                 raise InvalidReference("Only available sources can support an activity")
 
     def present_exercise(self, ctx: Any, exercise: dict) -> dict:
-        focus = self.focus(ctx.learner)
-        if focus is None:
-            raise ValueError("Set a learning focus before presenting an exercise")
-        topic = self.topic(ctx.learner, focus["topic_id"])
-        linked = {item["id"] for item in topic["skills"] if item["status"] == "active"}
-        target_focus = {
-            item["id"] for item in focus["skills"] if item["role"] == "target"
-        }
+        lesson = self.active_lesson(ctx.learner)
+        if lesson is None:
+            raise ValueError("Start a lesson before presenting an exercise")
         requirements = exercise["skills"]
         ids = [item["skill_id"] for item in requirements]
         targets = [
             item["skill_id"] for item in requirements if item["role"] == "target"
         ]
-        if len(ids) != len(set(ids)) or not 1 <= len(targets) <= 3:
-            raise ValueError("Exercise skills must be unique with 1–3 targets")
-        if not set(ids) <= linked or not set(targets) <= target_focus:
-            raise InvalidReference(
-                "Exercise targets must be focused; support skills must be topic-linked"
+        if len(ids) != len(set(ids)) or targets != [lesson["focus_skill_id"]]:
+            raise ValueError(
+                "Exercise needs exactly one target: the current lesson skill"
             )
+        for item in requirements:
+            skill = self.skill(ctx.learner, item["skill_id"], active=True)
+            if skill["language"] != lesson["language"]:
+                raise InvalidReference("Exercise skill language differs from lesson")
+            if (
+                item["role"] == "supporting"
+                and not self.db.execute(
+                    "SELECT 1 FROM lessons WHERE learner=? AND focus_skill_id=? "
+                    "AND rowid < (SELECT rowid FROM lessons WHERE id=?)",
+                    (ctx.learner, item["skill_id"], lesson["id"]),
+                ).fetchone()
+            ):
+                raise ValueError("Supporting skills must have an earlier lesson")
         self._validate_sources(ctx.learner, exercise["source_ids"])
         exercise_id = identifier()
         self.db.execute(
-            "INSERT INTO exercises (id, learner, topic_id, title, task, context, scaffolding, created_turn, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO exercises (id, learner, lesson_id, title, task, context, scaffolding, created_turn, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 exercise_id,
                 ctx.learner,
-                focus["topic_id"],
+                lesson["id"],
                 exercise["title"],
                 exercise["task"],
                 exercise["context"],
@@ -1241,13 +1095,42 @@ class Store:
                 }
             )
         self._event(ctx, "attempt", attempt_id)
-        return {
+        result = {
             "id": attempt_id,
             "exercise_id": exercise_id,
             "learner_response": ctx.message,
             "feedback": feedback,
             "observations": saved,
         }
+        if not self.db.execute(
+            "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
+            (ctx.learner, ctx.turn_id),
+        ).fetchone():
+            for due in self.review_due(ctx.learner):
+                skill_id = due["skill_id"]
+                unmet = next(
+                    (
+                        prerequisite
+                        for prerequisite in self.prerequisites(ctx.learner, skill_id)
+                        if not self.mastered(ctx.learner, prerequisite)
+                    ),
+                    None,
+                )
+                focus_id = unmet or skill_id
+                active = self.active_lesson(ctx.learner)
+                if active and active["focus_skill_id"] == focus_id:
+                    continue
+                skill = self.skill(ctx.learner, focus_id, active=True)
+                result["review_lesson"] = self.start_lesson(
+                    ctx,
+                    skill["language"],
+                    focus_id,
+                    None,
+                    [],
+                    "Review a previously taught skill after repeated difficulty",
+                )
+                break
+        return result
 
     def exercise(self, learner: str, exercise_id: str) -> dict:
         row = self._owned("exercises", learner, exercise_id)
@@ -1419,15 +1302,15 @@ class Store:
             )
         return messages
 
-    def topic_anchors(self, learner: str, session: str) -> dict[str, str]:
+    def lesson_anchors(self, learner: str, session: str) -> dict[str, str]:
         """Browser navigation links, derived only from committed session turns."""
         self.authorize(learner, session)
         scope = self.learning_scope(learner, session)
         rows = self.db.execute(
             "SELECT e.entity_id, e.turn_id FROM events e "
             "JOIN turns t ON t.id=e.turn_id AND t.session=e.session "
-            "JOIN topics p ON p.id=e.entity_id AND p.learner=e.learner "
-            "WHERE e.learner=? AND e.session=? AND e.kind='topic' "
+            "JOIN lessons p ON p.id=e.entity_id AND p.learner=e.learner "
+            "WHERE e.learner=? AND e.session=? AND e.kind='lesson' "
             "ORDER BY t.rowid, e.rowid",
             (scope, session),
         )
@@ -1473,9 +1356,9 @@ class Store:
             return []
         marks = ",".join("?" for _ in skill_ids)
         rows = self.db.execute(
-            f"SELECT o.*, e.title AS exercise_title, t.name AS topic_name "
+            f"SELECT o.*, e.title AS exercise_title, l.id AS lesson_id "
             f"FROM skill_observations o JOIN exercises e ON e.id=o.exercise_id "
-            f"JOIN topics t ON t.id=e.topic_id WHERE o.learner=? AND o.skill_id IN ({marks}) "
+            f"JOIN lessons l ON l.id=e.lesson_id WHERE o.learner=? AND o.skill_id IN ({marks}) "
             "ORDER BY o.rowid DESC LIMIT ?",
             (learner, *skill_ids, limit),
         ).fetchall()
@@ -1487,7 +1370,7 @@ class Store:
                 "independent_success": bool(row["independent_success"]),
                 "rationale": row["rationale"],
                 "exercise": row["exercise_title"],
-                "topic": row["topic_name"],
+                "lesson_id": row["lesson_id"],
                 "created": row["created"],
             }
             for row in rows
@@ -1516,8 +1399,7 @@ class Store:
             contexts = [
                 item[0]
                 for item in self.db.execute(
-                    "SELECT DISTINCT t.name FROM skill_observations o JOIN exercises e ON e.id=o.exercise_id "
-                    "JOIN topics t ON t.id=e.topic_id WHERE o.skill_id=? ORDER BY o.created DESC LIMIT 5",
+                    "SELECT DISTINCT e.context FROM skill_observations o JOIN exercises e ON e.id=o.exercise_id WHERE o.skill_id=? ORDER BY o.created DESC LIMIT 5",
                     (row["id"],),
                 )
             ]
@@ -1536,6 +1418,9 @@ class Store:
                     "needs_work": row["needs_work"],
                     "uncertain": row["uncertain"],
                     "independent_successes": row["independent_successes"],
+                    "independent_since_difficulty": self.mastery_evidence(
+                        learner, row["id"]
+                    ),
                     "assistance_events": assisted,
                     "last_observed": row["last_observed"],
                     "contexts": contexts,
@@ -1553,152 +1438,54 @@ class Store:
         return self.exercise(learner, row[0]) if row else None
 
     def prompt_state(self, learner: str, max_chars: int = 16_000) -> dict:
-        focus = self.focus(learner)
-        topics = self.topics(learner)
-        active_topic = None
-        if focus:
-            active_topic = next(
-                (topic for topic in topics if topic["id"] == focus["topic_id"]), None
-            )
-        summaries = [
-            {
-                "id": topic["id"],
-                "name": topic["name"],
-                "purpose": topic["purpose"],
-                "language": topic["language"],
-                "skill_count": len(topic["skills"]),
-            }
-            for topic in topics
-            if active_topic is None or topic["id"] != active_topic["id"]
-        ]
-        focus_ids = [item["id"] for item in (focus or {}).get("skills", [])]
-        source_metadata = [
-            {
-                "id": row["id"],
-                "title": row["title"],
-                "url": row["url"],
-                "status": row["status"],
-            }
-            for row in self.db.execute(
-                "SELECT id, title, url, status FROM sources WHERE learner=? ORDER BY rowid DESC LIMIT 5",
-                (learner,),
-            )
-        ]
+        lesson = self.active_lesson(learner)
+        lessons = self.lessons(learner)
+        skill_ids = [lesson["focus_skill_id"]] if lesson else []
+        catalog = (
+            self.search_skills(learner, lesson["language"], "", 30) if lesson else []
+        )
         state: dict[str, Any] = {
             "profile": {
                 field: fact["value"] for field, fact in self.profile(learner).items()
             },
-            "other_topics": summaries,
-            "active_topic": active_topic,
-            "focus": focus,
+            "active_lesson": lesson,
+            "recent_lessons": [
+                {
+                    "id": item["id"],
+                    "title": item["title"],
+                    "focus_skill_id": item["focus_skill_id"],
+                }
+                for item in lessons[-10:]
+            ],
+            "review_due": self.review_due(learner),
+            "skills": [
+                {
+                    **skill,
+                    "mastered": self.mastered(learner, skill["id"]),
+                    "prerequisite_ids": self.prerequisites(learner, skill["id"]),
+                }
+                for skill in catalog
+            ],
             "active_exercise": self.active_exercise(learner),
-            "focus_progress": self.progress(learner, focus_ids),
-            "recent_focus_observations": self.observations(learner, focus_ids, 5),
-            "sources": source_metadata,
+            "focus_progress": self.progress(learner, skill_ids),
+            "recent_focus_observations": self.observations(learner, skill_ids, 5),
+            "sources": [
+                dict(row)
+                for row in self.db.execute(
+                    "SELECT id, title, url, status FROM sources WHERE learner=? ORDER BY rowid DESC LIMIT 5",
+                    (learner,),
+                )
+            ],
         }
-        for key in ("other_topics", "recent_focus_observations", "sources"):
+        for key in ("recent_lessons", "recent_focus_observations", "sources", "skills"):
             while len(_json(state)) > max_chars and state[key]:
                 state[key].pop(0)
-        if len(_json(state)) > max_chars and state["active_topic"]:
-            state["active_topic"]["skills"] = [
-                skill
-                for skill in state["active_topic"]["skills"]
-                if skill["role"] == "core"
-            ]
-            ids = {skill["id"] for skill in state["active_topic"]["skills"]}
-            state["active_topic"]["prerequisites"] = [
-                edge
-                for edge in state["active_topic"]["prerequisites"]
-                if edge["prerequisite_id"] in ids and edge["dependent_id"] in ids
-            ]
-        if len(_json(state)) > max_chars:
-            state["focus_progress"] = state["focus_progress"][:3]
-        if len(_json(state)) > max_chars:
-            topic = state["active_topic"]
-            if topic:
-                state["active_topic"] = {
-                    "id": topic["id"],
-                    "language": topic["language"],
-                    "name": topic["name"],
-                    "purpose": topic["purpose"][:400],
-                    "skills": [
-                        {
-                            "id": skill["id"],
-                            "key": skill["key"],
-                            "name": skill["name"],
-                            "definition": skill["definition"][:300],
-                            "success_criteria": [
-                                criterion[:200]
-                                for criterion in skill["success_criteria"][:2]
-                            ],
-                            "role": skill["role"],
-                            "priority": skill["priority"],
-                        }
-                        for skill in topic["skills"]
-                    ],
-                    "prerequisites": topic["prerequisites"],
-                }
-            focus_state = state["focus"]
-            if focus_state:
-                state["focus"] = {
-                    "id": focus_state["id"],
-                    "topic_id": focus_state["topic_id"],
-                    "reason": focus_state["reason"][:300],
-                    "skills": [
-                        {
-                            "id": skill["id"],
-                            "name": skill["name"],
-                            "role": skill["role"],
-                        }
-                        for skill in focus_state["skills"]
-                    ],
-                }
-            exercise = state["active_exercise"]
-            if exercise:
-                state["active_exercise"] = {
-                    "id": exercise["id"],
-                    "title": exercise["title"],
-                    "task": exercise["task"][:1600],
-                    "context": exercise["context"][:500],
-                    "scaffolding": exercise["scaffolding"],
-                    "skills": [
-                        {
-                            "id": skill["id"],
-                            "name": skill["name"],
-                            "role": skill["role"],
-                            "success_criterion": skill["success_criterion"][:200],
-                        }
-                        for skill in exercise["skills"]
-                    ],
-                }
-            state["profile"] = {
-                key: value[:300] for key, value in state["profile"].items()
-            }
+        if len(_json(state)) > max_chars and state["active_exercise"]:
+            state["active_exercise"]["task"] = state["active_exercise"]["task"][:800]
             state["truncated"] = True
-        if len(_json(state)) > max_chars:
-            state["other_topics"] = []
-            state["recent_focus_observations"] = []
-            state["sources"] = []
-            state["focus_progress"] = state["focus_progress"][:3]
-            for skill in (state.get("active_topic") or {}).get("skills", []):
-                skill["definition"] = skill["definition"][:120]
-                skill["success_criteria"] = [
-                    item[:120] for item in skill["success_criteria"][:1]
-                ]
-            if state["active_exercise"]:
-                state["active_exercise"]["task"] = state["active_exercise"]["task"][
-                    :800
-                ]
-                state["active_exercise"]["context"] = state["active_exercise"][
-                    "context"
-                ][:250]
-            state["profile"] = {
-                key: value[:150] for key, value in state["profile"].items()
-            }
         return state
 
     def learning_view(self, learner: str) -> dict:
-        topics = self.topics(learner)
         skills = {
             row["id"]: self._skill_dict(row)
             for row in self.db.execute(
@@ -1708,10 +1495,14 @@ class Store:
         progress = {item["id"]: item for item in self.progress(learner)}
         return {
             "profile": self.profile(learner),
-            "topics": topics,
-            "focus": self.focus(learner),
+            "lessons": self.lessons(learner),
+            "active_lesson": self.active_lesson(learner),
             "skills": [
-                {**skill, "progress": progress.get(skill_id, {})}
+                {
+                    **skill,
+                    "mastered": self.mastered(learner, skill_id),
+                    "progress": progress.get(skill_id, {}),
+                }
                 for skill_id, skill in sorted(
                     skills.items(), key=lambda item: item[1]["name"]
                 )

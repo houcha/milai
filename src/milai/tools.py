@@ -1,10 +1,11 @@
 # ruff: noqa: E501
-"""Typed tools for a topic-independent learner skill graph."""
+"""Typed tools for skill-focused lessons."""
 
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -19,6 +20,7 @@ from agents import (
     function_tool,
 )
 from agents.exceptions import ModelBehaviorError
+from openai.types.responses import ResponseTextDeltaEvent
 from openai.types.shared import Reasoning
 from pydantic import BaseModel, Field
 
@@ -71,35 +73,8 @@ class SkillSpec(BaseModel):
     success_criteria: list[str] = Field(min_length=1, max_length=5)
 
 
-class TopicSpec(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
-    purpose: str = Field(min_length=1, max_length=800)
-
-
-class Prerequisite(BaseModel):
-    prerequisite: str = Field(min_length=1, max_length=120)
-    dependent: str = Field(min_length=1, max_length=120)
-
-
-class TopicSkill(BaseModel):
-    skill_ref: str = Field(min_length=1, max_length=120)
-    role: Literal["core", "extension", "contextual"]
-    priority: int = Field(ge=1, le=100)
-
-
-class FocusSpec(BaseModel):
-    target_refs: list[str] = Field(min_length=1, max_length=3)
-    supporting_refs: list[str] = Field(default_factory=list, max_length=5)
-    reason: str = Field(min_length=1, max_length=800)
-
-
-class ExpandTopicInput(BaseModel):
-    topic_id: str
-    existing_skill_ids: list[str] = Field(default_factory=list, max_length=8)
-    new_skills: list[SkillSpec] = Field(default_factory=list, max_length=8)
-    prerequisites: list[Prerequisite] = Field(default_factory=list, max_length=20)
-    links: list[TopicSkill] = Field(min_length=1, max_length=12)
-    rationale: str = Field(min_length=1, max_length=1200)
+class LessonIntent(BaseModel):
+    intent: str = Field(min_length=1, max_length=800)
 
 
 class SupersessionRelation(BaseModel):
@@ -119,13 +94,6 @@ class SupersedeSkillsInput(BaseModel):
     relations: list[SupersessionRelation] = Field(min_length=1, max_length=20)
     replacements: list[SkillReplacement] = Field(min_length=1, max_length=20)
     reason: str = Field(min_length=1, max_length=1200)
-
-
-class FocusInput(BaseModel):
-    topic_id: str
-    target_skill_ids: list[str] = Field(min_length=1, max_length=3)
-    supporting_skill_ids: list[str] = Field(default_factory=list, max_length=5)
-    reason: str = Field(min_length=1, max_length=800)
 
 
 class ExerciseSkill(BaseModel):
@@ -165,14 +133,14 @@ class Context:
     prompt_version: str
     model: Model | None = None
     planner_instructions: str = ""
-    trace_content: bool = False
-    topic_planning_calls: int = 0
+    lesson_planning_calls: int = 0
     max_tools: int = 20
     calls: int = 0
     event_ids: list[str] = field(default_factory=list)
     exercise_ids: list[str] = field(default_factory=list)
     selected_exercise_id: str | None = None
     assessments: list[dict] = field(default_factory=list)
+    on_progress: Callable[[dict], Awaitable[None]] | None = None
 
     def check(self) -> None:
         self.store.authorize(self.learner, self.session)
@@ -211,123 +179,124 @@ async def search_skills(
     return {"skills": c.store.search_skills(c.learner, language, query, limit)}
 
 
-class _TopicPlan(BaseModel):
-    """Structured output produced only by the private topic planner."""
+class _LessonPlan(BaseModel):
+    """Exactly one language skill selected by the private lesson planner."""
 
-    existing_skill_keys: list[str] = Field(default_factory=list, max_length=8)
-    new_skills: list[SkillSpec] = Field(default_factory=list, max_length=8)
-    prerequisites: list[Prerequisite] = Field(default_factory=list, max_length=20)
-    links: list[TopicSkill] = Field(min_length=3, max_length=12)
-    initial_focus: FocusSpec
-
-
-def _existing_skill_ids(keys: list[str], candidates: list[dict]) -> list[str]:
-    """Resolve planner-visible stable keys to learner-owned database IDs."""
-    known = {skill["key"]: skill["id"] for skill in candidates}
-    return [known.get(key, key) for key in keys]
+    existing_skill_key: str | None = None
+    new_skill: SkillSpec | None = None
+    prerequisite_keys: list[str] = Field(default_factory=list, max_length=8)
+    reason: str = Field(min_length=1, max_length=800)
 
 
 @function_tool(failure_error_function=tool_error)
-async def establish_topic(ctx: RunContextWrapper[Context], topic: TopicSpec) -> dict:
-    """Plan and atomically establish a topic's minimum skill graph and initial focus."""
+async def start_lesson(ctx: RunContextWrapper[Context], lesson: LessonIntent) -> dict:
+    """Plan and start one language-skill lesson, gated by mastered prerequisites."""
     c = ctx.context
     c.check()
     profile = c.store.profile(c.learner)
     language_fact = profile.get("target_language")
     if language_fact is None:
-        raise ValueError("Record the target language before establishing a topic")
+        raise ValueError("Record the target language before starting a lesson")
     if c.model is None or not c.planner_instructions:
-        raise RuntimeError("Topic planner is unavailable")
-    c.topic_planning_calls += 1
-    if c.topic_planning_calls > 1:
-        raise ValueError(
-            "Topic establishment can be planned only once per learner turn"
-        )
-    target_language = language_fact["value"]
-    candidates = c.store.search_skills(c.learner, target_language, "", 30)
-    candidate_keys = {skill["id"]: skill["key"] for skill in candidates}
-    evidence = [
-        {
-            "skill_key": candidate_keys[summary["id"]],
-            **{key: value for key, value in summary.items() if key != "id"},
-        }
-        for summary in c.store.progress(c.learner, list(candidate_keys))
-    ]
+        raise RuntimeError("Lesson planner is unavailable")
+    if c.store.db.execute(
+        "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
+        (c.learner, c.turn_id),
+    ).fetchone():
+        raise ValueError("A lesson was already started in this learner turn")
+    c.lesson_planning_calls += 1
+    if c.lesson_planning_calls > 2:
+        raise ValueError("Lesson planning retry limit reached for this learner turn")
+    language = language_fact["value"]
+    candidates = c.store.search_skills(c.learner, language, "", 30)
+    keyed = {skill["key"]: skill for skill in candidates}
     planner = Agent(
-        name="Topic skill-graph planner",
+        name="Language lesson planner",
         instructions=c.planner_instructions,
         model=c.model,
-        output_type=_TopicPlan,
+        output_type=_LessonPlan,
         model_settings=ModelSettings(
-            max_tokens=8192, reasoning=Reasoning(effort="high")
+            max_tokens=8192,
+            reasoning=Reasoning(effort="low"),
+            store=False,
+            response_include=["reasoning.encrypted_content"],
         ),
     )
-    planned = await Runner.run(
-        planner,
-        "Plan this topic from the supplied application data:\n"
-        + json.dumps(
-            {
-                "target_language": target_language,
-                "learner_profile": {
-                    field: fact["value"] for field, fact in profile.items()
-                },
-                "skill_evidence": evidence,
-                "topic": topic.model_dump(),
-                "reusable_active_skills": [
-                    {
-                        field: skill[field]
-                        for field in ("key", "name", "definition", "success_criteria")
-                    }
-                    for skill in candidates
-                ],
+    planner_input = "Choose one lesson from this application data:\n" + json.dumps(
+        {
+            "target_language": language,
+            "learner_profile": {
+                field: fact["value"] for field, fact in profile.items()
             },
-            ensure_ascii=False,
-        ),
-        max_turns=1,
-        run_config=RunConfig(trace_include_sensitive_data=c.trace_content),
+            "learner_message": c.message,
+            "lesson_intent": lesson.intent,
+            "active_lesson": c.store.active_lesson(c.learner),
+            "review_due": c.store.review_due(c.learner),
+            "reusable_active_skills": [
+                {
+                    **skill,
+                    "mastered": c.store.mastered(c.learner, skill["id"]),
+                    "prerequisite_keys": [
+                        next(
+                            (
+                                other["key"]
+                                for other in candidates
+                                if other["id"] == item
+                            ),
+                            item,
+                        )
+                        for item in c.store.prerequisites(c.learner, skill["id"])
+                    ],
+                }
+                for skill in candidates
+            ],
+            "skill_evidence": c.store.progress(
+                c.learner, [skill["id"] for skill in candidates]
+            ),
+        },
+        ensure_ascii=False,
     )
-    plan = planned.final_output
-    if not isinstance(plan, _TopicPlan):
-        raise RuntimeError("Topic planner returned an unexpected result")
-    for skill in plan.new_skills:
-        if any(len(criterion) > 500 for criterion in skill.success_criteria):
-            raise ValueError(
-                "Skill success criteria must each be at most 500 characters"
-            )
-    with c.store.savepoint():
-        result = c.store.establish_topic(
-            c,
-            {"language": target_language, **topic.model_dump()},
-            _existing_skill_ids(plan.existing_skill_keys, candidates),
-            [item.model_dump() for item in plan.new_skills],
-            [item.model_dump() for item in plan.prerequisites],
-            [item.model_dump() for item in plan.links],
-            plan.initial_focus.model_dump(),
+    if c.on_progress is None:
+        planned = await Runner.run(
+            planner,
+            planner_input,
+            max_turns=1,
+            run_config=RunConfig(trace_include_sensitive_data=True),
         )
-    return result
-
-
-@function_tool(failure_error_function=tool_error)
-async def expand_topic(
-    ctx: RunContextWrapper[Context], expansion: ExpandTopicInput
-) -> dict:
-    """Add justified extension/context skills to an existing topic's reusable skill graph."""
-    c = ctx.context
-    c.check()
-    for skill in expansion.new_skills:
-        if any(len(criterion) > 500 for criterion in skill.success_criteria):
-            raise ValueError(
-                "Skill success criteria must each be at most 500 characters"
-            )
+    else:
+        await c.on_progress({"type": "stage", "text": "Planning the next lesson…"})
+        planned = Runner.run_streamed(
+            planner,
+            planner_input,
+            max_turns=1,
+            run_config=RunConfig(trace_include_sensitive_data=True),
+        )
+        async for event in planned.stream_events():
+            if event.type == "raw_response_event" and isinstance(
+                event.data, ResponseTextDeltaEvent
+            ):
+                await c.on_progress({"type": "planner_delta", "text": event.data.delta})
+    plan = planned.final_output
+    if not isinstance(plan, _LessonPlan):
+        raise RuntimeError("Lesson planner returned an unexpected result")
+    if (plan.existing_skill_key is None) == (plan.new_skill is None):
+        raise ValueError("Planner must select exactly one existing or new skill")
+    if plan.new_skill and any(
+        len(item) > 500 for item in plan.new_skill.success_criteria
+    ):
+        raise ValueError("Skill success criteria must be at most 500 characters")
+    if plan.existing_skill_key and plan.existing_skill_key not in keyed:
+        raise InvalidReference("Planner referenced an unknown skill")
+    if any(key not in keyed for key in plan.prerequisite_keys):
+        raise InvalidReference("Planner referenced an unknown prerequisite")
     with c.store.savepoint():
-        return c.store.expand_topic(
+        return c.store.start_lesson(
             c,
-            expansion.topic_id,
-            expansion.existing_skill_ids,
-            [item.model_dump() for item in expansion.new_skills],
-            [item.model_dump() for item in expansion.prerequisites],
-            [item.model_dump() for item in expansion.links],
-            expansion.rationale,
+            language,
+            keyed[plan.existing_skill_key]["id"] if plan.existing_skill_key else None,
+            plan.new_skill.model_dump() if plan.new_skill else None,
+            [keyed[key]["id"] for key in plan.prerequisite_keys],
+            plan.reason,
         )
 
 
@@ -355,24 +324,8 @@ async def supersede_skills(
 
 
 @function_tool(failure_error_function=tool_error)
-async def set_learning_focus(
-    ctx: RunContextWrapper[Context], focus: FocusInput
-) -> dict:
-    """Set the session-wide active topic and its 1–3 target skills plus support skills."""
-    c = ctx.context
-    c.check()
-    return c.store.set_focus(
-        c,
-        focus.topic_id,
-        focus.target_skill_ids,
-        focus.supporting_skill_ids,
-        focus.reason,
-    )
-
-
-@function_tool(failure_error_function=tool_error)
 async def present_exercise(ctx: RunContextWrapper[Context], exercise: Exercise) -> dict:
-    """Persist and queue a multi-skill exercise card; the application renders it exactly."""
+    """Persist and queue a lesson-focused exercise card; the application renders it exactly."""
     c = ctx.context
     c.check()
     return c.store.present_exercise(c, exercise.model_dump())
@@ -400,7 +353,7 @@ async def record_assistance(
 async def assess_attempt(
     ctx: RunContextWrapper[Context], assessment: AttemptAssessment
 ) -> dict:
-    """Save the actual learner reply and per-skill observations for a prior exercise."""
+    """Save reply and observations; repeated prior-skill difficulty may open a review."""
     c = ctx.context
     c.check()
     if c.selected_exercise_id and c.selected_exercise_id != assessment.exercise_id:
@@ -417,7 +370,7 @@ async def assess_attempt(
 
 @function_tool(failure_error_function=tool_error)
 async def recall_learning_context(ctx: RunContextWrapper[Context]) -> dict:
-    """Recall bounded profile, topic graph, focus, exercise, and evidence summaries."""
+    """Recall bounded profile, lesson, exercise, and evidence summaries."""
     c = ctx.context
     c.check()
     return c.store.prompt_state(c.learner)
@@ -480,10 +433,8 @@ async def get_source_excerpt(
 TOOLS: list[Tool] = [
     record_learner_facts,
     search_skills,
-    establish_topic,
-    expand_topic,
+    start_lesson,
     supersede_skills,
-    set_learning_focus,
     present_exercise,
     record_assistance,
     assess_attempt,

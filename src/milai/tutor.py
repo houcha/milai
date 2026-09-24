@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+from collections.abc import Awaitable, Callable
 from importlib.resources import files
 from typing import cast
 
@@ -14,6 +15,7 @@ from agents import (
     ToolExecutionConfig,
     TResponseInputItem,
 )
+from openai.types.responses import ResponseTextDeltaEvent
 from openai.types.shared import Reasoning
 from pydantic import BaseModel, Field
 
@@ -37,7 +39,7 @@ def prompts() -> tuple[str, str, str]:
     tutor = "\n\n".join(
         root.joinpath(name).read_text() for name in ("tutor.md", "procedures.md")
     )
-    planner = root.joinpath("topic_planner.md").read_text()
+    planner = root.joinpath("lesson_planner.md").read_text()
     version = hashlib.sha256((tutor + "\n\n" + planner).encode()).hexdigest()[:16]
     return tutor, planner, version
 
@@ -56,6 +58,7 @@ class Tutor:
         session: str,
         message: str,
         selected_exercise_id: str | None = None,
+        on_progress: Callable[[dict], Awaitable[None]] | None = None,
     ) -> TutorReply:
         """Run and save one learner turn, returning prose and presented exercises.
 
@@ -94,9 +97,9 @@ class Tutor:
                 version,
                 model=self.model,
                 planner_instructions=planner_prompt,
-                trace_content=self.telemetry.content,
                 max_tools=self.settings.max_tools,
                 selected_exercise_id=selected_exercise_id,
+                on_progress=on_progress,
             )
             state = json.dumps(self.store.prompt_state(scope), ensure_ascii=False)
             if selected_exercise_id:
@@ -125,6 +128,8 @@ class Tutor:
                     max_tokens=self.settings.max_tokens,
                     parallel_tool_calls=False,
                     reasoning=Reasoning(effort="low"),
+                    store=False,
+                    response_include=["reasoning.encrypted_content"],
                 ),
             )
             with self.telemetry.turn(learner, session, version) as span:
@@ -136,20 +141,40 @@ class Tutor:
                             list[TResponseInputItem],
                             history + [{"role": "user", "content": message}],
                         )
-                        result = await Runner.run(
-                            agent,
-                            run_input,
-                            context=ctx,
-                            max_turns=self.settings.max_turns,
-                            run_config=RunConfig(
-                                workflow_name="language-tutor",
-                                group_id=session,
-                                trace_include_sensitive_data=self.telemetry.content,
-                                tool_execution=ToolExecutionConfig(
-                                    max_function_tool_concurrency=1
-                                ),
+                        run_config = RunConfig(
+                            workflow_name="language-tutor",
+                            group_id=session,
+                            trace_include_sensitive_data=True,
+                            tool_execution=ToolExecutionConfig(
+                                max_function_tool_concurrency=1
                             ),
                         )
+                        if on_progress is None:
+                            result = await Runner.run(
+                                agent,
+                                run_input,
+                                context=ctx,
+                                max_turns=self.settings.max_turns,
+                                run_config=run_config,
+                            )
+                        else:
+                            result = Runner.run_streamed(
+                                agent,
+                                run_input,
+                                context=ctx,
+                                max_turns=self.settings.max_turns,
+                                run_config=run_config,
+                            )
+                            async for event in result.stream_events():
+                                if event.type == "raw_response_event" and isinstance(
+                                    event.data, ResponseTextDeltaEvent
+                                ):
+                                    await on_progress(
+                                        {
+                                            "type": "reply_delta",
+                                            "text": event.data.delta,
+                                        }
+                                    )
                     reply = str(result.final_output)
                     if not reply.strip():
                         raise ValueError("Model returned no learner-facing response")

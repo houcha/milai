@@ -54,3 +54,5 @@ select = [
 [tool.typos.default.extend-words]
 # German indefinite article used throughout lesson content and fixtures.
 ein = "ein"
+# German third-person and formal subject pronoun in evaluation examples.
+sie = "sie"

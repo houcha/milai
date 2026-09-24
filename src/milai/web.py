@@ -27,8 +27,8 @@ def learning_view(snapshot: dict) -> dict:
     }
     return {
         "profile": profile,
-        "topics": snapshot.get("topics", []),
-        "focus": snapshot.get("focus"),
+        "lessons": snapshot.get("lessons", []),
+        "active_lesson": snapshot.get("active_lesson"),
         "skills": snapshot.get("skills", []),
     }
 
@@ -69,7 +69,7 @@ class WebApplication:
         """Return everything the browser needs to render the selected session."""
         return {
             "session": self.session,
-            "topic_anchors": self.store.topic_anchors(self.learner, self.session),
+            "lesson_anchors": self.store.lesson_anchors(self.learner, self.session),
             "sessions": self.store.sessions(self.learner),
             "conversation": self.store.conversation(
                 self.learner, self.session, limit=None
@@ -115,6 +115,7 @@ class WebApplication:
                 return
             if method == "POST" and path in {
                 "/api/chat",
+                "/api/chat/stream",
                 "/api/session",
                 "/api/exercise",
             }:
@@ -137,6 +138,8 @@ class WebApplication:
                     raise ValueError("Expected an object")
                 if path == "/api/chat":
                     await self.chat(writer, payload)
+                elif path == "/api/chat/stream":
+                    await self.chat_stream(writer, payload)
                 elif path == "/api/exercise":
                     await self.exercise(writer, payload)
                 else:
@@ -185,7 +188,7 @@ class WebApplication:
                 reply = await self.tutor.respond(self.learner, self.session, message)
                 result = {
                     "reply": reply.model_dump(mode="json"),
-                    "topic_anchors": self.store.topic_anchors(
+                    "lesson_anchors": self.store.lesson_anchors(
                         self.learner, self.session
                     ),
                     "sessions": self.store.sessions(self.learner),
@@ -225,6 +228,80 @@ class WebApplication:
                 writer,
                 500,
                 {"error": "The turn failed and its learning changes were rolled back."},
+            )
+
+    async def chat_stream(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        """Stream provisional model output, then the committed turn result."""
+
+        async def send(event: dict) -> None:
+            writer.write(json.dumps(event, ensure_ascii=False).encode() + b"\n")
+            await writer.drain()
+
+        writer.write(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: application/x-ndjson; charset=utf-8\r\n"
+            b"Cache-Control: no-store\r\n"
+            b"X-Content-Type-Options: nosniff\r\n"
+            b"X-Frame-Options: DENY\r\n"
+            b"Referrer-Policy: no-referrer\r\n"
+            b"Content-Security-Policy: default-src 'self'; style-src 'self'; "
+            b"script-src 'self'; connect-src 'self'; img-src 'self' data:\r\n"
+            b"Connection: close\r\n\r\n"
+        )
+        try:
+            await send(
+                {"type": "stage", "text": "Thinking with your learning history…"}
+            )
+            async with self.lock:
+                if payload.get("session", self.session) != self.session:
+                    raise ValueError(
+                        "The active session changed. Reopen your session and retry."
+                    )
+                message = payload.get("message")
+                if not isinstance(message, str):
+                    raise ValueError("Message must be text")
+                reply = await self.tutor.respond(
+                    self.learner, self.session, message, on_progress=send
+                )
+                result = {
+                    "reply": reply.model_dump(mode="json"),
+                    "lesson_anchors": self.store.lesson_anchors(
+                        self.learner, self.session
+                    ),
+                    "sessions": self.store.sessions(self.learner),
+                    "exercise_status": self.store.exercise_statuses(
+                        self.learner, self.session
+                    ),
+                    "learning": learning_view(
+                        self.store.learning_view(
+                            self.store.learning_scope(self.learner, self.session)
+                        )
+                    ),
+                }
+            await send({"type": "complete", "result": result})
+        except RateLimitError:
+            await send(
+                {
+                    "type": "error",
+                    "error": "Provider quota reached. This turn was not saved.",
+                }
+            )
+        except (APITimeoutError, TimeoutError):
+            await send(
+                {
+                    "type": "error",
+                    "error": "The model provider timed out. This turn was not saved.",
+                }
+            )
+        except ValueError as exc:
+            await send({"type": "error", "error": str(exc)})
+        except Exception as exc:
+            print(f"Tutor turn failed: {type(exc).__name__}")
+            await send(
+                {
+                    "type": "error",
+                    "error": "The turn failed; its learning changes were rolled back.",
+                }
             )
 
     async def exercise(self, writer: asyncio.StreamWriter, payload: dict) -> None:
@@ -276,7 +353,7 @@ class WebApplication:
         )
         return {
             "reply": reply.model_dump(mode="json"),
-            "topic_anchors": self.store.topic_anchors(self.learner, self.session),
+            "lesson_anchors": self.store.lesson_anchors(self.learner, self.session),
             "sessions": self.store.sessions(self.learner),
             "status": self.store.exercise_status(
                 self.learner, self.session, exercise_id
