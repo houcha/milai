@@ -19,7 +19,7 @@ Use Python 3.12+ and uv.
 
 ## Coding Style & Naming Conventions
 
-Use four-space Python indentation, snake_case for functions and modules, PascalCase for classes, and UPPER_CASE for constants. Follow existing type annotations and module boundaries. Ruff handles formatting, import ordering, and linting; ty checks types. Run `uv run ruff check .` for lint validation without automatic fixes. Git hooks are configured in `prek.toml`, including Ruff, typos, YAML checks, and zizmor. Edit renderer source and regenerate its bundle instead of hand-editing generated JavaScript.
+Use four-space Python indentation, snake_case for functions and modules, PascalCase for classes, and UPPER_CASE for constants. Follow existing type annotations and module boundaries. Ruff handles formatting, import ordering, and linting; ty checks types. Run `uv run ruff check .` for lint validation without automatic fixes. Git hooks are configured in `prek.toml`, including Ruff, YAML checks, and zizmor. Edit renderer source and regenerate its bundle instead of hand-editing generated JavaScript.
 
 ## Testing Guidelines
 
