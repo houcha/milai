@@ -138,11 +138,6 @@ class Exercise(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     task: str = Field(min_length=1, max_length=2400)
     context: str = Field(min_length=1, max_length=800)
-    hint: str = Field(
-        min_length=1,
-        max_length=800,
-        description="A useful cue that does not give away the answer",
-    )
     scaffolding: Literal["none", "cues", "worked_example"]
     skills: list[ExerciseSkill] = Field(min_length=1, max_length=6)
     source_ids: list[str] = Field(default_factory=list, max_length=5)
@@ -176,7 +171,7 @@ class Context:
     calls: int = 0
     event_ids: list[str] = field(default_factory=list)
     exercise_ids: list[str] = field(default_factory=list)
-    exercise_interaction: tuple[str, str] | None = None
+    selected_exercise_id: str | None = None
     assessments: list[dict] = field(default_factory=list)
 
     def check(self) -> None:
@@ -388,14 +383,14 @@ async def record_assistance(
     ctx: RunContextWrapper[Context],
     exercise_id: str,
     skill_ids: list[str],
-    level: Literal["hint", "explanation", "answer_shown"],
+    level: Literal["explanation", "answer_shown"],
     content: str,
 ) -> dict:
     """Record help against the exact exercise skills it assisted before giving that help."""
     c = ctx.context
     c.check()
-    if c.exercise_interaction and c.exercise_interaction[0] != exercise_id:
-        raise ValueError("Assistance must match the selected exercise and action")
+    if c.selected_exercise_id and c.selected_exercise_id != exercise_id:
+        raise ValueError("Assistance must match the selected exercise")
     if not 1 <= len(content) <= 2400 or not 1 <= len(skill_ids) <= 6:
         raise ValueError("Assistance content or skill count exceeds bounds")
     return c.store.record_assistance(c, exercise_id, skill_ids, level, content)
@@ -408,10 +403,7 @@ async def assess_attempt(
     """Save the actual learner reply and per-skill observations for a prior exercise."""
     c = ctx.context
     c.check()
-    if c.exercise_interaction and c.exercise_interaction != (
-        assessment.exercise_id,
-        "answer",
-    ):
+    if c.selected_exercise_id and c.selected_exercise_id != assessment.exercise_id:
         raise ValueError("Assessment must match the selected exercise answer")
     result = c.store.assess_attempt(
         c,

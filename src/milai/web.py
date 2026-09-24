@@ -34,7 +34,10 @@ def learning_view(snapshot: dict) -> dict:
 
 
 class WebApplication:
+    """Serve one local learner's sessions, chat, and exercise actions over HTTP."""
+
     def __init__(self, store: Store, tutor: Tutor, session: str, port: int):
+        """Bind the app to a store, tutor, selected session, and local port."""
         self.store = store
         self.tutor = tutor
         self.learner = store.owner
@@ -63,6 +66,7 @@ class WebApplication:
         }
 
     def bootstrap(self) -> dict:
+        """Return everything the browser needs to render the selected session."""
         return {
             "session": self.session,
             "topic_anchors": self.store.topic_anchors(self.learner, self.session),
@@ -81,6 +85,7 @@ class WebApplication:
     async def handle(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
+        """Read one HTTP request, validate it, and dispatch to the matching handler."""
         try:
             request = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
             if len(request) > MAX_HEADER_BYTES:
@@ -151,9 +156,11 @@ class WebApplication:
                 await writer.wait_closed()
 
     def valid_host(self, host: str) -> bool:
+        """Accept only this server's loopback host and port."""
         return host in {f"{HOST}:{self.port}", f"localhost:{self.port}"}
 
     def valid_origin(self, origin: str | None) -> bool:
+        """Accept writes only from this server's loopback web origin."""
         if not origin:
             return False
         parsed = urlsplit(origin)
@@ -164,6 +171,7 @@ class WebApplication:
         )
 
     async def chat(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        """Send a normal chat message to the tutor and return updated session data."""
         message = payload.get("message")
         if not isinstance(message, str):
             await self.respond(writer, 400, b"Message must be text")
@@ -220,6 +228,7 @@ class WebApplication:
             )
 
     async def exercise(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        """Send an answer for a presented exercise to the tutor."""
         try:
             async with self.lock:
                 if payload.get("session") != self.session:
@@ -227,34 +236,10 @@ class WebApplication:
                         "The active session changed. Reopen your session and retry."
                     )
                 exercise_id, action = payload.get("exercise_id"), payload.get("action")
-                if not isinstance(exercise_id, str) or action not in {
-                    "answer",
-                    "hint",
-                    "review",
-                }:
+                if not isinstance(exercise_id, str) or action != "answer":
                     raise ValueError("Choose an exercise action")
                 self.store.exercise_status(self.learner, self.session, exercise_id)
-                if action == "hint":
-                    with self.store.transaction():
-                        prepared = self.store.exercise_hint(
-                            self.learner, self.session, exercise_id
-                        )
-                    if prepared["hint"]:
-                        result = prepared
-                    else:
-                        result = await self._model_exercise_action(
-                            exercise_id, action, payload
-                        )
-                elif action == "review":
-                    with self.store.transaction():
-                        status = self.store.review_exercise(
-                            self.learner, self.session, exercise_id
-                        )
-                    result = {"status": status}
-                else:
-                    result = await self._model_exercise_action(
-                        exercise_id, action, payload
-                    )
+                result = await self._model_exercise_action(exercise_id, payload)
             await self.json_response(writer, 200, result)
         except RateLimitError:
             await self.json_response(
@@ -281,18 +266,13 @@ class WebApplication:
                 {"error": "The action failed and its changes were rolled back."},
             )
 
-    async def _model_exercise_action(
-        self, exercise_id: str, action: str, payload: dict
-    ) -> dict:
-        message = (
-            payload.get("text", "")
-            if action == "answer"
-            else "Please give me a hint for this exercise."
-        )
+    async def _model_exercise_action(self, exercise_id: str, payload: dict) -> dict:
+        """Call the tutor for an answer tied to a specific exercise."""
+        message = payload.get("text", "")
         if not isinstance(message, str):
             raise ValueError("Answer must be text")
         reply = await self.tutor.respond(
-            self.learner, self.session, message, (exercise_id, action)
+            self.learner, self.session, message, exercise_id
         )
         return {
             "reply": reply.model_dump(mode="json"),
@@ -310,6 +290,7 @@ class WebApplication:
         }
 
     async def manage_session(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        """Create, select, rename, or delete a session and return its full view."""
         try:
             async with self.lock:
                 action = payload.get("action", "create")
@@ -345,6 +326,7 @@ class WebApplication:
     async def json_response(
         self, writer: asyncio.StreamWriter, status: int, payload: dict
     ) -> None:
+        """Serialize a payload as JSON and send it with the given HTTP status."""
         await self.respond(
             writer,
             status,
@@ -360,6 +342,7 @@ class WebApplication:
         *,
         content_type: str = "text/plain; charset=utf-8",
     ) -> None:
+        """Write one complete HTTP response with shared security headers."""
         reasons = {
             200: "OK",
             400: "Bad Request",

@@ -7,6 +7,7 @@ from typing import Any, cast
 import pytest
 
 from milai.store import InvalidReference, Store
+from milai.tools import Exercise
 from milai.web import WebApplication
 from tests.test_learning import context, seed_graph
 
@@ -199,8 +200,13 @@ def test_tutor_receives_and_writes_only_selected_session_state(tmp_path, monkeyp
     store.close()
 
 
-def test_prepared_hint_is_private_and_revealed_without_model_call(tmp_path):
-    store = Store(tmp_path / "hint.db")
+@pytest.mark.parametrize("action", ["hint", "review"])
+def test_removed_exercise_actions_are_rejected_without_assistance(tmp_path, action):
+    assert "hint" not in Exercise.model_json_schema()["properties"]
+    store = Store(tmp_path / "unsupported-action.db")
+    assert "hint" not in {
+        row[1] for row in store.db.execute("PRAGMA table_info(exercises)")
+    }
     learner = store.owner
     session = store.session(learner)
     scope = store.learning_scope(learner, session)
@@ -216,7 +222,6 @@ def test_prepared_hint_is_private_and_revealed_without_model_call(tmp_path):
                 "title": "Articles",
                 "task": "Choose an article",
                 "context": "At a café",
-                "hint": "Check the noun's gender.",
                 "scaffolding": "none",
                 "source_ids": [],
                 "skills": [
@@ -229,28 +234,22 @@ def test_prepared_hint_is_private_and_revealed_without_model_call(tmp_path):
             },
         )
         store.save_turn(ctx, "Try this", [])
-    assert "hint" not in exercise
-    assert "hint" not in store.conversation(learner, session)[-1]["activities"][0]
     conversation_length = len(store.conversation(learner, session))
 
     class NoModel:
         async def respond(self, *args):
-            raise AssertionError("Hint should not call the model")
+            raise AssertionError("Unsupported actions should not call the model")
 
     app = WebApplication(store, cast(Any, NoModel()), session, 8765)
     writer = Writer()
-    request = {"session": session, "exercise_id": exercise["id"], "action": "hint"}
+    request = {"session": session, "exercise_id": exercise["id"], "action": action}
     asyncio.run(app.exercise(cast(asyncio.StreamWriter, writer), request))
-    assert writer.payload()["hint"] == "Check the noun's gender."
-    assert writer.payload()["status"]["assisted"]
+    assert writer.payload()["error"] == "Choose an exercise action"
     assert len(store.conversation(learner, session)) == conversation_length
-    second = Writer()
-    asyncio.run(app.exercise(cast(asyncio.StreamWriter, second), request))
-    assert second.payload()["hint"] == writer.payload()["hint"]
     assert (
         store.db.execute(
             "SELECT count(*) FROM assistance WHERE exercise_id=?", (exercise["id"],)
         ).fetchone()[0]
-        == 1
+        == 0
     )
     store.close()

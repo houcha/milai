@@ -113,7 +113,6 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .exercise-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
 .exercise-view button,.exercise-launch { padding:10px 14px; border:1px solid var(--green); border-radius:7px; color:var(--green); background:var(--surface); cursor:pointer; }
 #exercise-submit { margin-top:12px; background:var(--green); color:white; }
-.exercise-review-note { color:var(--muted); font-size:12px; }
 #exercise-status { min-height:1.7em; margin:12px 0 0; color:var(--muted); }
 
 @media (prefers-reduced-motion:reduce) { .messages { scroll-behavior:auto; } }

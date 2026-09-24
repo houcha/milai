@@ -55,18 +55,34 @@ class Tutor:
         learner: str,
         session: str,
         message: str,
-        exercise_interaction: tuple[str, str] | None = None,
+        selected_exercise_id: str | None = None,
     ) -> TutorReply:
+        """Run and save one learner turn, returning prose and presented exercises.
+
+        The turn's learning changes and transcript commit together on success.
+
+        Args:
+            learner: Owner of the session and its learning data.
+            session: Session receiving this conversation turn.
+            message: Learner's chat message or exercise answer.
+            selected_exercise_id: ID of the exercise being answered, or ``None``
+                for normal chat. It selects the exact task for assessment.
+
+        Returns:
+            The saved reply text, any exercises presented in this turn, assessments,
+            and the turn ID.
+        """
         if not message.strip() or len(message) > 8000:
             raise ValueError("Send a message between 1 and 8000 characters")
         async with self.lock:
             self.store.authorize(learner, session)
             scope = self.store.learning_scope(learner, session)
-            if exercise_interaction:
-                exercise_id, action = exercise_interaction
-                status = self.store.exercise_status(learner, session, exercise_id)
-                if action not in {"answer", "hint"} or status["completed"]:
-                    raise ValueError("This exercise cannot accept that action")
+            if selected_exercise_id:
+                status = self.store.exercise_status(
+                    learner, session, selected_exercise_id
+                )
+                if status["completed"]:
+                    raise ValueError("This exercise is already complete")
             prompt, planner_prompt, version = prompts()
             history = self.store.model_history(learner, session)
             ctx = Context(
@@ -80,30 +96,23 @@ class Tutor:
                 planner_instructions=planner_prompt,
                 trace_content=self.telemetry.content,
                 max_tools=self.settings.max_tools,
-                exercise_interaction=exercise_interaction,
+                selected_exercise_id=selected_exercise_id,
             )
             state = json.dumps(self.store.prompt_state(scope), ensure_ascii=False)
-            if exercise_interaction:
-                exercise_id, action = exercise_interaction
-                exercise = self.store.exercise(scope, exercise_id)
-                state += (
-                    "\nSelected exercise interaction (authoritative): "
-                    + json.dumps(
-                        {
-                            "action": action,
-                            "exercise": exercise,
-                            "status": self.store.exercise_status(
-                                learner, session, exercise_id
-                            ),
-                        },
-                        ensure_ascii=False,
-                    )
+            if selected_exercise_id:
+                exercise = self.store.exercise(scope, selected_exercise_id)
+                state += "\nSelected exercise answer (authoritative): " + json.dumps(
+                    {
+                        "exercise": exercise,
+                        "status": self.store.exercise_status(
+                            learner, session, selected_exercise_id
+                        ),
+                    },
+                    ensure_ascii=False,
                 )
                 state += (
-                    "\nFor a hint, give a useful hint and do not assess an attempt. "
-                    "For an answer, assess only the selected exercise if there is "
-                    "enough evidence. Clarification is allowed. "
-                    "The action is not learner prose."
+                    "\nAssess only the selected exercise if there is enough "
+                    "evidence. Clarification is allowed."
                 )
             agent = Agent(
                 name="Milai",
@@ -146,33 +155,7 @@ class Tutor:
                         raise ValueError("Model returned no learner-facing response")
                     items = result.to_input_list()[len(history) :]
                     self.store.save_turn(ctx, reply, items)
-                    if exercise_interaction:
-                        exercise_id, action = exercise_interaction
-                        skill_ids = [
-                            skill["id"]
-                            for skill in self.store.exercise(scope, exercise_id)[
-                                "skills"
-                            ]
-                        ]
-                        if action == "hint":
-                            recorded_skills = {
-                                row[0]
-                                for row in self.store.db.execute(
-                                    "SELECT x.skill_id FROM assistance a "
-                                    "JOIN assistance_skills x ON x.assistance_id=a.id "
-                                    "WHERE a.exercise_id=? AND a.turn_id=?",
-                                    (exercise_id, ctx.turn_id),
-                                )
-                            }
-                            missing = [
-                                skill
-                                for skill in skill_ids
-                                if skill not in recorded_skills
-                            ]
-                            if missing:
-                                self.store.record_assistance(
-                                    ctx, exercise_id, missing, "hint", reply
-                                )
+                    if selected_exercise_id:
                         for assessment in ctx.assessments:
                             weak = [
                                 item["skill_id"]
@@ -185,7 +168,7 @@ class Tutor:
                                     "SELECT x.skill_id FROM assistance a "
                                     "JOIN assistance_skills x ON x.assistance_id=a.id "
                                     "WHERE a.exercise_id=? AND a.turn_id=?",
-                                    (exercise_id, ctx.turn_id),
+                                    (selected_exercise_id, ctx.turn_id),
                                 )
                             }
                             if remaining := [
@@ -193,9 +176,9 @@ class Tutor:
                             ]:
                                 self.store.record_assistance(
                                     ctx,
-                                    exercise_id,
+                                    selected_exercise_id,
                                     remaining,
-                                    "hint",
+                                    "explanation",
                                     reply,
                                 )
                     activities = [

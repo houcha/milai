@@ -93,33 +93,35 @@ test("exercise content uses the conversation Markdown renderer", () => {
   assert.equal(app.node("#exercise-task").innerHTML, "Add endings:\n1. **ich**\n2. **du**");
 });
 
-test("hint click shows progress and renders the returned hint", async () => {
+test("exercise answer shows progress and renders feedback", async () => {
   let resolve;
   const app = application("#chat", () => new Promise((done) => { resolve = done; }));
   app.run('exercise.setSession("one"); openExercise({id: "task", title: "Practice", context: "", task: "Answer"});');
-  const request = app.node("#exercise-hint").listeners.click();
-  assert.equal(app.requests[0].body.action, "hint");
-  assert.equal(app.node("#exercise-status").textContent, "Preparing a hint…");
-  assert.equal(app.node("#exercise-hint").disabled, true);
+  app.node("#exercise-answer").value = "My answer";
+  const request = app.run('submitExercise()');
+  assert.equal(app.requests[0].body.action, "answer");
+  assert.equal(app.node("#exercise-status").textContent, "Checking your answer…");
+  assert.equal(app.node("#exercise-submit").disabled, true);
   resolve({ok: true, json: async () => ({
-    status: {completed: false}, reply: {text: "Try **-st**.", activities: []},
+    status: {completed: false, assessments: []}, reply: {text: "Try **-st**.", activities: []},
     sessions: [], learning: {}, topic_anchors: {},
   })});
   await request;
-  assert.equal(app.node("#exercise-history").children[0].innerHTML, "<strong>Hint:</strong> Try **-st**.");
+  assert.equal(app.node("#messages").children.at(-1).children[1].innerHTML, "Try **-st**.");
   assert.equal(app.node("#exercise-status").textContent, "");
-  assert.equal(app.node("#exercise-hint").disabled, false);
+  assert.equal(app.node("#exercise-submit").disabled, false);
+  assert.equal(app.node("#exercise-continue").hidden, false);
 });
 
-test("prepared hint appears without a conversation reply", async () => {
-  const app = application("#chat", async () => ({ok: true, json: async () => ({
-    hint: "Check the ending.", status: {assisted: true, completed: false},
-  })}));
+test("Continue appears after an assessed answer without an extra request", () => {
+  const app = application();
   app.run('exercise.setSession("one"); openExercise({id: "task", title: "Practice", context: "", task: "Answer"});');
-  const before = app.node("#messages").children.length;
-  await app.node("#exercise-hint").listeners.click();
-  assert.equal(app.node("#exercise-history").children[0].innerHTML, "<strong>Hint:</strong> Check the ending.");
-  assert.equal(app.node("#messages").children.length, before);
+  assert.equal(app.node("#exercise-continue").hidden, true);
+  app.run('exercise.setStatuses({task: {assessments: [{id: "attempt"}], completed: false}}); renderExercise();');
+  assert.equal(app.node("#exercise-continue").hidden, false);
+  app.node("#exercise-continue").listeners.click();
+  assert.equal(app.requests.length, 0);
+  assert.equal(app.run("exercise.active"), null);
 });
 
 test("switching sessions from completed practice restores chat without a hash change", () => {
@@ -194,30 +196,26 @@ for (const action of ["rename", "delete", "select", "create"]) {
   });
 }
 
-test("navigation cannot reveal content before review succeeds", async () => {
-  let resolve;
-  const app = application("#chat", () => new Promise((done) => {resolve = done;}));
+test("navigation cannot reveal conversation before an answer", async () => {
+  const app = application();
   app.run(`exercise.setSession("one"); openExercise({id: "exercise", title: "Task"});`);
-  const navigation = app.run('location.hash = "sessions"; renderView()');
+  await app.run('location.hash = "sessions"; renderView()');
   assert.equal(app.node(".path-rail").hidden, true);
   assert.equal(app.node(".chat-panel").hidden, true);
   assert.equal(app.node("#exercise-view").hidden, false);
-  assert.equal(app.requests[0].body.action, "review");
-  resolve({ok: true, json: async () => ({status: {assisted: true}})});
-  await navigation;
-  assert.equal(app.node("#sessions-panel").hidden, false);
-  assert.equal(app.node("#exercise-view").hidden, true);
+  assert.equal(app.run('location.hash'), '#chat');
+  assert.equal(app.requests.length, 0);
+  assert.equal(app.node('#exercise-status').textContent, 'Submit an answer before continuing.');
 });
 
-test("failed review keeps the exercise open and path hidden", async () => {
-  const app = application("#chat", async () => ({ok: false, json: async () => ({error: "Review failed"})}));
+test("navigation after an assessed answer does not call the exercise API", async () => {
+  const app = application();
   app.run('exercise.setSession("one"); openExercise({id: "exercise", title: "Task"});');
+  app.run('exercise.setStatuses({exercise: {assessments: [{id: "attempt"}], completed: false}}); renderExercise();');
   await app.run('location.hash = "skills"; renderView()');
-  assert.equal(app.run('location.hash'), '#chat');
-  assert.equal(app.node('#exercise-view').hidden, false);
-  assert.equal(app.node('.path-rail').hidden, true);
-  assert.equal(app.node('.chat-panel').hidden, true);
-  assert.equal(app.node('#notice').textContent, 'Review failed');
+  assert.equal(app.run('location.hash'), '#skills');
+  assert.equal(app.node('#exercise-view').hidden, true);
+  assert.equal(app.requests.length, 0);
 });
 
 test("renaming from Sessions does not overwrite the saved chat scroll", async () => {

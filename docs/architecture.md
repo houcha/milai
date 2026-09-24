@@ -74,16 +74,14 @@ rationale record cannot claim a later action it does not identify.
 The web conversation opens a presented task only through **Start exercise**. Its
 temporary exercise view hides the conversation and learning sidebar while retaining
 the chat scroll position and unsent drafts in browser memory. Answer actions use
-the ordinary tutor transaction and persist learner-facing turns. New exercises
-store a private hint with the task. Revealing it records assistance locally and
-does not call the model; older exercises without a stored hint use the tutor turn.
-The selected
-exercise ID and action are application context, separate from learner text; assessment
+the ordinary tutor transaction and persist learner-facing turns. The selected
+exercise ID is application context, separate from learner text; assessment
 tools may save observations only for an answer to that exercise. A response with no
-saved assessment remains a clarification. Review writes one idempotent explanation
-assistance event for every exercise skill without a model call or conversation turn.
+saved assessment remains a clarification. The practice view has no exit action
+until the learner submits an answer and receives a reply. Continue then returns to
+the conversation without recording assistance; an unsuccessful answer can also be retried.
 Exercise status is rebuilt from attempts and assistance on reload; a successful latest
-assessment closes the task. Feedback and hint delivery protect later retries with
+assessment closes the task. Feedback protects later retries with
 assistance while leaving the assessment just completed unchanged.
 
 `Tutor.respond` returns `{text, activities}`. The final model text carries explanations,
@@ -110,7 +108,9 @@ attempts, skill observations, sessions, turns, ordered exercises, and audit even
 Opaque IDs are always checked against the application-injected learner. The model
 cannot choose a learner, session, database, or event provenance.
 
-The model receives at most six learner-facing turns or 20,000 characters. Raw SDK tool
+The model receives at most six learner-facing turns or 20,000 characters. Replay
+contains only the saved learner and assistant prose; structured exercises come from
+the bounded learning state or the selected exercise ID. Raw SDK tool
 traffic is retained for inspection but never replayed. Dynamic state is capped at
 16,000 characters and contains current profile values, topic summaries, the active
 topic graph, current focus and exercise, evidence summaries, and at most five recent
@@ -121,6 +121,8 @@ and source metadata are removed before the active core graph.
 Schema changes are explicit. Opening a legacy or unknown database fails with a command
 to run `milai reset --yes`. Reset archives the database and WAL/SHM sidecars with a UTC
 timestamp before creating schema 3. There is no implicit migration or deletion.
+Older schema 3 databases may retain unused hint columns and assistance rows; current
+exercise creation and interaction paths neither create nor reveal hints.
 
 ## Source and observability boundaries
 
@@ -158,5 +160,5 @@ navigate to the original assistant turn without a model call or focus mutation.
 `topic_anchors` maps topic IDs to committed turn IDs using session-scoped audit events;
 browser conversation items and tutor replies expose `turn_id` for DOM anchors.
 Missing historical anchors are reported as unavailable. Model-history replay is
-unchanged. Temporary exercises hide the path and require review tracking before
+unchanged. Temporary exercises hide the path and require an answered turn before
 navigation reveals learning content. No schema migration is needed.

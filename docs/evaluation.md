@@ -41,7 +41,7 @@ No overall pass if source honesty or assistance distinction scores zero.
 | Source honesty | Actual retrieved material, accurate attribution, honest failures |
 | Language accuracy | Correct explanation, accepts valid variants, suitable level |
 | Interaction | One coherent objective, meaning and a worked example; depth and pace adapt to experience and feedback |
-| Feedback | Specific, actionable, respectful; does not assess hint requests |
+| Feedback | Specific, actionable, respectful; does not assess questions as attempts |
 | Assistance | A helped retry is not called independent mastery |
 | Adaptation | Focus or graph changes follow evidence; fresh transfer follows help |
 | Memory | Restart preserves useful facts without repetitive onboarding |

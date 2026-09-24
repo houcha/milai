@@ -368,7 +368,11 @@ def test_establish_topic_accepts_reused_skill_keys_from_planner(tmp_path):
     attempt = context(store, learner, session, "attempt-evidence", "ein")
     with store.transaction():
         store.record_assistance(
-            attempt, exercise["id"], [practiced_skill["id"]], "hint", "Check gender."
+            attempt,
+            exercise["id"],
+            [practiced_skill["id"]],
+            "explanation",
+            "Check gender.",
         )
         store.assess_attempt(
             attempt,
@@ -509,11 +513,19 @@ def test_free_text_explanation_structured_exercise_attempt_and_replay(tmp_path):
     replay = json.dumps(store.model_history(learner, session))
     assert "masculine direct object" in replay
     assert "tool traffic" not in replay
+    assert "Presented activities" not in replay
+    assert exercise["id"] not in replay
+    assert "active_exercise" in store.prompt_state(learner)
+    assert store.prompt_state(learner)["active_exercise"]["id"] == exercise["id"]
 
     attempt = context(store, learner, session, "attempt", "Ich möchte einen Tee.")
     with store.transaction():
         store.record_assistance(
-            attempt, exercise["id"], [target], "hint", "Use the masculine ending."
+            attempt,
+            exercise["id"],
+            [target],
+            "explanation",
+            "Use the masculine ending.",
         )
         assessed = store.assess_attempt(
             attempt,
@@ -569,6 +581,21 @@ def test_free_text_explanation_structured_exercise_attempt_and_replay(tmp_path):
     store.close()
 
 
+def test_model_history_does_not_replay_an_existing_leaked_exercise(tmp_path):
+    store = Store(tmp_path / "leaked-activity.db")
+    learner = store.owner
+    session = store.session(learner)
+    leaked = (
+        'Try this exercise.\n\nPresented activities:\n[{"id":"old","kind":"exercise"}]'
+    )
+    with store.transaction():
+        store.save_turn(context(store, learner, session), leaked, [])
+
+    assert store.conversation(learner, session)[-1]["content"] == leaked
+    assert store.model_history(learner, session)[-1]["content"] == "Try this exercise."
+    store.close()
+
+
 def test_prompt_state_and_history_are_bounded_and_omit_source_bodies(tmp_path):
     store = Store(tmp_path / "bounded.db")
     learner = store.owner
@@ -611,7 +638,6 @@ def test_tutor_returns_structured_activities_and_failed_run_rolls_back(tmp_path)
                     "title": "One article",
                     "task": "Complete: Ich nehme ___ Kaffee.",
                     "context": "At a café",
-                    "hint": "Check the noun's gender.",
                     "scaffolding": "none",
                     "skills": [
                         {
@@ -637,6 +663,40 @@ def test_tutor_returns_structured_activities_and_failed_run_rolls_back(tmp_path)
     assert store.conversation(learner, session)[-1]["activities"] == reply.activities
     asyncio.run(tutor.close())
 
+    exercise_id = reply.activities[0]["id"]
+    answer_provider = MockProvider(
+        [
+            call(
+                "assess_attempt",
+                assessment={
+                    "exercise_id": exercise_id,
+                    "feedback": "Use einen with masculine Kaffee.",
+                    "observations": [
+                        {
+                            "skill_id": target,
+                            "outcome": "needs_work",
+                            "rationale": "Used ein instead of einen.",
+                        }
+                    ],
+                },
+            ),
+            say("Use einen with masculine Kaffee. Try again."),
+        ]
+    )
+    answer_tutor = Tutor(config, store, Telemetry(enabled=False), answer_provider.model)
+    answer = asyncio.run(
+        answer_tutor.respond(learner, session, "Ich nehme ein Kaffee.", exercise_id)
+    )
+    assert answer.assessments[0]["exercise_id"] == exercise_id
+    assert (
+        store.db.execute(
+            "SELECT level FROM assistance WHERE exercise_id=?", (exercise_id,)
+        ).fetchone()[0]
+        == "explanation"
+    )
+    assert "Selected exercise answer" in json.dumps(answer_provider.requests[0])
+    asyncio.run(answer_tutor.close())
+
     failed_config = settings(tmp_path, max_turns=1)
     failed_provider = MockProvider(
         [
@@ -646,7 +706,6 @@ def test_tutor_returns_structured_activities_and_failed_run_rolls_back(tmp_path)
                     "title": "Rolled back",
                     "task": "This must not survive.",
                     "context": "Rollback test",
-                    "hint": "Look at the noun.",
                     "scaffolding": "none",
                     "skills": [
                         {
@@ -789,7 +848,7 @@ def test_skill_split_preserves_old_evidence_and_repoints_topic_and_focus(tmp_pat
     store.close()
 
 
-def test_exercise_review_status_is_session_scoped_and_idempotent(tmp_path):
+def test_exercise_status_is_session_scoped_without_an_attempt(tmp_path):
     store = Store(tmp_path / "exercise-status.db")
     learner = store.owner
     session = store.session(learner)
@@ -818,19 +877,10 @@ def test_exercise_review_status_is_session_scoped_and_idempotent(tmp_path):
             },
         )
         store.save_turn(teach, "Explanation", [])
-    before = len(store.conversation(learner, session))
-    with store.transaction():
-        first = store.review_exercise(learner, session, exercise["id"])
-        second = store.review_exercise(learner, session, exercise["id"])
-    assert first == second
-    assert first["assisted"]
-    assert len(store.conversation(learner, session)) == before
-    assert (
-        store.db.execute(
-            "SELECT count(*) FROM assistance WHERE exercise_id=?", (exercise["id"],)
-        ).fetchone()[0]
-        == 1
-    )
+    status = store.exercise_status(learner, session, exercise["id"])
+    assert status["assessments"] == []
+    assert not status["assisted"]
+    assert not status["completed"]
     other = store.session(learner)
     with pytest.raises(ValueError):
         store.exercise_status(learner, other, exercise["id"])
@@ -870,7 +920,13 @@ def test_exercise_status_rebuilds_success_after_reload(tmp_path, help_first):
         store.save_turn(teach, "Explanation", [])
     if help_first:
         with store.transaction():
-            store.review_exercise(learner, session, exercise["id"])
+            store.record_assistance(
+                context(store, scope, session, "help", "Explain this"),
+                exercise["id"],
+                [skill_id],
+                "explanation",
+                "Explained the form.",
+            )
     attempt = context(store, scope, session, "answer", "  exact learner text  ")
     with store.transaction():
         result = store.assess_attempt(

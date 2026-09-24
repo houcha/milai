@@ -1,5 +1,21 @@
 # Decision log
 
+## 2026-09-24 — submit before continuing
+
+- Remove Review explanation and Back to conversation from the practice view. Neither
+  added an explanation; both recorded blanket assistance on exit. Continue appears
+  after the first submitted answer receives a reply, whether or not it was correct,
+  and returns to conversation without a review event. The learner may retry or
+  continue after a clarification.
+
+## 2026-09-23 — remove exercise hints
+
+- Exercises no longer generate or reveal private hints. Answer turns carry only the
+  selected exercise ID to the tutor.
+- Explanations and shown answers still record assistance, so helped retries do not
+  count as independent success. Existing hint records remain readable in older
+  databases, but new databases and tool calls cannot create them.
+
 ## 2026-09-20 — topic-independent skill graph
 
 - Replace the provisional curriculum record with a systematic, learner-scoped skill

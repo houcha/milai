@@ -10,7 +10,6 @@ let conversationScroll = 0;
 let topicAnchors = {};
 let currentView = "chat";
 const scrollPositions = new Map();
-const exerciseHints = new Map();
 
 function renderExercise() {
   const item = exercise.active;
@@ -38,18 +37,10 @@ function renderExercise() {
       history.append(entry);
     }
   }
-  for (const hint of exerciseHints.get(`${exercise.session}:${item.id}`) || []) {
-    const entry = document.createElement("div");
-    entry.className = "markdown";
-    entry.innerHTML = `<strong>Hint:</strong> ${renderMarkdown(hint)}`;
-    history.append(entry);
-  }
   exerciseAnswer.value = exercise.draft;
   document.querySelector("#exercise-form").hidden = Boolean(status.completed);
-  document.querySelector("#exercise-hint").hidden = Boolean(status.completed);
-  document.querySelector("#exercise-continue").hidden = !status.completed;
+  document.querySelector("#exercise-continue").hidden = !exercise.canContinue;
   document.querySelector("#exercise-submit").disabled = exercise.pending;
-  document.querySelector("#exercise-hint").disabled = exercise.pending;
 }
 
 function openExercise(item) {
@@ -69,7 +60,7 @@ function closeExercise() {
   elements.message.focus();
 }
 
-async function exerciseAction(action) {
+async function submitExercise() {
   if (busy || exercise.pending) return;
   const item = exercise.active;
   if (!item) return;
@@ -77,29 +68,17 @@ async function exerciseAction(action) {
   exercise.setDraft(answer);
   elements.notice.textContent = "";
   const statusMessage = document.querySelector("#exercise-status");
-  statusMessage.textContent = action === "hint" ? "Preparing a hint…" : action === "answer" ? "Checking your answer…" : "Reviewing…";
+  statusMessage.textContent = "Checking your answer…";
   setBusy(true);
   try {
-    const result = await exercise.act(action, answer);
+    const result = await exercise.answer(answer);
     if (!result) return;
-    if (action === "review") {
-      closeExercise();
-      return;
-    }
-    if (result.hint) {
-      const key = `${exercise.session}:${item.id}`;
-      exerciseHints.set(key, [...new Set([...(exerciseHints.get(key) || []), result.hint])]);
-    }
     if (result.reply) {
-      appendMessage("user", action === "hint" ? "Hint requested" : answer);
+      appendMessage("user", answer);
       appendMessage("assistant", result.reply.text, false, result.reply.activities || [], result.reply.turn_id);
       topicAnchors = result.topic_anchors || {};
       renderSessions(result.sessions);
       renderLearning(result.learning);
-      if (action === "hint" || !result.reply.assessments?.length) {
-        const key = `${exercise.session}:${item.id}`;
-        exerciseHints.set(key, [...(exerciseHints.get(key) || []), result.reply.text]);
-      }
     }
     renderExercise();
     statusMessage.textContent = "";
@@ -113,12 +92,9 @@ async function exerciseAction(action) {
 
 document.querySelector("#exercise-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  if (exerciseAnswer.value.trim()) exerciseAction("answer");
+  if (exerciseAnswer.value.trim()) submitExercise();
 });
 exerciseAnswer.addEventListener("input", () => exercise.setDraft(exerciseAnswer.value));
-document.querySelector("#exercise-hint").addEventListener("click", () => exerciseAction("hint"));
-document.querySelector("#exercise-review").addEventListener("click", () => exerciseAction("review"));
-document.querySelector("#exercise-back").addEventListener("click", () => exerciseAction("review"));
 document.querySelector("#exercise-continue").addEventListener("click", closeExercise);
 
 const elements = {
@@ -141,10 +117,14 @@ const drafts = new Map();
 
 const viewNames = { chat: "Conversation", sessions: "Sessions", skills: "Skills" };
 
-async function leaveExercise() {
+function leaveExercise() {
   if (!exercise.active) return;
+  if (!exercise.canContinue) {
+    const message = "Submit an answer before continuing.";
+    document.querySelector("#exercise-status").textContent = message;
+    throw new Error(message);
+  }
   exercise.setDraft(exerciseAnswer.value);
-  if (!exercise.status.completed) await exercise.act("review");
   exercise.close();
   elements.messages.scrollTop = conversationScroll;
 }
@@ -158,7 +138,7 @@ async function renderView() {
   }
   if (exercise.active && view !== "chat") {
     setBusy(true);
-    try { await leaveExercise(); }
+    try { leaveExercise(); }
     catch (error) {
       elements.notice.textContent = error.message;
       location.hash = "chat";
@@ -191,7 +171,7 @@ async function renderView() {
 async function jumpToTopic(topicId) {
   if (busy) return;
   setBusy(true);
-  try { await leaveExercise(); }
+  try { leaveExercise(); }
   catch (error) { elements.notice.textContent = error.message; return; }
   finally { setBusy(false); }
   location.hash = "chat";
@@ -379,7 +359,7 @@ function setBusy(value) {
   busy = value;
   elements.send.disabled = value;
   elements.message.disabled = value;
-  for (const selector of ["#exercise-submit", "#exercise-hint", "#exercise-review", "#exercise-back", "#exercise-continue"]) {
+  for (const selector of ["#exercise-submit", "#exercise-continue"]) {
     document.querySelector(selector).disabled = value;
   }
   document.querySelectorAll("#new-session, .session-list button, .topic-link, .suggestions button, .exercise-launch").forEach((button) => { button.disabled = value; });
@@ -497,7 +477,7 @@ async function manageSession(action, extra = {}) {
   setBusy(true);
   elements.notice.textContent = "";
   try {
-    await leaveExercise();
+    leaveExercise();
     if (currentView === "chat") scrollPositions.set(activeSession, elements.messages.scrollTop);
     const payload = await api("/api/session", {
       method: "POST",

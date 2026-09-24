@@ -22,9 +22,9 @@ MESSAGES = [
     "identify the essential skills, then give me a tiny explanation and original "
     "past-tense exercise: Yesterday I ___ to the park (go).",
     "Yesterday I goed to the park.",
-    "Why isn't goed right? Give me a hint before I try again.",
+    "Why isn't goed right? Please explain before I try again.",
     "Yesterday I went to the park.",
-    "Let's continue with a fresh exercise based on how I did, without a hint yet.",
+    "Let's continue with a fresh exercise based on how I did.",
 ]
 
 

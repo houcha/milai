@@ -117,7 +117,7 @@ CREATE TABLE focus_skills (
 );
 CREATE TABLE exercises (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, topic_id TEXT NOT NULL REFERENCES topics(id),
-    title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL, hint TEXT,
+    title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL,
     scaffolding TEXT NOT NULL CHECK(scaffolding IN ('none', 'cues', 'worked_example')),
     created_turn TEXT NOT NULL, created TEXT NOT NULL
 );
@@ -132,7 +132,7 @@ CREATE TABLE exercise_sources (
 );
 CREATE TABLE assistance (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, exercise_id TEXT NOT NULL REFERENCES exercises(id),
-    level TEXT NOT NULL CHECK(level IN ('hint', 'explanation', 'answer_shown')),
+    level TEXT NOT NULL CHECK(level IN ('explanation', 'answer_shown')),
     content TEXT NOT NULL, turn_id TEXT NOT NULL, created TEXT NOT NULL
 );
 CREATE TABLE assistance_skills (
@@ -161,6 +161,27 @@ CREATE TABLE turn_exercises (
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _reply_for_replay(reply: str) -> str:
+    """Omit a previously leaked exercise appendix from model history."""
+    prose, marker, appendix = reply.partition("\n\nPresented activities:\n")
+    if not marker:
+        return reply
+    try:
+        activities = json.loads(appendix)
+    except json.JSONDecodeError:
+        return reply
+    if (
+        isinstance(activities, list)
+        and activities
+        and all(
+            isinstance(item, dict) and item.get("kind") == "exercise"
+            for item in activities
+        )
+    ):
+        return prose
+    return reply
 
 
 class Store:
@@ -220,10 +241,6 @@ class Store:
                         "INSERT INTO session_scopes(session, scope) VALUES (?, ?)",
                         (row["id"], scope),
                     )
-        if "hint" not in {
-            row[1] for row in self.db.execute("PRAGMA table_info(exercises)")
-        }:
-            self.db.execute("ALTER TABLE exercises ADD COLUMN hint TEXT")
 
     @classmethod
     def reset(cls, path: Path) -> list[Path]:
@@ -1074,7 +1091,7 @@ class Store:
         self._validate_sources(ctx.learner, exercise["source_ids"])
         exercise_id = identifier()
         self.db.execute(
-            "INSERT INTO exercises (id, learner, topic_id, title, task, context, hint, scaffolding, created_turn, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO exercises (id, learner, topic_id, title, task, context, scaffolding, created_turn, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 exercise_id,
                 ctx.learner,
@@ -1082,7 +1099,6 @@ class Store:
                 exercise["title"],
                 exercise["task"],
                 exercise["context"],
-                exercise.get("hint"),
                 exercise["scaffolding"],
                 ctx.turn_id,
                 now(),
@@ -1268,49 +1284,6 @@ class Store:
             "source_ids": sources,
         }
 
-    def exercise_hint(self, learner: str, session: str, exercise_id: str) -> dict:
-        status = self.exercise_status(learner, session, exercise_id)
-        if status["completed"]:
-            raise ValueError("This exercise is already complete")
-        scope = self.learning_scope(learner, session)
-        row = self._owned("exercises", scope, exercise_id)
-        hint = row["hint"]
-        if not hint:
-            return {"hint": None, "status": status}
-        if not self.db.execute(
-            "SELECT 1 FROM assistance WHERE exercise_id=? AND level='hint' AND content=? LIMIT 1",
-            (exercise_id, hint),
-        ).fetchone():
-            assistance_id = identifier()
-            self.db.execute(
-                "INSERT INTO assistance VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (assistance_id, scope, exercise_id, "hint", hint, identifier(), now()),
-            )
-            self.db.executemany(
-                "INSERT INTO assistance_skills VALUES (?, ?)",
-                [
-                    (assistance_id, skill["id"])
-                    for skill in self.exercise(scope, exercise_id)["skills"]
-                ],
-            )
-            self.db.execute(
-                "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    identifier(),
-                    scope,
-                    session,
-                    identifier(),
-                    assistance_id,
-                    "assistance",
-                    now(),
-                    "application-hint",
-                ),
-            )
-        return {
-            "hint": hint,
-            "status": self.exercise_status(learner, session, exercise_id),
-        }
-
     def exercise_status(self, learner: str, session: str, exercise_id: str) -> dict:
         self.authorize(learner, session)
         scope = self.learning_scope(learner, session)
@@ -1380,50 +1353,6 @@ class Store:
             (session,),
         )
         return {row[0]: self.exercise_status(learner, session, row[0]) for row in ids}
-
-    def review_exercise(self, learner: str, session: str, exercise_id: str) -> dict:
-        self.exercise_status(learner, session, exercise_id)
-        scope = self.learning_scope(learner, session)
-        existing = self.db.execute(
-            "SELECT 1 FROM assistance WHERE exercise_id=? AND level='explanation' "
-            "AND content='Reviewed explanation in conversation' LIMIT 1",
-            (exercise_id,),
-        ).fetchone()
-        if not existing:
-            assistance_id = identifier()
-            self.db.execute(
-                "INSERT INTO assistance VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    assistance_id,
-                    scope,
-                    exercise_id,
-                    "explanation",
-                    "Reviewed explanation in conversation",
-                    identifier(),
-                    now(),
-                ),
-            )
-            self.db.executemany(
-                "INSERT INTO assistance_skills VALUES (?, ?)",
-                [
-                    (assistance_id, skill["id"])
-                    for skill in self.exercise(scope, exercise_id)["skills"]
-                ],
-            )
-            self.db.execute(
-                "INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    identifier(),
-                    scope,
-                    session,
-                    identifier(),
-                    assistance_id,
-                    "assistance",
-                    now(),
-                    "application-review",
-                ),
-            )
-        return self.exercise_status(learner, session, exercise_id)
 
     def _turn_activities(self, learner: str, turn_id: str) -> list[dict]:
         return [
@@ -1518,10 +1447,7 @@ class Store:
         selected: list[tuple[sqlite3.Row, str]] = []
         size = 0
         for row in rows:
-            activities = self._turn_activities(row["learner"], row["id"])
-            assistant = row["reply"]
-            if activities:
-                assistant += "\n\nPresented activities:\n" + _json(activities)
+            assistant = _reply_for_replay(row["reply"])
             turn_size = len(row["message"]) + len(assistant)
             if selected and size + turn_size > max_chars:
                 break
