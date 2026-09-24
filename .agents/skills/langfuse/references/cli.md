@@ -2,50 +2,29 @@
 
 Documentation: https://langfuse.com/docs/api-and-data-platform/features/cli
 
-## Install
+## Run and discover commands
 
 ```bash
-# Run directly (recommended)
-npx langfuse-cli api <resource> <action>
-bunx langfuse-cli api <resource> <action>
-
-# Or install globally
-npm i -g langfuse-cli
-langfuse api <resource> <action>
+npx @langfuse/cli api help
+npx @langfuse/cli api help <resource>
+npx @langfuse/cli api help <resource> <action>
+npx @langfuse/cli api schema --json
 ```
 
-## Discovery
+The CLI reads `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL` from its environment. If this repository's ignored `.env` holds the keys, pass them into the process environment without printing them. The CLI does not load `.env` automatically.
+
+## Match a self-hosted server
+
+Use `--api-version auto` to select a bundled API snapshot from the server's health endpoint. Set `--host` to the server URL when needed. For example:
 
 ```bash
-# List all resources and auth info
-langfuse api __schema
-
-# List actions for a resource
-langfuse api <resource> --help
-
-# Show args/options for a specific action
-langfuse api <resource> <action> --help
-
-# Preview the curl command without executing
-langfuse api <resource> <action> --curl
+npx @langfuse/cli --api-version auto --host http://localhost:3000 api observations list --limit 1 --fields core,basic --json
 ```
 
-## Credentials
+The example queries observation metadata without input/output content. Use `api versions list` to inspect bundled snapshots if auto-detection fails. Check the server version at `/api/public/health` before choosing a historical snapshot manually.
 
-Set environment variables:
+## Output and filtering
 
-```bash
-export LANGFUSE_PUBLIC_KEY=pk-lf-...
-export LANGFUSE_SECRET_KEY=sk-lf-...
-export LANGFUSE_HOST=https://cloud.langfuse.com  
-```
-
-## Tips
-
-- Use `--json` for machine-readable JSON output
-- Use `--curl` to preview the HTTP request without executing
-- Pagination: use `--limit` and `--page` on list endpoints
-- All list commands support filtering — check `<resource> <action> --help` for available options
-- Prefer `observations-v2s` over `observations` — the v2 endpoint returns richer data
-- Prefer `metrics-v2s` over `metrics` — the v2 endpoint returns richer data
-- Prefer `score-v2s` over `scores` — the v1 `scores` resource only supports create/delete; use `score-v2s` for list and get operations
+- Use `--json` for a stable envelope with `status`, `headers`, and `body` fields.
+- Inspect `api help <resource> <action>` for filters and pagination. Filter and limit results before bringing trace content into the conversation.
+- Use `--curl` to preview a request without executing it.

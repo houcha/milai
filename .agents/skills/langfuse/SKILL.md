@@ -4,14 +4,14 @@ description: Interact with Langfuse and access its documentation. Use when needi
 allowed-tools:
   - WebFetch(domain:langfuse.com)
   - Bash(curl *langfuse.com/*)
-  - Bash(npx langfuse-cli api __schema *)
-  - Bash(npx langfuse-cli api * --help *)
-  - Bash(npx langfuse-cli api * list *)
-  - Bash(npx langfuse-cli api * get *)
-  - Bash(bunx langfuse-cli api __schema *)
-  - Bash(bunx langfuse-cli api * --help *)
-  - Bash(bunx langfuse-cli api * list *)
-  - Bash(bunx langfuse-cli api * get *)
+  - Bash(npx @langfuse/cli api help *)
+  - Bash(npx @langfuse/cli api schema *)
+  - Bash(npx @langfuse/cli api * list *)
+  - Bash(npx @langfuse/cli api * get *)
+  - Bash(bunx @langfuse/cli api help *)
+  - Bash(bunx @langfuse/cli api schema *)
+  - Bash(bunx @langfuse/cli api * list *)
+  - Bash(bunx @langfuse/cli api * get *)
 ---
 
 # Langfuse
@@ -23,7 +23,7 @@ This skill helps you use Langfuse effectively across all common workflows: instr
 Follow these principles for ALL Langfuse work:
 
 1. **Documentation First**: NEVER implement based on memory. Always fetch current docs before writing code (Langfuse updates frequently) See the section below on how to access documentation.
-2. **CLI for Data Access**: Use `langfuse-cli` when querying/modifying Langfuse data. See the section below on how to use the CLI. 
+2. **CLI for Data Access**: Use `@langfuse/cli` when querying/modifying Langfuse data. See the section below on how to use the CLI.
 3. **Best Practices by Use Case**: Check the relevant reference file below for use-case-specific guidelines before implementing
 4. **Use latest Langfuse versions**: Unless the user specified otherwise or there's a good reason, always use the latest version of Langfuse SDKs/APIs.
 
@@ -42,19 +42,19 @@ Follow these principles for ALL Langfuse work:
 
 ## 1. Langfuse API via CLI
 
-Use the `langfuse-cli` to interact with the full Langfuse REST API from the command line. Run via npx (no install required):
+Use `@langfuse/cli` to interact with the Langfuse REST API from the command line. Run via npx (no permanent install required):
 
 Start by discovering the schema and available arguments:
 
 ```bash
-# Discover all available resources
-npx langfuse-cli api __schema
+# Discover available resources and actions
+npx @langfuse/cli api help
 
-# List actions for a resource
-npx langfuse-cli api <resource> --help
+# Show actions for a resource
+npx @langfuse/cli api help <resource>
 
-# Show args/options for a specific action
-npx langfuse-cli api <resource> <action> --help
+# Show options for an action
+npx @langfuse/cli api help <resource> <action>
 ```
 
 ### Credentials
@@ -64,7 +64,7 @@ Set environment variables before making calls:
 ```bash
 export LANGFUSE_PUBLIC_KEY=pk-lf-...
 export LANGFUSE_SECRET_KEY=sk-lf-...
-export LANGFUSE_HOST=https://cloud.langfuse.com # example for EU cloud. For US cloud it's us.cloud.langfuse.com, and can also be a self-hosted URL. The server must always be specified in order to access Langfuse.
+export LANGFUSE_BASE_URL=https://cloud.langfuse.com # EU cloud example; use the project's actual host for US, Japan, HIPAA, or self-hosted deployments.
 ```
 
 If not set, ask the user to set them in their shell or a `.env` file (do not ask them to paste keys into chat for security reasons). Keys are found in Langfuse UI → Settings → API Keys.
