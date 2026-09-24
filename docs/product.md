@@ -14,12 +14,14 @@ skill, with a Review prefix for revisits.
 
 Prerequisite edges form a directed acyclic graph. Every prerequisite must be
 mastered before a new dependent skill is taught. Mastery means two independent
-successes on distinct exercises since the most recent `needs_work` observation.
-Assisted, scaffolded, or uncertain responses do not count. An advanced request
+successes on distinct exercises since the most recent substantial `needs_work`
+observation. A mostly correct answer with a minor slip may count as success, with
+the slip recorded for a later check. Assisted, scaffolded, or uncertain responses
+do not count. An advanced request
 never bypasses the gate; the tutor explains the prerequisite and teaches the
 earliest unmet one. Repeated difficulty, a learner request, or a blocking weak
-skill can start a separate review lesson. One error normally stays within the
-current lesson.
+skill can start a separate review lesson. A minor slip is revisited after practice
+on other skills, without an immediate repeat of the same exercise.
 
 The tutor explains a coherent system of related forms in enough depth to make it
 usable. It supplies examples relevant to the learner's goal and level. An example
@@ -37,7 +39,9 @@ Milai runs locally in terminal or browser, uses the OpenAI Agents SDK and local
 SQLite, and keeps one learner-facing agent. A private read-only planner selects
 one lesson skill when the focus changes. The application validates the choice,
 prerequisites, exercise contracts, ownership, and persistence. A schema change
-requires an explicit archival reset; no implicit migration is attempted.
+requires an explicit archival reset when old learning records cannot be converted
+safely. The additive observation severity field is added to existing schema 4
+databases without changing old evidence.
 
 ## Open product questions
 

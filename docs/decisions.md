@@ -1,5 +1,18 @@
 # Decision log
 
+## 2026-09-25 — Defer small-error review
+
+- Record whether an observed target error is minor or substantial. A mostly correct
+  answer with a minor slip can be an independent success; substantial difficulty
+  retains the existing mastery reset. Unclear evidence remains uncertain.
+- Close a mostly correct exercise, correct the slip briefly, and block another
+  exercise on that skill until two distinct exercises on other skills have been
+  attempted. An explicit learner request can bring it back earlier. The later check
+  opens a Review lesson after the current skill is mastered, using the existing
+  lesson history.
+- Add `issue_severity` to existing schema 4 databases in place. Historical outcomes
+  remain unchanged and have no inferred severity.
+
 ## 2026-09-24 — Skill-focused lessons replace topics
 
 - Replace topics, topic links, and focus history with chronological lessons. A lesson

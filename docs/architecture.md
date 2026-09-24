@@ -19,13 +19,19 @@ title.
 
 New skills can be taught only after every ancestor prerequisite is mastered. Mastery
 is derived from observations: two independent successes on distinct exercises since
-the latest `needs_work`. An independent success requires an unscaffolded exercise
-and no skill-specific assistance. `uncertain` and assisted success do not count.
+the latest substantial `needs_work`. An independent success requires an unscaffolded
+exercise and no skill-specific assistance. A mostly correct response with a minor
+slip can count as success while retaining its severity for a later check. `uncertain`
+and assisted success do not count.
 The gate is checked in storage, including when a learner requests advanced material.
 The planner selects the earliest eligible prerequisite when needed.
 Two consecutive `needs_work` observations on distinct exercises flag an earlier
-active skill for review. Assessment atomically opens its Review lesson and returns
-it to the tutor for learner-facing explanation.
+active skill for review. A minor slip on a previous skill becomes due after two
+distinct exercises targeting other skills; its automatic Review waits until the
+current skill is mastered. Assessment atomically opens a due Review lesson and
+returns it to the tutor for learner-facing explanation. Until that point,
+an immediate repeat of the same skill is rejected unless the learner explicitly
+requests it.
 
 An exercise belongs to the active lesson and has exactly one target skill, the
 lesson focus. Supporting skills must have appeared in earlier lessons and use the
@@ -71,7 +77,9 @@ assistance, attempts, observations, and ordered turn exercises. Opaque IDs are
 checked against the session's learning scope. The model cannot choose a learner,
 session, database, or event provenance. Opening an older schema fails with an
 explicit `milai reset --yes` instruction. Reset archives the database and WAL/SHM
-sidecars before creating fresh schema 4.
+sidecars before creating fresh schema 4. Existing schema 4 databases gain an
+additive `issue_severity` observation column on open; old observations retain their
+original outcome and have no retrospective severity.
 
 The lesson sidebar is chronological; its latest entry is current. Clicking a lesson
 jumps to its original committed assistant turn without changing focus. Session-scoped

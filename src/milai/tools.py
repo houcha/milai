@@ -109,11 +109,13 @@ class Exercise(BaseModel):
     scaffolding: Literal["none", "cues", "worked_example"]
     skills: list[ExerciseSkill] = Field(min_length=1, max_length=6)
     source_ids: list[str] = Field(default_factory=list, max_length=5)
+    early_revisit_request: str | None = Field(default=None, max_length=800)
 
 
 class SkillObservation(BaseModel):
     skill_id: str
     outcome: Literal["success", "needs_work", "uncertain"]
+    issue_severity: Literal["none", "minor", "substantial", "unclear"]
     rationale: str = Field(min_length=1, max_length=1000)
 
 

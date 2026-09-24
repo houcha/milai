@@ -43,15 +43,18 @@ current session’s learning memory, `/new` starts a fresh learning session, and
 `/quit` exits. The session ID is printed at startup.
 
 SQLite data lives in `.milai/learning.sqlite3` (override `MILAI_DATABASE`).
-Schema 4 replaces topics and focus records with lessons. Existing databases are not
-migrated automatically: startup explains how to run `milai reset --yes`, which
-archives the database and sidecars before creating a fresh one. Protect these files
+Schema 4 replaces topics and focus records with lessons. Incompatible older databases
+require `milai reset --yes`, which archives the database and sidecars before creating
+a fresh one. An additive observation severity field is installed on existing schema 4
+databases without changing saved attempts. Protect these files
 as personal data. This is a local app; there is no shared service or login.
 
 The tutor discovers intent, starts a lesson on one precise language skill, and keeps
 that lesson active until the focus changes. New skills require all prerequisite
 skills to be mastered. Mastery is derived from two independent successes on distinct
-exercises since the last difficulty observation; no numeric score is assigned.
+exercises since the last substantial difficulty observation; no numeric score is assigned.
+Minor slips are saved for a later check after other practice instead of repeating
+the same drill immediately.
 Earlier skills may support a new lesson's exercises. The tutor can create a new
 review lesson for a weak prior skill. It explains naturally, gives structured
 practice when useful, and records skill-specific help and evidence. It can also

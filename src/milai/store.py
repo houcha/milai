@@ -135,6 +135,7 @@ CREATE TABLE skill_observations (
     exercise_id TEXT NOT NULL REFERENCES exercises(id), skill_id TEXT NOT NULL REFERENCES skills(id),
     outcome TEXT NOT NULL CHECK(outcome IN ('success', 'needs_work', 'uncertain')),
     rationale TEXT NOT NULL, independent_success INTEGER NOT NULL CHECK(independent_success IN (0, 1)),
+    issue_severity TEXT CHECK(issue_severity IN ('none', 'minor', 'substantial', 'unclear')),
     created TEXT NOT NULL, UNIQUE(attempt_id, skill_id)
 );
 CREATE INDEX observations_skill ON skill_observations(learner, skill_id, created);
@@ -201,6 +202,15 @@ class Store:
             if version != SCHEMA_VERSION:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
+
+        # Additive schema 4 extension; existing evidence retains its original meaning.
+        if "issue_severity" not in {
+            row[1] for row in self.db.execute("PRAGMA table_info(skill_observations)")
+        }:
+            self.db.execute(
+                "ALTER TABLE skill_observations ADD COLUMN issue_severity TEXT "
+                "CHECK(issue_severity IN ('none', 'minor', 'substantial', 'unclear'))"
+            )
 
         # Add session ownership without resetting existing conversations. The old
         # shared learning state belongs to the most recently used legacy session.
@@ -884,7 +894,7 @@ class Store:
         return self.lesson(learner, row[0]) if row else None
 
     def review_due(self, learner: str) -> list[dict]:
-        """Find earlier lesson skills missed on two consecutive distinct exercises."""
+        """Find repeated substantial difficulty or a delayed minor-error check."""
         active = self.active_lesson(learner)
         rows = self.db.execute(
             "SELECT DISTINCT focus_skill_id FROM lessons WHERE learner=?",
@@ -908,8 +918,40 @@ class Store:
                 and all(item["outcome"] == "needs_work" for item in recent)
                 and recent[0]["exercise_id"] != recent[1]["exercise_id"]
             ):
-                due.append({"skill_id": skill_id, "name": skill["name"]})
+                due.append(
+                    {
+                        "skill_id": skill_id,
+                        "name": skill["name"],
+                        "reason": "repeated_difficulty",
+                    }
+                )
+            elif self._minor_review_progress(learner, skill_id) >= 2:
+                due.append(
+                    {
+                        "skill_id": skill_id,
+                        "name": skill["name"],
+                        "reason": "minor_followup",
+                    }
+                )
         return due
+
+    def _minor_review_progress(self, learner: str, skill_id: str) -> int:
+        """Count other targeted exercises since the latest minor slip, or -1."""
+        latest = self.db.execute(
+            "SELECT o.issue_severity, a.rowid AS attempt_order FROM skill_observations o "
+            "JOIN attempts a ON a.id=o.attempt_id WHERE o.learner=? AND o.skill_id=? "
+            "AND o.outcome!='uncertain' "
+            "ORDER BY o.rowid DESC LIMIT 1",
+            (learner, skill_id),
+        ).fetchone()
+        if latest is None or latest["issue_severity"] != "minor":
+            return -1
+        return self.db.execute(
+            "SELECT count(DISTINCT a.exercise_id) FROM attempts a "
+            "JOIN exercise_skills x ON x.exercise_id=a.exercise_id AND x.role='target' "
+            "WHERE a.learner=? AND a.rowid>? AND x.skill_id!=?",
+            (learner, latest["attempt_order"], skill_id),
+        ).fetchone()[0]
 
     def _validate_sources(self, learner: str, source_ids: list[str]) -> None:
         for source_id in source_ids:
@@ -929,6 +971,19 @@ class Store:
             raise ValueError(
                 "Exercise needs exactly one target: the current lesson skill"
             )
+        if 0 <= self._minor_review_progress(ctx.learner, targets[0]) < 2:
+            quote = exercise.get("early_revisit_request")
+            if (
+                getattr(ctx, "selected_exercise_id", None)
+                or not isinstance(quote, str)
+                or not quote.strip()
+                or quote not in ctx.message
+            ):
+                raise ValueError(
+                    "A minor error is saved for later review. Practice other skills "
+                    "before repeating this one, unless the learner explicitly asks "
+                    "to revisit it now; provide their exact request quote."
+                )
         for item in requirements:
             skill = self.skill(ctx.learner, item["skill_id"], active=True)
             if skill["language"] != lesson["language"]:
@@ -1046,6 +1101,16 @@ class Store:
             raise InvalidReference(
                 "Observations must uniquely reference exercise skills"
             )
+        allowed_severity = {
+            "success": {"none", "minor"},
+            "needs_work": {"substantial"},
+            "uncertain": {"unclear"},
+        }
+        for observation in observations:
+            if observation.get("issue_severity") not in allowed_severity.get(
+                observation["outcome"], set()
+            ):
+                raise ValueError("Observation outcome and issue severity disagree")
         attempt_id, created = identifier(), now()
         self.db.execute(
             "INSERT INTO attempts VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -1074,7 +1139,9 @@ class Store:
             )
             observation_id = identifier()
             self.db.execute(
-                "INSERT INTO skill_observations VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO skill_observations "
+                "(id, learner, attempt_id, exercise_id, skill_id, outcome, rationale, "
+                "independent_success, issue_severity, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     observation_id,
                     ctx.learner,
@@ -1084,6 +1151,7 @@ class Store:
                     observation["outcome"],
                     observation["rationale"],
                     int(independent),
+                    observation["issue_severity"],
                     created,
                 ),
             )
@@ -1102,12 +1170,32 @@ class Store:
             "feedback": feedback,
             "observations": saved,
         }
+        assessed_lesson = self.active_lesson(ctx.learner)
+        if assessed_lesson:
+            result["focus_mastered"] = self.mastered(
+                ctx.learner, assessed_lesson["focus_skill_id"]
+            )
+        deferred = [
+            item["skill_id"] for item in saved if item["issue_severity"] == "minor"
+        ]
+        if deferred:
+            result["deferred_review"] = {
+                "skill_ids": deferred,
+                "after_other_exercises": 2,
+            }
         if not self.db.execute(
             "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
             (ctx.learner, ctx.turn_id),
         ).fetchone():
             for due in self.review_due(ctx.learner):
                 skill_id = due["skill_id"]
+                current = self.active_lesson(ctx.learner)
+                if (
+                    due["reason"] == "minor_followup"
+                    and current
+                    and not self.mastered(ctx.learner, current["focus_skill_id"])
+                ):
+                    continue
                 unmet = next(
                     (
                         prerequisite
@@ -1127,7 +1215,11 @@ class Store:
                     focus_id,
                     None,
                     [],
-                    "Review a previously taught skill after repeated difficulty",
+                    (
+                        "Recheck a small slip after other practice"
+                        if due["reason"] == "minor_followup"
+                        else "Review a previously taught skill after repeated difficulty"
+                    ),
                 )
                 break
         return result
@@ -1196,7 +1288,7 @@ class Store:
                     "observations": [
                         dict(item)
                         for item in self.db.execute(
-                            "SELECT skill_id, outcome, rationale, independent_success "
+                            "SELECT skill_id, outcome, rationale, independent_success, issue_severity "
                             "FROM skill_observations WHERE attempt_id=?",
                             (row["id"],),
                         )
@@ -1367,6 +1459,7 @@ class Store:
                 "id": row["id"],
                 "skill_id": row["skill_id"],
                 "outcome": row["outcome"],
+                "issue_severity": row["issue_severity"],
                 "independent_success": bool(row["independent_success"]),
                 "rationale": row["rationale"],
                 "exercise": row["exercise_title"],
@@ -1388,6 +1481,7 @@ class Store:
             "SELECT s.id, s.name, s.status, count(o.id) AS observations, "
             "coalesce(sum(o.outcome='success'), 0) AS successes, "
             "coalesce(sum(o.outcome='needs_work'), 0) AS needs_work, "
+            "coalesce(sum(o.issue_severity='minor'), 0) AS minor_errors, "
             "coalesce(sum(o.outcome='uncertain'), 0) AS uncertain, "
             "coalesce(sum(o.independent_success), 0) AS independent_successes, max(o.created) AS last_observed "
             "FROM skills s LEFT JOIN skill_observations o ON o.skill_id=s.id "
@@ -1416,6 +1510,7 @@ class Store:
                     "observations": row["observations"],
                     "successes": row["successes"],
                     "needs_work": row["needs_work"],
+                    "minor_errors": row["minor_errors"],
                     "uncertain": row["uncertain"],
                     "independent_successes": row["independent_successes"],
                     "independent_since_difficulty": self.mastery_evidence(
@@ -1444,6 +1539,15 @@ class Store:
         catalog = (
             self.search_skills(learner, lesson["language"], "", 30) if lesson else []
         )
+        deferred = [
+            {
+                "skill_id": skill["id"],
+                "name": skill["name"],
+                "other_exercises_remaining": 2 - progress,
+            }
+            for skill in catalog
+            if 0 <= (progress := self._minor_review_progress(learner, skill["id"])) < 2
+        ]
         state: dict[str, Any] = {
             "profile": {
                 field: fact["value"] for field, fact in self.profile(learner).items()
@@ -1458,6 +1562,7 @@ class Store:
                 for item in lessons[-10:]
             ],
             "review_due": self.review_due(learner),
+            "deferred_reviews": deferred,
             "skills": [
                 {
                     **skill,

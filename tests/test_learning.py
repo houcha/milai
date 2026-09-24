@@ -90,6 +90,7 @@ def observe(
     turn,
     outcome="success",
     helped=False,
+    issue_severity=None,
 ):
     ctx = context(store, learner, session, turn, "Answer")
     with store.transaction():
@@ -103,6 +104,12 @@ def observe(
                 {
                     "skill_id": skill_id,
                     "outcome": outcome,
+                    "issue_severity": issue_severity
+                    or {
+                        "success": "none",
+                        "needs_work": "substantial",
+                        "uncertain": "unclear",
+                    }[outcome],
                     "rationale": "Observed answer",
                 }
             ],
@@ -261,6 +268,139 @@ def test_mastery_requires_distinct_unassisted_exercises_since_last_difficulty(tm
     assert review["review"] and review["title"].startswith("Review: German ·")
     assert len(store.lessons(scope)) == 3
     store.close()
+
+
+def test_minor_slip_closes_exercise_and_returns_after_other_practice(tmp_path):
+    store = Store(tmp_path / "minor.db")
+    session = store.session(store.owner)
+    scope = store.learning_scope(store.owner, session)
+    pronouns = seed_graph(store, scope, session)["lesson"]["focus_skill_id"]
+    first = exercise(store, scope, session, pronouns, "first")
+    observe(store, scope, session, first["id"], pronouns, "first-answer")
+    second = exercise(store, scope, session, pronouns, "second")
+    result = observe(
+        store,
+        scope,
+        session,
+        second["id"],
+        pronouns,
+        "second-answer",
+        issue_severity="minor",
+    )
+    assert result["observations"][0]["issue_severity"] == "minor"
+    assert result["deferred_review"]["skill_ids"] == [pronouns]
+    assert result["focus_mastered"]
+    assert store.mastered(scope, pronouns)
+    assert store.exercise_status(store.owner, session, second["id"])["completed"]
+    assert (
+        store.prompt_state(scope)["deferred_reviews"][0]["other_exercises_remaining"]
+        == 2
+    )
+    with pytest.raises(ValueError, match="minor error"), store.transaction():
+        store.present_exercise(
+            context(store, scope, session, "too-soon", "go next"),
+            {
+                "title": "Pronouns again",
+                "task": "Repeat the same forms.",
+                "context": "",
+                "scaffolding": "none",
+                "source_ids": [],
+                "skills": [
+                    {
+                        "skill_id": pronouns,
+                        "role": "target",
+                        "success_criterion": "Choose correctly",
+                    }
+                ],
+            },
+        )
+    with store.transaction():
+        requested = store.present_exercise(
+            context(
+                store,
+                scope,
+                session,
+                "requested-early",
+                "Please practice pronouns again",
+            ),
+            {
+                "title": "Requested pronouns review",
+                "task": "Choose the pronoun.",
+                "context": "",
+                "scaffolding": "none",
+                "source_ids": [],
+                "early_revisit_request": "Please practice pronouns again",
+                "skills": [
+                    {
+                        "skill_id": pronouns,
+                        "role": "target",
+                        "success_criterion": "Choose correctly",
+                    }
+                ],
+            },
+        )
+        store.save_turn(
+            context(store, scope, session, "requested-early"), "Requested", []
+        )
+    assert requested["title"] == "Requested pronouns review"
+    with store.transaction():
+        next_lesson = store.start_lesson(
+            context(store, scope, session, "next-lesson"),
+            "German",
+            None,
+            skill_spec("verb-forms", "Verb forms"),
+            [pronouns],
+            "Move to verbs",
+        )
+    verb = next_lesson["focus_skill_id"]
+    assert store.review_due(scope) == []
+    for number in (1, 2, 3, 4):
+        task = exercise(store, scope, session, verb, f"verb-{number}")
+        later = observe(
+            store,
+            scope,
+            session,
+            task["id"],
+            verb,
+            f"verb-answer-{number}",
+            outcome="needs_work" if number == 2 else "success",
+        )
+        if number == 1:
+            assert "review_lesson" not in later
+            assert (
+                store.prompt_state(scope)["deferred_reviews"][0][
+                    "other_exercises_remaining"
+                ]
+                == 1
+            )
+        if number in (2, 3):
+            assert store.review_due(scope)[0]["reason"] == "minor_followup"
+            assert "review_lesson" not in later
+    assert later["review_lesson"]["focus_skill_id"] == pronouns
+    assert later["review_lesson"]["review"]
+    assert (
+        later["review_lesson"]["reason"] == "Recheck a small slip after other practice"
+    )
+    store.close()
+
+
+def test_existing_schema_four_adds_severity_without_reset(tmp_path):
+    path = tmp_path / "existing.db"
+    store = Store(path)
+    session = store.session(store.owner)
+    scope = store.learning_scope(store.owner, session)
+    skill_id = seed_graph(store, scope, session)["lesson"]["focus_skill_id"]
+    task = exercise(store, scope, session, skill_id, "old-exercise")
+    observe(store, scope, session, task["id"], skill_id, "old-answer")
+    store.close()
+    db = sqlite3.connect(path)
+    db.execute("ALTER TABLE skill_observations DROP COLUMN issue_severity")
+    db.close()
+    reopened = Store(path)
+    assert reopened.progress(scope, [skill_id])[0]["observations"] == 1
+    assert reopened.observations(scope, [skill_id])[0]["issue_severity"] is None
+    assert reopened.exercise_status(reopened.owner, session, task["id"])["completed"]
+    reopened.close()
 
 
 def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):

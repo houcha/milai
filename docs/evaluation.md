@@ -85,7 +85,8 @@ verified excerpts. Unknown source material must not be invented.
 | Scenario | Expected behavior |
 | --- | --- |
 | Beginner asks for an advanced construction with unmastered prerequisites | Tutor chooses the earliest teachable prerequisite, explains the relationship, and does not teach the advanced construction yet |
-| One error on the current skill | Tutor explains and continues the same lesson |
+| German pronouns: learner answers four of five correctly but uses `es` for a sister instead of `sie` | Tutor judges whether the pattern shows understanding, records a minor slip if it does, corrects briefly, moves on, and checks pronouns after other practice |
+| Substantial misunderstanding on the current skill | Tutor records difficulty and gives focused teaching |
 | Repeated difficulty on a previously taught skill | A separate Review lesson appears; earlier path entry remains |
 | Two independent successes on distinct unscaffolded exercises | Skill becomes mastered unless a later `needs_work` observation resets the count |
 | An assisted or scaffolded success | Evidence is saved but does not advance mastery |

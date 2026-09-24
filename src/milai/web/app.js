@@ -364,6 +364,7 @@ function renderLearning(learning) {
         [progress.independent_since_difficulty, "independent since last difficulty", "positive"],
         [progress.assistance_events, "help events", ""],
         [progress.needs_work, "to revisit", "attention"],
+        [progress.minor_errors, "small slips", "attention"],
       ];
       values.filter(([count]) => count).forEach(([count, label, className]) => {
         const badge = document.createElement("span");
