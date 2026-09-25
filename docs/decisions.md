@@ -1,5 +1,44 @@
 # Decision log
 
+## 2026-09-25 — Sol lesson generation at low reasoning
+
+- Generate complete lessons and reviews with `gpt-6-sol` at low reasoning by
+  default. Keep generation's separate model configuration, requested Fast tier,
+  32,768-token combined reasoning/output budget, and 32,000-character document
+  cap. Chat remains on its independently configured model and processing setting.
+- The earlier Luna probe and teaching review remain historical evidence; they do
+  not establish the quality of Sol-generated lessons.
+
+## 2026-09-25 — Complete lessons with dedicated conversations
+
+- Keep main chat for direction and explicit continuation. A generation turn saves
+  one fixed lesson document, its initial three to six exercises, an Open lesson
+  card, and the main reply atomically. Generated lessons form a history, not a
+  prospective roadmap. The learner can revisit any lesson without changing the
+  session's current teaching focus.
+- Give each lesson one persistent conversation. Turns carry lesson and optional
+  section or exercise references. Questions and answer submissions are distinct;
+  section or exercise discussion does not itself create an attempt. A bounded
+  rolling summary retains unresolved questions and next steps. Main and lesson
+  histories replay separately while sharing explicit profile facts and evidence.
+- Use the configured `OPENAI_MODEL` at low reasoning for main chat, discussion,
+  assessment, and additional practice. Generate full lessons and reviews with
+  `gpt-6-luna`, `xhigh` reasoning, Fast tier, and a 32,768-token output budget by
+  default. The document text has a separate 32,000-character cap. Both model
+  instances share one authenticated client; unsupported configurations, errors,
+  and timeouts abort the turn without fallback or retry.
+- Preserve prerequisite and independent-mastery rules. After a minor slip,
+  prepared exercises remain available while new remedial drills follow the
+  delayed-review rule unless requested. Assessments recommend due reviews;
+  explicit continuation lets main chat select the next eligible lesson or review.
+- Use schema 5 for lesson documents, scoped turns, summaries, focus, and direct
+  presentation links. Existing databases require `milai reset --yes`, which
+  archives the old database. Browser navigation opens stored lessons directly,
+  with a reading area and adjacent discussion; the terminal uses `/lessons`,
+  `/lesson`, `/back`, and `/answer`.
+- The 2026-09-25 small-error entry and older decisions below record the previous
+  implementation where they disagree with this entry.
+
 ## 2026-09-25 — Defer small-error review
 
 - Record whether an observed target error is minor or substantial. A mostly correct

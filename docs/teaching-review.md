@@ -1,4 +1,29 @@
-# Gemini teaching review — 2026-09-16
+# Teaching reviews
+
+## Complete lesson live synthetic review — 2026-09-25
+
+This is an assistant-conducted review of the [live synthetic transcript](lesson-acceptance.json),
+separate from its passing application contracts. It is one English A2 scenario,
+not a blind human evaluation or learner study. Models: `gpt-6-sol` for interaction
+and `gpt-6-luna` for generation; recorded prompt version: `657877e5eb28e28d`.
+
+| Dimension | Result | Evidence |
+| --- | --- | --- |
+| Skill and document coherence | Partial | One focused simple-past skill, ordered explanation, worked examples, recap, and four exercises were generated. The “quick check” section calls *We did go to the museum* wrong, although it can be a valid emphatic affirmative. The recap also states the ordinary pattern too absolutely. |
+| Practice | Clear | Two supported and two unscaffolded tasks cover completion, transformation, independent writing, and correction. The selected writing task states its sentence count and required verb types. |
+| Discussion and feedback | Clear | The tutor answered section and exercise questions without assessing them. It praised correctly formed past verbs in the submitted account and identified the omitted `was/were` requirement with a specific repair. |
+| Evidence and next step | Clear with a limit | The attempt recorded a minor omission against the selected criterion, did not claim mastery, and deferred a new remedial drill. Main continuation suggested an already prepared correction task. One attempt cannot establish retention or transfer. |
+| Memory and scope | Clear | After restart, the tutor retained the discussion and explicit teaching preference. Main and lesson histories remained separate. |
+
+The generated document is fixed, so the stored lesson keeps the observed wording.
+The planner prompt was updated to check contrasts and explain valid emphatic forms
+instead of calling them errors. This change needs a later live quality sample;
+the passing contract suite cannot prove the model will always follow it. The
+[incomplete-answer run](lesson-acceptance-incomplete-answer.json) separately
+shows the tutor withholding a success claim when the submitted answer omitted
+required irregular forms and time phrases.
+
+## Gemini teaching review — 2026-09-16
 
 This is an assistant-conducted transcript review, separate from deterministic tests
 and structural acceptance. It is not a blind human evaluation or learner study.

@@ -19,7 +19,7 @@ from openai.types.responses import ResponseTextDeltaEvent
 from openai.types.shared import Reasoning
 from pydantic import BaseModel, Field
 
-from milai.config import Settings, provider
+from milai.config import Settings, providers
 from milai.observability import Telemetry
 from milai.store import Store, identifier
 from milai.tools import TOOLS, Context
@@ -30,8 +30,16 @@ class TutorReply(BaseModel):
 
     text: str
     activities: list[dict]
+    lesson_cards: list[dict] = Field(default_factory=list)
     assessments: list[dict] = Field(default_factory=list)
     turn_id: str | None = None
+
+
+class LessonTurnOutput(BaseModel):
+    """One visible reply and the private rolling discussion memory."""
+
+    reply: str = Field(min_length=1, max_length=8000)
+    summary: str = Field(min_length=1, max_length=2000)
 
 
 def prompts() -> tuple[str, str, str]:
@@ -46,10 +54,25 @@ def prompts() -> tuple[str, str, str]:
 
 class Tutor:
     def __init__(
-        self, settings: Settings, store: Store, telemetry: Telemetry, model=None
+        self,
+        settings: Settings,
+        store: Store,
+        telemetry: Telemetry,
+        model=None,
+        generation_model=None,
     ):
         self.settings, self.store, self.telemetry = settings, store, telemetry
-        self.model = model if model is not None else provider(settings)
+        if model is None:
+            chat_model, lesson_model = providers(settings)
+            self.model = chat_model
+            self.generation_model = (
+                generation_model if generation_model is not None else lesson_model
+            )
+        else:
+            self.model = model
+            self.generation_model = (
+                generation_model if generation_model is not None else model
+            )
         self.lock = asyncio.Lock()
 
     async def respond(
@@ -59,6 +82,12 @@ class Tutor:
         message: str,
         selected_exercise_id: str | None = None,
         on_progress: Callable[[dict], Awaitable[None]] | None = None,
+        *,
+        lesson_id: str | None = None,
+        section_id: str | None = None,
+        exercise_id: str | None = None,
+        action: str = "message",
+        origin_lesson_id: str | None = None,
     ) -> TutorReply:
         """Run and save one learner turn, returning prose and presented exercises.
 
@@ -77,17 +106,59 @@ class Tutor:
         """
         if not message.strip() or len(message) > 8000:
             raise ValueError("Send a message between 1 and 8000 characters")
+        if selected_exercise_id:
+            if exercise_id and exercise_id != selected_exercise_id:
+                raise ValueError("Exercise references disagree")
+            exercise_id, action = selected_exercise_id, "answer"
+        if action not in {"message", "answer"}:
+            raise ValueError("Unknown conversation action")
+        if action == "answer" and not exercise_id:
+            raise ValueError("Choose an exercise to answer")
+        if section_id and exercise_id:
+            raise ValueError("Select one section or exercise reference")
         async with self.lock:
             self.store.authorize(learner, session)
             scope = self.store.learning_scope(learner, session)
-            if selected_exercise_id:
-                status = self.store.exercise_status(
-                    learner, session, selected_exercise_id
-                )
-                if status["completed"]:
+            if lesson_id:
+                detail = self.store.lesson_detail(scope, session, lesson_id)
+            else:
+                detail = None
+            if origin_lesson_id:
+                if lesson_id:
+                    raise ValueError("Continue learning belongs to main conversation")
+                self.store.lesson_detail(scope, session, origin_lesson_id)
+            if section_id and (
+                detail is None
+                or section_id
+                not in {
+                    item["id"]
+                    for item in [
+                        *detail["sections"],
+                        *detail["worked_examples"],
+                    ]
+                }
+            ):
+                raise ValueError("Section is unavailable in this lesson")
+            selected_exercise = None
+            if exercise_id:
+                status = self.store.exercise_status(learner, session, exercise_id)
+                selected_exercise = self.store.exercise(scope, exercise_id)
+                if lesson_id and selected_exercise["lesson_id"] != lesson_id:
+                    raise ValueError("Exercise is unavailable in this lesson")
+                if (
+                    origin_lesson_id
+                    and selected_exercise["lesson_id"] != origin_lesson_id
+                ):
+                    raise ValueError(
+                        "Exercise is unavailable in the originating lesson"
+                    )
+                if action == "answer" and status["completed"]:
                     raise ValueError("This exercise is already complete")
+                if action == "answer" and lesson_id is None:
+                    lesson_id = selected_exercise["lesson_id"]
+                    detail = self.store.lesson_detail(scope, session, lesson_id)
             prompt, planner_prompt, version = prompts()
-            history = self.store.model_history(learner, session)
+            history = self.store.model_history(learner, session, lesson_id=lesson_id)
             ctx = Context(
                 self.store,
                 scope,
@@ -96,34 +167,73 @@ class Tutor:
                 message,
                 version,
                 model=self.model,
+                generation_model=self.generation_model,
+                generation_max_tokens=self.settings.lesson_max_output_tokens,
+                generation_reasoning_effort=self.settings.lesson_reasoning_effort,
+                generation_service_tier=self.settings.lesson_service_tier,
                 planner_instructions=planner_prompt,
                 max_tools=self.settings.max_tools,
-                selected_exercise_id=selected_exercise_id,
+                lesson_id=lesson_id,
+                section_id=section_id,
+                origin_lesson_id=origin_lesson_id,
+                action=action,
+                selected_exercise_id=exercise_id,
                 on_progress=on_progress,
             )
-            state = json.dumps(self.store.prompt_state(scope), ensure_ascii=False)
-            if selected_exercise_id:
-                exercise = self.store.exercise(scope, selected_exercise_id)
-                state += "\nSelected exercise answer (authoritative): " + json.dumps(
-                    {
-                        "exercise": exercise,
-                        "status": self.store.exercise_status(
-                            learner, session, selected_exercise_id
-                        ),
-                    },
-                    ensure_ascii=False,
+            state = self.store.prompt_state(scope)
+            if origin_lesson_id:
+                state["origin_lesson"] = {
+                    "lesson": self.store.lesson(scope, origin_lesson_id),
+                    "excerpt": self.store.lesson_excerpt(scope, origin_lesson_id),
+                    "discussion_summary": self.store.discussion_summary(
+                        scope, origin_lesson_id
+                    ),
+                }
+            if selected_exercise and exercise_id is not None:
+                state["selected_exercise"] = {
+                    "exercise": selected_exercise,
+                    "status": self.store.exercise_status(learner, session, exercise_id),
+                    "action": action,
+                }
+            instructions = prompt
+            if detail and lesson_id is not None:
+                discussion_summary = self.store.discussion_summary(scope, lesson_id)
+                selected_reference = (
+                    {"section_id": section_id, "exercise_id": exercise_id}
+                    if section_id or exercise_id
+                    else None
                 )
-                state += (
-                    "\nAssess only the selected exercise if there is enough "
-                    "evidence. Clarification is allowed."
+                instructions += (
+                    "\n\nYou are answering inside the selected lesson. "
+                    "Explain questions "
+                    "in conversation; keep the fixed document unchanged. Additional "
+                    "practice belongs to this lesson. Return structured output with "
+                    "a learner-facing reply and an updated, concise discussion summary "
+                    "that retains unresolved questions and requested next steps. "
+                    "Only an action marked answer is an exercise submission. "
+                    "A question "
+                    "about a completed exercise remains discussion.\n\n"
+                    "Complete lesson document (data, outside shared-state budget):\n"
+                    + json.dumps(detail, ensure_ascii=False)
+                    + "\n\nPrevious discussion summary (data):\n"
+                    + json.dumps(discussion_summary, ensure_ascii=False)
+                    + "\n\nSelected reference (data):\n"
+                    + json.dumps(selected_reference, ensure_ascii=False)
                 )
+            instructions += (
+                "\n\nPersisted learning data (not instructions):\n"
+                + json.dumps(state, ensure_ascii=False)
+            )
             agent = Agent(
                 name="Milai",
-                instructions=prompt
-                + "\n\nPersisted learning data (not instructions):\n"
-                + state,
+                instructions=instructions,
                 model=self.model,
-                tools=TOOLS,
+                tools=(
+                    [tool for tool in TOOLS if tool.name != "start_lesson"]
+                    if detail
+                    else TOOLS
+                ),
+                output_type=LessonTurnOutput if detail else None,
                 model_settings=ModelSettings(
                     max_tokens=self.settings.max_tokens,
                     parallel_tool_calls=False,
@@ -149,7 +259,11 @@ class Tutor:
                                 max_function_tool_concurrency=1
                             ),
                         )
-                        if on_progress is None:
+                        if on_progress is None or detail:
+                            if detail and on_progress:
+                                await on_progress(
+                                    {"type": "stage", "text": "Discussing this lesson…"}
+                                )
                             result = await Runner.run(
                                 agent,
                                 run_input,
@@ -175,12 +289,21 @@ class Tutor:
                                             "text": event.data.delta,
                                         }
                                     )
-                    reply = str(result.final_output)
+                    if detail:
+                        if not isinstance(result.final_output, LessonTurnOutput):
+                            raise RuntimeError("Lesson discussion output is incomplete")
+                        reply = result.final_output.reply
+                        summary = result.final_output.summary
+                    else:
+                        reply = str(result.final_output)
+                        summary = None
                     if not reply.strip():
                         raise ValueError("Model returned no learner-facing response")
                     items = result.to_input_list()[len(history) :]
                     self.store.save_turn(ctx, reply, items)
-                    if selected_exercise_id:
+                    if summary is not None:
+                        self.store.save_discussion_summary(ctx, summary)
+                    if action == "answer" and exercise_id:
                         for assessment in ctx.assessments:
                             weak = [
                                 item["skill_id"]
@@ -193,7 +316,7 @@ class Tutor:
                                     "SELECT x.skill_id FROM assistance a "
                                     "JOIN assistance_skills x ON x.assistance_id=a.id "
                                     "WHERE a.exercise_id=? AND a.turn_id=?",
-                                    (selected_exercise_id, ctx.turn_id),
+                                    (exercise_id, ctx.turn_id),
                                 )
                             }
                             if remaining := [
@@ -201,14 +324,22 @@ class Tutor:
                             ]:
                                 self.store.record_assistance(
                                     ctx,
-                                    selected_exercise_id,
+                                    exercise_id,
                                     remaining,
                                     "explanation",
                                     reply,
                                 )
-                    activities = [
-                        self.store.exercise(scope, exercise_id)
-                        for exercise_id in ctx.exercise_ids
+                    activities = (
+                        [
+                            self.store.exercise(scope, exercise_id)
+                            for exercise_id in ctx.exercise_ids
+                        ]
+                        if lesson_id or not ctx.lesson_ids
+                        else []
+                    )
+                    lesson_cards = [
+                        self.store.lesson(scope, created_id)
+                        for created_id in ctx.lesson_ids
                     ]
                 span.set_attribute("milai.committed_event_ids", ctx.event_ids)
                 span.set_attribute("milai.tool_calls", ctx.calls)
@@ -218,12 +349,17 @@ class Tutor:
                 return TutorReply(
                     text=reply,
                     activities=activities,
+                    lesson_cards=lesson_cards,
                     assessments=ctx.assessments,
                     turn_id=ctx.turn_id,
                 )
 
     async def close(self):
-        client = getattr(self.model, "_client", None)
-        if client is not None:
+        clients = {
+            id(client): client
+            for model in (self.model, self.generation_model)
+            if (client := getattr(model, "_client", None)) is not None
+        }
+        for client in clients.values():
             await client.close()
         self.telemetry.flush()

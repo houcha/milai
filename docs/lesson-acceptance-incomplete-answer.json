@@ -1,0 +1,608 @@
+{
+  "kind": "live-synthetic-lesson",
+  "models": {
+    "chat": "gpt-6-sol",
+    "lesson": "gpt-6-luna"
+  },
+  "model_compatibility": {
+    "generation_completed": true,
+    "processing_tier": "See the separate live probe; requested Fast is not a tier guarantee."
+  },
+  "application_contracts": {
+    "lesson_card": true,
+    "complete_document": true,
+    "exercise_contract": true,
+    "section_question_scoped": true,
+    "exercise_question_scoped": true,
+    "question_without_attempt": true,
+    "answer_assessed": true,
+    "main_continuation_scoped": true,
+    "discussion_summary_saved": true,
+    "summary_updated_after_restart": true,
+    "explicit_preference_saved": true,
+    "histories_isolated": true,
+    "viewing_preserved_focus": true,
+    "document_persisted_after_restart": true,
+    "discussions_persisted_after_restart": true,
+    "post_restart_lesson_turn": true
+  },
+  "teaching_quality": {
+    "reviewed": false,
+    "note": "Review the transcript for accuracy, useful feedback, and suitable pacing."
+  },
+  "lesson": {
+    "id": "f8458e8662ca4487ba7721455a6ed50a",
+    "language": "English",
+    "title": "English · Affirmative simple past for completed actions",
+    "focus_skill_id": "6a6a843f60cd47e48241c523ca6b7332",
+    "skill": {
+      "id": "6a6a843f60cd47e48241c523ca6b7332",
+      "language": "English",
+      "key": "english-simple-past-affirmative",
+      "name": "Affirmative simple past for completed actions",
+      "definition": "Form affirmative English simple past sentences with regular and common irregular verbs to describe actions completed at a finished time in the past.",
+      "success_criteria": [
+        "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time.",
+        "Form common regular verbs in the simple past with the correct spelling, including patterns such as live → lived, study → studied, and stop → stopped.",
+        "Use the correct simple past form of common irregular verbs, including forms of be, go, see, have, eat, and take."
+      ],
+      "status": "active",
+      "version": 1
+    },
+    "reason": "I chose the affirmative simple past because it directly helps you describe completed trip activities. No prerequisite skills are listed, so this is a suitable focus.",
+    "objective": "Describe completed past actions in affirmative sentences using the simple past of regular and common irregular verbs.",
+    "review": false,
+    "created": "2026-09-25T16:02:52.055256+00:00",
+    "sections": [
+      {
+        "id": "when-and-how-to-use-it",
+        "title": "1. When and how to use it",
+        "markdown": "Use the **simple past** for an action that is finished. Finished-time phrases include **yesterday**, **last weekend**, and **in 2023**.\n\n**Pattern:** subject + past verb + other information.\n\n- We **walked** to the beach yesterday.\n- I **saw** a small castle last weekend.\n\nThe past verb stays the same with different subjects: **I walked**, **she walked**, **they walked**. Unlike Spanish, English regular verbs do not change their ending for each subject."
+      },
+      {
+        "id": "regular-verbs",
+        "title": "2. Regular verbs",
+        "markdown": "Most regular verbs add **-ed**:\n\n- visit → visit**ed**\n- walk → walk**ed**\n\nSome spellings change:\n\n- If a verb ends in **-e**, add **-d**: live → live**d**.\n- For a consonant + **y**, change **y** to **i** and add **-ed**: stud**y** → stud**ied**.\n- For some short verbs ending in consonant-vowel-consonant, double the last consonant: stop → stop**ped**.\n\nIn an affirmative sentence, use the past verb directly: **We visited the museum**, not *We did visited the museum*."
+      },
+      {
+        "id": "common-irregular-verbs",
+        "title": "3. Common irregular verbs",
+        "markdown": "Irregular verbs do not use one spelling rule. Learn their past forms as pairs:\n\n| Base verb | Simple past |\n|---|---|\n| go | went |\n| see | saw |\n| have | had |\n| eat | ate |\n| take | took |\n| be | was / were |\n\nUse **was** with **I, he, she, it** and **were** with **you, we, they**. The other verbs in the table have one form for all subjects: **I went**, **she went**, **they went**."
+      },
+      {
+        "id": "check-the-time-and-verb",
+        "title": "4. Check the time and verb",
+        "markdown": "Before you finish a sentence, check two things:\n\n1. Is the action finished, and is the time in the past?\n2. Is the verb regular or irregular?\n\nFor example, **Last Sunday, we took a bus and visited a park.** The time is finished. **Took** is irregular; **visited** is regular.\n\nA common error is using the present form with a past-time phrase: *Yesterday, we go to the lake.* Say **Yesterday, we went to the lake.**"
+      }
+    ],
+    "worked_examples": [
+      {
+        "id": "regular-walked",
+        "title": "A regular verb",
+        "markdown": "**On Saturday, we walked to the river.**\n\n*En español: El sábado caminamos hasta el río.*\n\n**Walk** is regular, so add **-ed**. **On Saturday** tells us the action is finished."
+      },
+      {
+        "id": "regular-studied",
+        "title": "A spelling change",
+        "markdown": "**I studied the map before the trip.**\n\n*En español: Estudié el mapa antes del viaje.*\n\n**Study** ends in consonant + **y**, so change **y** to **i** and add **-ed**: **studied**."
+      },
+      {
+        "id": "irregular-went",
+        "title": "An irregular verb",
+        "markdown": "**They went to the coast yesterday.**\n\n*En español: Fueron a la costa ayer.*\n\n**Go** is irregular. Its past form is **went**, not *goed*. Use **went** with **they**."
+      },
+      {
+        "id": "irregular-had",
+        "title": "Another irregular verb",
+        "markdown": "**We had lunch near the station last week.**\n\n*En español: Almorzamos cerca de la estación la semana pasada.*\n\n**Have** changes to **had**. The past form is the same with **we**, **I**, or **she**."
+      },
+      {
+        "id": "be-was-were",
+        "title": "Past forms of be",
+        "markdown": "**The hotel was quiet. We were happy.**\n\n*En español: El hotel estaba tranquilo. Estábamos contentos.*\n\nUse **was** with **the hotel** (it) and **were** with **we**."
+      }
+    ],
+    "recap": "**Finished past time + affirmative sentence:** subject + simple past verb. Regular verbs usually add **-ed**; irregular verbs have forms you learn individually. Say **We walked**, **I studied**, or **They went**.",
+    "exercises": [
+      {
+        "id": "bb3d1d1904ca4e24b3b2539fe73e65f1",
+        "kind": "exercise",
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "title": "Make regular past forms",
+        "task": "For each prompt, write the past form of the verb and then write a complete affirmative sentence. Use the time phrase in your sentence: (1) we / walk to the station / yesterday; (2) I / study the map / last night; (3) they / stop for lunch / on the trip.",
+        "context": "Practise regular verbs while describing a trip.",
+        "scaffolding": "cues",
+        "skills": [
+          {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "name": "Affirmative simple past for completed actions",
+            "role": "target",
+            "success_criterion": "Form common regular verbs in the simple past with the correct spelling, including patterns such as live → lived, study → studied, and stop → stopped."
+          }
+        ],
+        "source_ids": []
+      },
+      {
+        "id": "78f68bad207a45f0bc686337ff3f0386",
+        "kind": "exercise",
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "title": "Use common irregular verbs",
+        "task": "Write one complete affirmative sentence for each prompt. Change the verb to the simple past: (1) we / go to a lake / yesterday; (2) I / see an old bridge / last weekend; (3) they / have lunch near the station / on Monday; (4) she / take a train / last month.",
+        "context": "Use common irregular verbs in short trip details.",
+        "scaffolding": "cues",
+        "skills": [
+          {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "name": "Affirmative simple past for completed actions",
+            "role": "target",
+            "success_criterion": "Use the correct simple past form of common irregular verbs, including forms of be, go, see, have, eat, and take."
+          }
+        ],
+        "source_ids": []
+      },
+      {
+        "id": "a8c3d3d3b1c54ec18e2a73bfec0aaa12",
+        "kind": "exercise",
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "title": "Write completed past actions",
+        "task": "Write four affirmative sentences about a day trip you took or an invented trip. Include a finished past-time phrase in each sentence. Use at least two regular verbs and two irregular verbs.",
+        "context": "Practise choosing the past form for several completed actions.",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "name": "Affirmative simple past for completed actions",
+            "role": "target",
+            "success_criterion": "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time."
+          }
+        ],
+        "source_ids": []
+      },
+      {
+        "id": "b1067dd29b5c4dbc8ecd3d5637662162",
+        "kind": "exercise",
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "title": "Write a short trip account",
+        "task": "Write a short account of a real or invented trip in 5–7 sentences. Say when it happened and describe what you did. Use at least two regular past verbs and two irregular past verbs. Keep the sentences affirmative.",
+        "context": "Write an independent account that a friend could read to learn about your trip.",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "name": "Affirmative simple past for completed actions",
+            "role": "target",
+            "success_criterion": "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time."
+          }
+        ],
+        "source_ids": []
+      }
+    ],
+    "discussion_summary": null
+  },
+  "transcript": [
+    {
+      "phase": "main_generation",
+      "learner": "I speak Spanish and am learning English at about A2 level. I want to describe simple trips. Please explain in simple English, use short original examples, and create a complete lesson on one useful past-tense skill with practice. I prefer brief explanations before attempting exercises. Include an independent exercise where I write a short trip account.",
+      "references": {},
+      "tutor": {
+        "text": "We’ll focus on **the simple past for completed actions**—a useful way to say what you did on a trip.\n\nOpen the lesson card for a brief explanation, short examples, and practice. It also includes an independent exercise where you write a short trip account.",
+        "activities": [],
+        "lesson_cards": [
+          {
+            "id": "f8458e8662ca4487ba7721455a6ed50a",
+            "language": "English",
+            "title": "English · Affirmative simple past for completed actions",
+            "focus_skill_id": "6a6a843f60cd47e48241c523ca6b7332",
+            "skill": {
+              "id": "6a6a843f60cd47e48241c523ca6b7332",
+              "language": "English",
+              "key": "english-simple-past-affirmative",
+              "name": "Affirmative simple past for completed actions",
+              "definition": "Form affirmative English simple past sentences with regular and common irregular verbs to describe actions completed at a finished time in the past.",
+              "success_criteria": [
+                "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time.",
+                "Form common regular verbs in the simple past with the correct spelling, including patterns such as live → lived, study → studied, and stop → stopped.",
+                "Use the correct simple past form of common irregular verbs, including forms of be, go, see, have, eat, and take."
+              ],
+              "status": "active",
+              "version": 1
+            },
+            "reason": "I chose the affirmative simple past because it directly helps you describe completed trip activities. No prerequisite skills are listed, so this is a suitable focus.",
+            "objective": "Describe completed past actions in affirmative sentences using the simple past of regular and common irregular verbs.",
+            "review": false,
+            "created": "2026-09-25T16:02:52.055256+00:00"
+          }
+        ],
+        "assessments": [],
+        "turn_id": "0707858871e544378e006abd54effe46"
+      },
+      "trace_id": "79a953f52b013c070507551cd95aa457"
+    },
+    {
+      "phase": "section_question",
+      "learner": "Can you explain this section with another short example?",
+      "references": {
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "section_id": "when-and-how-to-use-it"
+      },
+      "tutor": {
+        "text": "Yes. Use the **simple past** when an action is finished.\n\n**Last Friday, I visited a museum.**\n\n“Last Friday” is a finished time, so **visit** becomes **visited**. The pattern is **subject + past verb + other information**: *I + visited + a museum*.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "7ebb0b305ef74a0ba550a01f31a36b7f"
+      },
+      "trace_id": "c1c2ba53a7aad24207cdb4875a97e12f"
+    },
+    {
+      "phase": "exercise_question",
+      "learner": "What is this exercise asking me to do? Please do not assess me yet.",
+      "references": {
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "exercise_id": "a8c3d3d3b1c54ec18e2a73bfec0aaa12"
+      },
+      "tutor": {
+        "text": "Write **four sentences** about a day trip—real or invented. In each sentence, include a finished past-time phrase, such as **yesterday** or **last Saturday**. Across the four sentences, use at least **two regular past verbs** (like *walked*) and **two irregular past verbs** (like *went*). Keep all four sentences affirmative: say what happened, not what didn’t happen.\n\nI won’t assess anything yet.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "316e8555fec64b91ac11863e35ff5a91"
+      },
+      "trace_id": "dd61a9e66f4aeec649a72f9072b1a529"
+    },
+    {
+      "phase": "answer_submission",
+      "learner": "Last Saturday, I visited a town. First, I walked to a museum. Then I explored the square. I photographed the old bridge. After that, I tasted local food. In the evening, I returned home.",
+      "references": {
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "exercise_id": "a8c3d3d3b1c54ec18e2a73bfec0aaa12",
+        "action": "answer"
+      },
+      "tutor": {
+        "text": "Your trip account is clear, and all six verbs are correctly in the simple past. Nice work with **visited**, **walked**, and the other regular verbs.\n\nFor this exercise, the next step is to write **four** sentences, each with a past-time phrase, and include **two irregular past verbs** too—for example, **went** or **saw**. You haven’t shown those forms yet, so I can’t check that part from this answer. Would you like to revise your four sentences?",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [
+          {
+            "id": "2904e8ffafc748839e8d5fe5919dd651",
+            "exercise_id": "a8c3d3d3b1c54ec18e2a73bfec0aaa12",
+            "learner_response": "Last Saturday, I visited a town. First, I walked to a museum. Then I explored the square. I photographed the old bridge. After that, I tasted local food. In the evening, I returned home.",
+            "feedback": "Your trip account is clear, and all six verbs are correctly in the simple past. For this particular exercise, write four sentences, put a past-time phrase in each one, and include two irregular past verbs as well as two regular ones. For example, go → went and see → saw are irregular. Your current sentences show good control of regular past verbs, but do not yet show the requested irregular forms.",
+            "observations": [
+              {
+                "skill_id": "6a6a843f60cd47e48241c523ca6b7332",
+                "outcome": "uncertain",
+                "issue_severity": "unclear",
+                "rationale": "Six well-formed affirmative sentences correctly use regular simple past, but the learner did not attempt any irregular verbs or place a finished-time phrase in each sentence; cannot infer ability with irregular forms from this submission.",
+                "id": "2987925ffd87469092f19efd441f311e",
+                "independent_success": false
+              }
+            ],
+            "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+            "focus_mastered": false,
+            "review_recommendations": []
+          }
+        ],
+        "turn_id": "e465e5cf26124f8998c358a3de325d76"
+      },
+      "trace_id": "167a8bcc5ae51a3b788df9c3fc741dba"
+    },
+    {
+      "phase": "main_continuation",
+      "learner": "Continue learning from that lesson using my attempt. If a review is due, recommend it; otherwise choose a useful next step.",
+      "references": {
+        "origin_lesson_id": "f8458e8662ca4487ba7721455a6ed50a"
+      },
+      "tutor": {
+        "text": "No review is due yet. Your earlier sentences used regular past verbs well, but they didn’t show whether you can use irregular forms such as **went** and **saw**.\n\nThe useful next step is the independent **“Write a short trip account”** exercise in the lesson card. Write 5–7 affirmative sentences about a real or invented trip. Say when it happened, and use at least two regular past verbs and two irregular past verbs.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "7ae6f2ebbf074b48893e06b0ae6558f4"
+      },
+      "trace_id": "1776f3c7a452ee4baad8f6fa18a33cd9"
+    },
+    {
+      "phase": "lesson_after_restart",
+      "learner": "What is the most useful thing to remember from this lesson?",
+      "references": {
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a"
+      },
+      "tutor": {
+        "text": "The key idea is: **for a finished action, use a past verb**. Regular verbs often end in **-ed** (*visited*); irregular verbs have different forms you need to learn (*go → went*).\n\nYour *“Last Saturday, I visited a town”* is a good example: the time is finished, and **visited** is in the past.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "9ba61763dfad4260a04487f758121f35"
+      },
+      "trace_id": "d3e9b5f6dee89c3de12bd21800d053b7"
+    }
+  ],
+  "learning": {
+    "learning_sessions": [],
+    "schema_version": "5",
+    "state": {
+      "profile": {
+        "target_language": {
+          "id": "a3ce64a7b67045e997d7c368f51aa721",
+          "value": "English",
+          "learner_quote": "am learning English",
+          "created": "2026-09-25T16:02:26.654259+00:00"
+        },
+        "level": {
+          "id": "b8ba8783b99e47ab8e8b905287f1b80b",
+          "value": "about A2",
+          "learner_quote": "at about A2 level",
+          "created": "2026-09-25T16:02:26.654308+00:00"
+        },
+        "goals": {
+          "id": "bd417332fc6148528c42cb3f1119e3c1",
+          "value": "describe simple trips",
+          "learner_quote": "I want to describe simple trips.",
+          "created": "2026-09-25T16:02:26.654324+00:00"
+        },
+        "explanation_language": {
+          "id": "6a328739f2d541b689b67efbb5a08ffc",
+          "value": "simple English",
+          "learner_quote": "Please explain in simple English",
+          "created": "2026-09-25T16:02:26.654335+00:00"
+        },
+        "teaching_preferences": {
+          "id": "e95d96aa9d684a9bb7328b0575942772",
+          "value": "short original examples and brief explanations before exercises; include an independent short trip account writing exercise",
+          "learner_quote": "Please explain in simple English, use short original examples, and create a complete lesson on one useful past-tense skill with practice. I prefer brief explanations before attempting exercises. Include an independent exercise where I write a short trip account.",
+          "created": "2026-09-25T16:02:26.654347+00:00"
+        }
+      },
+      "lessons": [
+        {
+          "id": "f8458e8662ca4487ba7721455a6ed50a",
+          "language": "English",
+          "title": "English · Affirmative simple past for completed actions",
+          "focus_skill_id": "6a6a843f60cd47e48241c523ca6b7332",
+          "skill": {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "language": "English",
+            "key": "english-simple-past-affirmative",
+            "name": "Affirmative simple past for completed actions",
+            "definition": "Form affirmative English simple past sentences with regular and common irregular verbs to describe actions completed at a finished time in the past.",
+            "success_criteria": [
+              "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time.",
+              "Form common regular verbs in the simple past with the correct spelling, including patterns such as live → lived, study → studied, and stop → stopped.",
+              "Use the correct simple past form of common irregular verbs, including forms of be, go, see, have, eat, and take."
+            ],
+            "status": "active",
+            "version": 1
+          },
+          "reason": "I chose the affirmative simple past because it directly helps you describe completed trip activities. No prerequisite skills are listed, so this is a suitable focus.",
+          "objective": "Describe completed past actions in affirmative sentences using the simple past of regular and common irregular verbs.",
+          "review": false,
+          "created": "2026-09-25T16:02:52.055256+00:00"
+        }
+      ],
+      "active_lesson": {
+        "id": "f8458e8662ca4487ba7721455a6ed50a",
+        "language": "English",
+        "title": "English · Affirmative simple past for completed actions",
+        "focus_skill_id": "6a6a843f60cd47e48241c523ca6b7332",
+        "skill": {
+          "id": "6a6a843f60cd47e48241c523ca6b7332",
+          "language": "English",
+          "key": "english-simple-past-affirmative",
+          "name": "Affirmative simple past for completed actions",
+          "definition": "Form affirmative English simple past sentences with regular and common irregular verbs to describe actions completed at a finished time in the past.",
+          "success_criteria": [
+            "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time.",
+            "Form common regular verbs in the simple past with the correct spelling, including patterns such as live → lived, study → studied, and stop → stopped.",
+            "Use the correct simple past form of common irregular verbs, including forms of be, go, see, have, eat, and take."
+          ],
+          "status": "active",
+          "version": 1
+        },
+        "reason": "I chose the affirmative simple past because it directly helps you describe completed trip activities. No prerequisite skills are listed, so this is a suitable focus.",
+        "objective": "Describe completed past actions in affirmative sentences using the simple past of regular and common irregular verbs.",
+        "review": false,
+        "created": "2026-09-25T16:02:52.055256+00:00"
+      },
+      "skills": [
+        {
+          "id": "6a6a843f60cd47e48241c523ca6b7332",
+          "language": "English",
+          "key": "english-simple-past-affirmative",
+          "name": "Affirmative simple past for completed actions",
+          "definition": "Form affirmative English simple past sentences with regular and common irregular verbs to describe actions completed at a finished time in the past.",
+          "success_criteria": [
+            "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time.",
+            "Form common regular verbs in the simple past with the correct spelling, including patterns such as live → lived, study → studied, and stop → stopped.",
+            "Use the correct simple past form of common irregular verbs, including forms of be, go, see, have, eat, and take."
+          ],
+          "status": "active",
+          "version": 1,
+          "mastered": false,
+          "progress": {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "name": "Affirmative simple past for completed actions",
+            "status": "active",
+            "observations": 1,
+            "successes": 0,
+            "needs_work": 0,
+            "minor_errors": 0,
+            "uncertain": 1,
+            "independent_successes": 0,
+            "independent_since_difficulty": 0,
+            "assistance_events": 1,
+            "last_observed": "2026-09-25T16:03:11.394100+00:00",
+            "contexts": [
+              "Practise choosing the past form for several completed actions."
+            ]
+          }
+        }
+      ],
+      "active_exercise": {
+        "id": "b1067dd29b5c4dbc8ecd3d5637662162",
+        "kind": "exercise",
+        "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "title": "Write a short trip account",
+        "task": "Write a short account of a real or invented trip in 5–7 sentences. Say when it happened and describe what you did. Use at least two regular past verbs and two irregular past verbs. Keep the sentences affirmative.",
+        "context": "Write an independent account that a friend could read to learn about your trip.",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "6a6a843f60cd47e48241c523ca6b7332",
+            "name": "Affirmative simple past for completed actions",
+            "role": "target",
+            "success_criterion": "Use the simple past form of a verb in an affirmative sentence about a completed action at a finished past time."
+          }
+        ],
+        "source_ids": []
+      },
+      "recent_observations": [
+        {
+          "id": "2987925ffd87469092f19efd441f311e",
+          "skill_id": "6a6a843f60cd47e48241c523ca6b7332",
+          "outcome": "uncertain",
+          "issue_severity": "unclear",
+          "independent_success": false,
+          "rationale": "Six well-formed affirmative sentences correctly use regular simple past, but the learner did not attempt any irregular verbs or place a finished-time phrase in each sentence; cannot infer ability with irregular forms from this submission.",
+          "exercise": "Write completed past actions",
+          "lesson_id": "f8458e8662ca4487ba7721455a6ed50a",
+          "created": "2026-09-25T16:03:11.394100+00:00"
+        }
+      ],
+      "sources": []
+    },
+    "events": [
+      {
+        "id": "968bf550cb8f4639a39ff9f44ab16bba",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "a3ce64a7b67045e997d7c368f51aa721",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:02:26.654291+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "e922046db30d460a988595dafeb117e8",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "b8ba8783b99e47ab8e8b905287f1b80b",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:02:26.654317+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "8882122de1db4db193a0253483661711",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "bd417332fc6148528c42cb3f1119e3c1",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:02:26.654330+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "d1f5c4b49588474ba3478ebefdb6231b",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "6a328739f2d541b689b67efbb5a08ffc",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:02:26.654341+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "1d8aceb961cc43ec8b8b8521fb3ed857",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "e95d96aa9d684a9bb7328b0575942772",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:02:26.654353+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "822d2b8f9ac04777972f976f8782ec51",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "6a6a843f60cd47e48241c523ca6b7332",
+        "kind": "skill",
+        "created": "2026-09-25T16:02:52.055063+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "98065d3d2b59437e96a2a1f095ced7cf",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "f8458e8662ca4487ba7721455a6ed50a",
+        "kind": "lesson",
+        "created": "2026-09-25T16:02:52.055487+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "c051736e89b6482b80f5e55668a0045d",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "bb3d1d1904ca4e24b3b2539fe73e65f1",
+        "kind": "exercise",
+        "created": "2026-09-25T16:02:52.056094+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "c876f61b6b0d438191210ab79b9e7dc3",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "78f68bad207a45f0bc686337ff3f0386",
+        "kind": "exercise",
+        "created": "2026-09-25T16:02:52.056332+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "215dcb3b63a8472488ad1b1c72c3b657",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "a8c3d3d3b1c54ec18e2a73bfec0aaa12",
+        "kind": "exercise",
+        "created": "2026-09-25T16:02:52.056508+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "1200a9042f7043419c0c436c70f3a0a5",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "0707858871e544378e006abd54effe46",
+        "entity_id": "b1067dd29b5c4dbc8ecd3d5637662162",
+        "kind": "exercise",
+        "created": "2026-09-25T16:02:52.056645+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "d7ea099a1f2d41f19e32ae4dd9f1fe1a",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "e465e5cf26124f8998c358a3de325d76",
+        "entity_id": "2904e8ffafc748839e8d5fe5919dd651",
+        "kind": "attempt",
+        "created": "2026-09-25T16:03:11.394263+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "55b9674949cb40db96669be3ea9daea5",
+        "learner": "session:2628fc71a1574a9f82466ef4d7305cff",
+        "session": "2628fc71a1574a9f82466ef4d7305cff",
+        "turn_id": "e465e5cf26124f8998c358a3de325d76",
+        "entity_id": "1751cef04c954cb08e9041a4b55c65fd",
+        "kind": "assistance",
+        "created": "2026-09-25T16:03:16.694413+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      }
+    ],
+    "sessions": []
+  }
+}

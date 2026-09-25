@@ -79,12 +79,13 @@ def test_sessions_isolate_skills_lessons_and_delete_graph(tmp_path):
     store.close()
 
 
-def test_legacy_shared_learning_is_preserved_once_and_reopen_is_stable(tmp_path):
-    path = tmp_path / "legacy.db"
+def test_session_scopes_and_lessons_remain_isolated_after_reopen(tmp_path):
+    path = tmp_path / "scopes.db"
     store = Store(path)
     learner = store.owner
     first = store.session(learner)
-    seed_graph(store, learner, first)
+    first_scope = store.learning_scope(learner, first)
+    first_lesson = seed_graph(store, first_scope, first, committed=True)["lesson"]
     with store.transaction():
         store.save_turn(
             context(store, learner, first, "legacy", "German through songs"),
@@ -92,18 +93,20 @@ def test_legacy_shared_learning_is_preserved_once_and_reopen_is_stable(tmp_path)
             [],
         )
     empty = store.session(learner)
-    store.db.execute("DROP TABLE session_scopes")
+    empty_scope = store.learning_scope(learner, empty)
     store.close()
     store = Store(path)
-    assert store.learning_scope(learner, first) == learner
-    assert (
-        len(store.learning_view(store.learning_scope(learner, first))["lessons"]) == 1
-    )
-    assert store.learning_view(store.learning_scope(learner, empty))["lessons"] == []
-    assert store.conversation(learner, first)[0]["content"] == "German through songs"
+    assert store.learning_scope(learner, first) == first_scope
+    assert store.learning_scope(learner, empty) == empty_scope
+    assert [item["id"] for item in store.learning_view(first_scope)["lessons"]] == [
+        first_lesson["id"]
+    ]
+    assert store.learning_view(empty_scope)["lessons"] == []
+    assert store.conversation(learner, first)[2]["content"] == "German through songs"
     store.close()
     store = Store(path)
-    assert store.learning_scope(learner, first) == learner
+    assert store.learning_scope(learner, first) == first_scope
+    assert store.learning_view(empty_scope)["lessons"] == []
     store.close()
 
 

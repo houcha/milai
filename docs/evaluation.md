@@ -2,29 +2,30 @@
 
 ## Application behavior (deterministic, offline)
 
-`uv run pytest` uses a mocked HTTP model endpoint and mocked retrieval. The real
-Agents Runner, tool schemas, Responses adapter, SQLite, and OpenInference
-instrumentation execute. Tests cover schema reset, one-skill lessons, prerequisite mastery, independent evidence,
-review entries, session isolation, exercise contracts, and lesson navigation. Other tests
-cover source restrictions and trace privacy. These tests do
-not use a live model or establish tutoring quality.
+`uv run pytest` uses mocked model and retrieval responses while exercising the
+Agents Runner, tool schemas, Responses adapter, SQLite, and instrumentation.
+Contract tests cover independent model settings, complete generation, validation
+and rollback, scoped replay and ownership, summary updates, evidence, restart,
+and session deletion. Browser tests cover direct card navigation, section and
+exercise references, answer submission, session switching, and restored drafts.
+These tests do not establish tutoring quality.
 
 ## Live integrations
 
-`uv run milai probe` calls the configured GPT-6 Luna model through the actual SDK. A
-tool produces an unpredictable value, the model must return it, and a later turn
-must recall it from replayed history without calling again. Run this before the
-learning scenario. It emits endpoint/model, usage, result and trace ID. A configured
-Langfuse client does not by itself prove server ingestion.
+`uv run milai probe` checks the configured chat model's tool use and replay, then
+checks the configured lesson model (now Sol) with `low` reasoning, Fast mode,
+and structured output. Record the returned processing tier when the API supplies it; requesting
+Fast does not guarantee that every response uses it. Run this before the learning
+scenario. A configured Langfuse client does not by itself prove server ingestion.
 
-`uv run python -m milai.acceptance` runs a synthetic learner conversation using real
-model and source requests, then closes/reopens SQLite before a subsequent action.
-It prints the transcript, trace IDs and final state; `--report PATH` saves JSON.
-By default it does not pause between learner turns; `--pause` adds a delay if needed.
-The run uses paid API capacity and no provider fallback.
-Its bounded acceptance messages
-are a test fixture, not application orchestration. Failure to save any capability
-fails the scenario; a human must still judge whether the teaching was good.
+`uv run python -m milai.acceptance` asks for a complete lesson, opens a section and
+an exercise in its discussion, submits an answer, continues in main chat, then
+reopens SQLite and asks another lesson question. It prints transcript, trace IDs,
+model compatibility, application checks, and state; `--report PATH` saves JSON.
+`--pause` adds a delay between turns if needed. This live run uses paid capacity
+and no provider fallback. Its concrete English request is a test fixture, not a
+production prompt or teaching sequence. Contract success does not establish
+teaching quality; review the transcript separately.
 
 ## Tutoring quality review
 
@@ -36,14 +37,15 @@ No overall pass if source honesty or assistance distinction scores zero.
 | Discovery | Asks about unknown experience before teaching; accepts uncertainty and shortcuts; avoids repeated onboarding |
 | Intent | Tutor elicits purpose instead of waiting for a curriculum request |
 | Lesson skill | One precise language ability is the new focus; the lesson title names that skill |
-| Focus | One skill stays current across turns; examples do not change it |
+| Document | Objective, ordered explanation, worked examples, recap, and exercises form a coherent complete lesson |
+| Focus | Reopening an older lesson preserves the current teaching focus; examples do not change it |
 | Source honesty | Actual retrieved material, accurate attribution, honest failures |
 | Language accuracy | Correct explanation, accepts valid variants, suitable level |
-| Interaction | One coherent objective with enough related forms and worked examples; incidental features of examples do not derail the lesson; practice begins when useful |
+| Interaction | Prepared exercises are appropriate after a complete explanation; questions receive local context without rewriting the document |
 | Feedback | Specific, actionable, respectful; does not assess questions as attempts |
 | Assistance | A helped retry is not called independent mastery |
-| Adaptation | Review follows repeated difficulty; prerequisites are mastered before progression |
-| Memory | Restart preserves useful facts without repetitive onboarding |
+| Adaptation | Due reviews are recommended; explicit continuation selects eligible next teaching after checking prerequisites |
+| Memory | Restart preserves useful facts, the lesson document, local discussion, and unresolved questions |
 
 Also manually exercise: proactive intent discovery; the same skill reused in a review
 lesson; a changed goal; an ambiguous answer; repeated errors; an advanced request
@@ -56,21 +58,22 @@ run. Passing one synthetic English scenario does not establish general language 
 
 Review these synthetic conversations with the current model and prompt hash. Record
 transcripts and reviewer findings; mocked planner tests verify context delivery only.
-Live pedagogical validation of this change remains pending until these runs are reviewed.
+The first [live complete-lesson run](teaching-review.md) has been reviewed;
+broader calibration across the scenarios below remains pending.
 
 | Scenario | Expected behavior |
 | --- | --- |
 | A language and learning goal, with no prior evidence | Ask about experience and wait before selecting lesson content |
-| Same goal, "starting from scratch" | Save the reported level; teach one accessible objective with meaning, a pattern, and a worked example |
+| Same goal, "starting from scratch" | Save the reported level; generate one accessible, complete lesson with meaning, patterns, examples, recap, and prepared practice |
 | Same goal, "comfortable reading German novels" | Use an appropriate challenge without automatically reteaching elementary grammar |
 | "I'm not sure of my level" | Offer a small diagnostic instead of repeating the level question |
 | Returning learner with relevant saved evidence | Use that evidence and avoid repeated onboarding; distinguish assisted from independent success |
-| "Skip the questions; give me something to try" | Allow immediate manageable practice and adapt from the response |
+| "Skip the questions; give me something to try" | Generate manageable practice and adapt from the response without unnecessary onboarding |
 | "Explain more slowly" or "I know this; move faster" | Adjust depth and pace while retaining a clear objective |
-| Beginner asks for all German subject pronouns before practice | Explain ich, du, er, sie, es, wir, ihr, sie, Sie with meanings and contrasting examples; do not present an exercise after only three forms |
+| Beginner asks for all German subject pronouns before practice | Cover ich, du, er, sie, es, wir, ihr, sie, Sie with meanings and contrasting examples before the prepared exercises |
 | Learner wants to learn German through Rammstein, is starting from scratch, and has no song in mind | Choose a short, accessible title or confidently known phrase to anchor one useful objective; develop that objective before moving to other grammar or pronunciation, and do not ask them to pick a song before teaching |
 | After a brief title illustrating a pronoun, the learner needs the pronoun system | Explain the useful pronoun set, meanings, and key contrasts before exploring the title's verb form, pronunciation, or another title |
-| Learner supplies a short passage from "Deutschland" and asks for analysis | Identify the pronouns actually present, explain their referents and verb forms, and distinguish other forms supplied in original examples; do not force an exercise |
+| Learner supplies a short passage from "Deutschland" and asks for analysis | Identify the pronouns actually present, explain their referents and verb forms, and distinguish original examples from quoted material; do not force an attempt |
 | Learner is interested in a different language through books, films, or music but names no work | Choose a suitable brief example within that interest; request a passage only for close reading or uncertain wording |
 | Learner wants everyday conversation and mentions no source material | Teach with concrete original examples; do not introduce books, films, music, or source requests |
 
@@ -85,9 +88,20 @@ verified excerpts. Unknown source material must not be invented.
 | Scenario | Expected behavior |
 | --- | --- |
 | Beginner asks for an advanced construction with unmastered prerequisites | Tutor chooses the earliest teachable prerequisite, explains the relationship, and does not teach the advanced construction yet |
-| German pronouns: learner answers four of five correctly but uses `es` for a sister instead of `sie` | Tutor judges whether the pattern shows understanding, records a minor slip if it does, corrects briefly, moves on, and checks pronouns after other practice |
+| German pronouns: learner answers four of five correctly but uses `es` for a sister instead of `sie` | Tutor records a minor slip if warranted and corrects briefly; prepared exercises remain available, while new remedial drills wait for later review unless requested |
 | Substantial misunderstanding on the current skill | Tutor records difficulty and gives focused teaching |
-| Repeated difficulty on a previously taught skill | A separate Review lesson appears; earlier path entry remains |
+| Repeated difficulty on a previously taught skill | A due-review recommendation appears; explicit continuation may create a separate Review lesson while preserving history |
 | Two independent successes on distinct unscaffolded exercises | Skill becomes mastered unless a later `needs_work` observation resets the count |
 | An assisted or scaffolded success | Evidence is saved but does not advance mastery |
 | A later lesson uses an earlier skill | Exercise targets the current new skill and tags the earlier skill as supporting |
+
+## Conversation and navigation checks
+
+| Scenario | Expected behavior |
+| --- | --- |
+| Ask about a section, then an exercise | Each question appears only in that lesson discussion with the selected reference and updates its bounded summary |
+| Ask what a completed exercise means | Tutor explains it without treating the question as a second answer attempt |
+| Ask for help on an exercise in main chat | Assistance is attributed to that exercise's actual skills after any ambiguous reference is resolved |
+| Submit an answer to an older lesson's exercise | Assessment uses the selected lesson and exercise, even if a newer lesson is the current teaching focus |
+| Reopen an older lesson and return to main chat | Focus and evidence stay unchanged; a continuation request can carry the origin lesson |
+| Restart and switch sessions | Lesson documents, summaries, and drafts stay with their owning session; cross-session IDs fail before the model call |

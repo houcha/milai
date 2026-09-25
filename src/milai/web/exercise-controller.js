@@ -1,45 +1,59 @@
-export function createExerciseController(request) {
-  const drafts = new Map();
-  let session = null;
-  let exercise = null;
-  let statuses = {};
-  const answered = new Set();
-  let pending = false;
-  const key = () => `${session}:${exercise?.id}`;
+// Browser-only state for unfinished work. The server remains the source of truth
+// for lesson content, discussion, attempts, and exercise status.
+export function createLessonState(storage = globalThis.sessionStorage) {
+  const prefix = "milai:session:";
+  const memory = new Map();
+  const base = (session) => `${prefix}${encodeURIComponent(session)}:`;
+  const lessonKey = (session, lesson) => `${base(session)}lesson:${encodeURIComponent(lesson)}`;
+  const mainKey = (session) => `${base(session)}main-draft`;
+  const read = (key) => {
+    try { return storage.getItem(key); }
+    catch { return memory.get(key) ?? null; }
+  };
+  const write = (key, value) => {
+    memory.set(key, value);
+    try { storage.setItem(key, value); } catch { /* Private browsing can restrict storage. */ }
+  };
+  const remove = (key) => {
+    memory.delete(key);
+    try { storage.removeItem(key); } catch { /* Keep the in-memory state usable. */ }
+  };
   return {
-    get active() { return exercise; },
-    get session() { return session; },
-    get pending() { return pending; },
-    get status() { return exercise ? statuses[exercise.id] || {} : {}; },
-    get canContinue() { return exercise ? answered.has(key()) || Boolean(this.status.assessments?.length || this.status.completed) : false; },
-    get draft() { return exercise ? drafts.get(key()) || "" : ""; },
-    setDraft(value) { if (exercise) drafts.set(key(), value); },
-    setSession(id, nextStatuses = {}) {
-      session = id;
-      exercise = null;
-      statuses = nextStatuses;
-    },
-    setStatuses(nextStatuses) { statuses = nextStatuses; },
-    open(item) { exercise = item; },
-    close() { exercise = null; },
-    async answer(text) {
-      if (!exercise || pending) return null;
-      const selected = exercise.id;
-      const selectedSession = session;
-      pending = true;
+    get(session, lesson) {
       try {
-        const result = await request({session: selectedSession, exercise_id: selected, action: "answer", text});
-        if (session === selectedSession) {
-          statuses[selected] = result.status;
-          if (result.reply) answered.add(`${selectedSession}:${selected}`);
-          if (result.reply?.assessments?.length) drafts.delete(`${selectedSession}:${selected}`);
+        const saved = JSON.parse(read(lessonKey(session, lesson)) || "{}");
+        if (saved && typeof saved === "object") {
+          return {
+            draft: typeof saved.draft === "string" ? saved.draft : "",
+            answers: saved.answers && typeof saved.answers === "object" ? saved.answers : {},
+            selected: saved.selected || null,
+            readingPosition: Number.isFinite(saved.readingPosition) ? saved.readingPosition : 0,
+            tab: saved.tab === "discussion" ? "discussion" : "lesson",
+          };
         }
-        return result;
-      } finally { pending = false; }
+      } catch { /* Ignore a damaged browser record. */ }
+      return { draft: "", answers: {}, selected: null, readingPosition: 0, tab: "lesson" };
     },
-    forgetSession(id) {
-      for (const key of drafts.keys()) if (key.startsWith(`${id}:`)) drafts.delete(key);
-      for (const key of answered) if (key.startsWith(`${id}:`)) answered.delete(key);
+    update(session, lesson, changes) {
+      const previous = this.get(session, lesson);
+      const next = { ...previous, ...changes };
+      if (changes.answers) next.answers = { ...previous.answers, ...changes.answers };
+      write(lessonKey(session, lesson), JSON.stringify(next));
+      return next;
+    },
+    mainDraft(session) { return read(mainKey(session)) || ""; },
+    setMainDraft(session, draft) { write(mainKey(session), draft); },
+    forgetSession(session) {
+      const start = base(session);
+      for (const key of memory.keys()) if (key.startsWith(start)) remove(key);
+      try {
+        const keys = [];
+        for (let index = 0; index < storage.length; index++) {
+          const key = storage.key(index);
+          if (key?.startsWith(start)) keys.push(key);
+        }
+        keys.forEach(remove);
+      } catch { /* Storage may be unavailable. */ }
     },
   };
 }

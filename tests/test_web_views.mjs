@@ -2,60 +2,98 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import vm from "node:vm";
-import { createExerciseController } from "../src/milai/web/exercise-controller.js";
+import { createLessonState } from "../src/milai/web/exercise-controller.js";
 
-// Execute the actual app against a minimal DOM, including its initialization and
-// session application. Hash changes are explicit so tests cover unchanged hashes.
-function application(hash = "#chat", respond = () => new Promise(() => {})) {
+const lesson = {
+  id: "older", title: "German · Subject pronouns", objective: "Choose the right subject pronoun.",
+  sections: [{id: "forms", title: "The forms", markdown: "Use **ich** for I."}],
+  worked_examples: ["**Ich** singe."], recap: "Use the pronoun that fits the speaker.",
+  exercises: [
+    {id: "one", title: "Introduce yourself", context: "At a meeting", task: "Write a sentence."},
+    {id: "two", title: "Choose a form", context: "", task: "Fill the gap."},
+  ],
+};
+const detail = () => ({lesson, conversation: [], exercise_status: {}});
+
+function storage() {
+  const values = new Map();
+  return {
+    get length() { return values.size; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    getItem(key) { return values.get(key) ?? null; },
+    setItem(key, value) { values.set(key, value); },
+    removeItem(key) { values.delete(key); },
+  };
+}
+
+function streamResponse(events) {
+  const encoder = new TextEncoder();
+  let consumed = false;
+  return {
+    ok: true,
+    body: {getReader: () => ({read: async () => {
+      if (consumed) return {done: true};
+      consumed = true;
+      return {done: false, value: encoder.encode(events.map((event) => JSON.stringify(event)).join("\n") + "\n")};
+    }})},
+  };
+}
+
+function application(hash = "#chat", respond = () => new Promise(() => {}), browserStorage = storage()) {
   const requests = [];
   function element(view) {
-    return {
-      hidden: false, value: "", textContent: "", scrollTop: 0,
-      dataset: { view }, children: [], style: {},
-      attributes: {}, listeners: {},
-      classList: { add() {}, toggle() {} },
-      append(...children) { this.children.push(...children); },
-      prepend(...children) { this.children.unshift(...children); },
-      replaceChildren(...children) { this.children = children; },
+    const classes = new Set();
+    const item = {
+      hidden: false, value: "", textContent: "", innerHTML: "", scrollTop: 0, scrollHeight: 500,
+      dataset: view ? {view} : {}, children: [], style: {}, attributes: {}, listeners: {},
+      classList: {
+        add(name) { classes.add(name); },
+        toggle(name, force) { if (force ?? !classes.has(name)) classes.add(name); else classes.delete(name); },
+      },
+      append(...children) { for (const child of children) { child.parent = this; this.children.push(child); } },
+      prepend(...children) { for (const child of children) { child.parent = this; this.children.unshift(child); } },
+      replaceChildren(...children) { this.children = []; this.append(...children); },
+      remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); },
       addEventListener(name, handler) { this.listeners[name] = handler; },
       setAttribute(name, value) { this.attributes[name] = value; },
+      getAttribute(name) { return this.attributes[name] ?? null; },
       removeAttribute(name) { delete this.attributes[name]; },
       focus() {}, select() {}, showModal() {}, close() {},
       scrollIntoView() { this.scrolled = true; },
+      querySelector(selector) { return descendants(this).find((child) => matches(child, selector)) ?? null; },
+      requestSubmit() { this.listeners.submit?.({preventDefault() {}}); },
     };
+    return item;
+  }
+  function descendants(parent) {
+    return parent.children.flatMap((child) => [child, ...descendants(child)]);
+  }
+  function matches(item, selector) {
+    if (selector.startsWith(".")) return item.className?.split(" ").includes(selector.slice(1));
+    if (selector.startsWith("#")) return item.id === selector.slice(1);
+    return false;
   }
   const nodes = new Map();
   for (const [selector, view] of [
-    [".chat-panel", "chat"], ["#sessions-panel", "sessions"], ["#skills-panel", "skills"],
+    [".chat-panel", "chat"], ["#lesson-view", "lesson"], ["#sessions-panel", "sessions"], ["#skills-panel", "skills"],
   ]) nodes.set(selector, element(view));
   const node = (selector) => {
     if (!nodes.has(selector)) nodes.set(selector, element());
     return nodes.get(selector);
   };
   const context = vm.createContext({
-    createExerciseController, renderMarkdown: (text) => text,
-    location: new URL(hash, "http://localhost/"), window: {
-      addEventListener() {}, matchMedia: () => ({matches: false, addEventListener() {}}),
-    },
-    // Keep bootstrap pending; each test supplies its own session response.
-    fetch: (path, options) => {
+    createLessonState, renderMarkdown: (value) => value, sessionStorage: browserStorage,
+    TextDecoder, Uint8Array,
+    location: new URL(hash, "http://localhost/"),
+    window: {addEventListener() {}},
+    fetch: (path, options = {}) => {
       if (path === "/api/bootstrap") return new Promise(() => {});
-      requests.push({path, body: JSON.parse(options.body)});
+      requests.push({path, body: options.body ? JSON.parse(options.body) : null});
       return respond(path, options);
     },
     document: {
       querySelector: node,
-      getElementById: (id) => {
-        const find = (items) => {
-          for (const item of items) {
-            if (item.id === id) return item;
-            const nested = find(item.children);
-            if (nested) return nested;
-          }
-          return null;
-        };
-        return find([...nodes.values()]);
-      },
+      getElementById: (id) => [...nodes.values()].flatMap((item) => [item, ...descendants(item)]).find((item) => item.id === id) ?? null,
       querySelectorAll: (selector) => selector === "[data-view]"
         ? [...nodes.values()].filter((item) => item.dataset.view) : [],
       createElement: () => element(),
@@ -65,181 +103,144 @@ function application(hash = "#chat", respond = () => new Promise(() => {})) {
     .replace(/^import .*;\n/gm, "");
   vm.runInContext(source, context);
   vm.runInContext("setBusy(false)", context);
-  return { node, requests, run: (code) => vm.runInContext(code, context) };
+  return {node, requests, storage: browserStorage, run: (code) => vm.runInContext(code, context), descendants};
 }
 
-for (const view of ["sessions", "skills"]) {
-  test(`${view} keeps the conversation and exercise hidden`, () => {
-    const app = application(`#${view}`);
-    assert.equal(app.node(".chat-panel").hidden, true);
-    assert.equal(app.node(".path-rail").hidden, view === "sessions");
-    assert.equal(app.node("#exercise-view").hidden, true);
-    assert.equal(app.node(`#${view}-panel`).hidden, false);
+function sessionPayload(session = "one") {
+  return {
+    session, sessions: [{id: session, title: "German practice"}], conversation: [],
+    learning: {lessons: [{id: "older", title: lesson.title}, {id: "newer", title: "German · Verbs"}],
+      active_lesson: {id: "newer"}},
+  };
+}
+
+test("lesson sidebar and main card open stored content directly", async () => {
+  const app = application("#chat", async (path) => ({ok: true, json: async () => detail()}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())}); renderConversation([{
+    role: "assistant", content: "I made a lesson.", lesson_cards: [{id: "older", title: "German · Subject pronouns"}]
+  }]);`);
+  const card = app.node("#messages").children[0].children.at(-1);
+  await card.children.at(-1).listeners.click();
+  assert.equal(app.run("location.hash"), "#lesson/older");
+  assert.equal(app.node("#lesson-view").hidden, false);
+  assert.equal(app.node("#lesson-document").children[1].textContent, lesson.title);
+  assert.equal(app.requests[0].path, "/api/lessons/older?session=one");
+  assert.equal(app.node("#learning-path").children[1].children[0].attributes["aria-current"], "step");
+  await app.node("#learning-path").children[0].children[0].listeners.click();
+  assert.equal(app.requests.length, 1);
+});
+
+test("new practice in main chat opens its owning lesson exercise", async () => {
+  const app = application("#chat", async () => ({ok: true, json: async () => detail()}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())}); renderConversation([{
+    role: "assistant", content: "Here is another exercise.",
+    activities: [{id: "two", lesson_id: "older", title: "Choose a form"}]
+  }]);`);
+  const card = app.node("#messages").children[0].children.at(-1);
+  await card.children[1].listeners.click();
+  assert.equal(app.run("location.hash"), "#lesson/older");
+  assert.equal(app.node("#lesson-exercises").children[1].scrolled, true);
+});
+
+test("section question sends its reference and answer stays in the lesson", async () => {
+  let savedConversation = [];
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({...detail(), conversation: savedConversation})};
+    savedConversation = [
+      {role: "user", content: "Why ich?", section_id: "forms", action: "message"},
+      {role: "assistant", content: "Because the speaker is I.", section_id: "forms"},
+    ];
+    return streamResponse([{type: "stage", text: "Considering the section…"}, {type: "complete", result: {reply: {text: "Because the speaker is I."}}}]);
   });
-}
-
-for (const hash of ["", "#unknown", "#map", "#chat"]) {
-  test(`conversation fallback shows both panels for ${JSON.stringify(hash)}`, () => {
-    const app = application(hash);
-    assert.equal(app.node(".chat-panel").hidden, false);
-    assert.equal(app.node(".path-rail").hidden, false);
-    assert.equal(app.node("#exercise-view").hidden, true);
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const section = app.node("#lesson-document").children[3];
+  section.children[0].children[1].listeners.click();
+  assert.equal(app.node("#selected-reference-label").textContent, "Section: The forms");
+  assert.equal(app.node("#lesson-layout").dataset.tab, "discussion");
+  app.node("#lesson-message").value = "Why ich?";
+  await app.run('submitLessonTurn("Why ich?")');
+  assert.deepEqual(JSON.parse(JSON.stringify(app.requests[1].body)), {
+    session: "one", lesson_id: "older", message: "Why ich?", action: "message", section_id: "forms",
   });
-}
-
-test("exercise content uses the conversation Markdown renderer", () => {
-  const app = application();
-  app.run('exercise.setSession("one"); openExercise({id: "task", title: "Practice", context: "Use **hören**.", task: "Add endings:\\n1. **ich**\\n2. **du**"});');
-  assert.equal(app.node("#exercise-context").innerHTML, "Use **hören**.");
-  assert.equal(app.node("#exercise-task").innerHTML, "Add endings:\n1. **ich**\n2. **du**");
+  assert.equal(app.node("#lesson-messages").children[0].children[0].children[1].textContent, "About The forms");
+  assert.equal(app.node("#lesson-progress").textContent, "Saved to this lesson.");
+  assert.equal(app.node("#messages").children[0].className, "welcome");
 });
 
-test("exercise answer shows progress and renders feedback", async () => {
-  let resolve;
-  const app = application("#chat", () => new Promise((done) => { resolve = done; }));
-  app.run('exercise.setSession("one"); openExercise({id: "task", title: "Practice", context: "", task: "Answer"});');
-  app.node("#exercise-answer").value = "My answer";
-  const request = app.run('submitExercise()');
-  assert.equal(app.requests[0].body.action, "answer");
-  assert.equal(app.node("#exercise-status").textContent, "Checking your answer…");
-  assert.equal(app.node("#exercise-submit").disabled, true);
-  resolve({ok: true, json: async () => ({
-    status: {completed: false, assessments: []}, reply: {text: "Try **-st**.", activities: []},
-    sessions: [], learning: {}, lesson_anchors: {},
-  })});
-  await request;
-  assert.equal(app.node("#messages").children.at(-1).children[1].innerHTML, "Try **-st**.");
-  assert.equal(app.node("#exercise-status").textContent, "");
-  assert.equal(app.node("#exercise-submit").disabled, false);
-  assert.equal(app.node("#exercise-continue").hidden, false);
+test("exercise submission uses answer action and a completed exercise remains discussable", async () => {
+  let answered = false;
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({
+      ...detail(), exercise_status: answered ? {one: {completed: true, assessments: [{learner_response: "Ich bin hier.", feedback: "Correct."}]}} : {},
+    })};
+    answered = true;
+    return streamResponse([{type: "stage", text: "Checking your answer…"}, {type: "complete", result: {reply: {text: "Correct."}}}]);
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const exercise = app.node("#lesson-exercises").children[0];
+  const form = exercise.children.at(-1);
+  form.children[1].value = "Ich bin hier.";
+  await form.listeners.submit({preventDefault() {}});
+  assert.equal(app.requests[1].body.action, "answer");
+  assert.equal(app.requests[1].body.exercise_id, "one");
+  assert.equal(app.requests[1].body.lesson_id, "older");
+  const refreshed = app.node("#lesson-exercises").children[0];
+  assert.equal(refreshed.children[0].children[1].textContent, "Completed");
+  assert.equal(refreshed.children.at(-1).children[1].disabled, true);
+  assert.equal(refreshed.children.at(-1).children[2].children[0].disabled, true);
+  refreshed.children.at(-1).children[2].children[1].listeners.click();
+  assert.equal(app.node("#selected-reference-label").textContent, "Exercise: Introduce yourself");
 });
 
-test("Continue appears after an assessed answer without an extra request", () => {
-  const app = application();
-  app.run('exercise.setSession("one"); openExercise({id: "task", title: "Practice", context: "", task: "Answer"});');
-  assert.equal(app.node("#exercise-continue").hidden, true);
-  app.run('exercise.setStatuses({task: {assessments: [{id: "attempt"}], completed: false}}); renderExercise();');
-  assert.equal(app.node("#exercise-continue").hidden, false);
-  app.node("#exercise-continue").listeners.click();
-  assert.equal(app.requests.length, 0);
-  assert.equal(app.run("exercise.active"), null);
-});
-
-test("switching sessions from completed practice restores chat without a hash change", () => {
-  const app = application();
-  app.run(`
-    activeSession = "old";
-    exercise.setSession("old", {done: {completed: true}});
-    openExercise({id: "done", title: "Old exercise", context: "Practice", task: "Answer"});
-  `);
-  assert.equal(app.node(".chat-panel").hidden, true);
-  assert.equal(app.node("#exercise-view").hidden, false);
-  app.run(`applySession({
-    session: "new", sessions: [{id: "new", title: "New session", turns: 0}],
-    conversation: [], learning: {}, exercise_status: {}
-  });`);
+test("back navigation and continue learning preserve the originating lesson", async () => {
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => detail()};
+    return streamResponse([{type: "complete", result: {reply: {text: "Next step", lesson_cards: []}, learning: {lessons: []}, sessions: []}}]);
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  await app.node("#back-to-conversation").listeners.click();
   assert.equal(app.run("location.hash"), "#chat");
-  assert.equal(app.run("exercise.active"), null);
-  assert.equal(app.node("#exercise-view").hidden, true);
-  assert.equal(app.node(".chat-panel").hidden, false);
-  assert.equal(app.node(".path-rail").hidden, false);
-  assert.equal(app.node("#session-label").textContent, "New session");
+  assert.equal(app.requests.length, 1);
+  app.node("#message").value = "Unsent main question";
+  await app.run('navigate("lesson", "older")');
+  await app.node("#continue-learning").listeners.click();
+  assert.equal(app.requests.at(-1).body.origin_lesson_id, "older");
+  assert.equal(app.requests.at(-1).body.lesson_id, undefined);
+  assert.equal(app.run("location.hash"), "#chat");
+  assert.equal(app.node("#message").value, "Unsent main question");
 });
 
-
-test("lesson links jump to committed discussion without sending a message", async () => {
-  const app = application();
-  app.run(`applySession({
-    session: "one", sessions: [], exercise_status: {}, lesson_anchors: {old: "turn-old"},
-    conversation: [{role: "assistant", content: "Earlier explanation", turn_id: "turn-old"}],
-    learning: {lessons: [{id: "old", title: "German · Pronouns"}, {id: "current", title: "German · Verbs"}], active_lesson: {id: "current"}}
-  }); elements.message.value = "unsent draft";`);
-  const links = app.node("#learning-path").children.map((item) => item.children[0]);
-  assert.equal(links[0].textContent, "German · Pronouns");
-  assert.equal(links[1].attributes["aria-current"], "step");
-  await links[0].listeners.click();
-  assert.equal(app.node("#messages").children[0].scrolled, true);
-  assert.equal(app.node("#message").value, "unsent draft");
-  assert.equal(links[1].attributes["aria-current"], "step");
-  assert.equal(app.requests.length, 0);
-  await links[1].listeners.click();
-  assert.match(app.node("#notice").textContent, /unavailable/);
+test("reload restores draft, selected exercise, reading position and tab; deletion clears them", async () => {
+  const browser = storage();
+  const respond = async (path) => ({ok: true, json: async () => path.startsWith("/api/lessons/") ? detail() : sessionPayload("two")});
+  const first = application("#lesson/older", respond, browser);
+  first.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await first.run("renderView()");
+  first.node("#lesson-message").value = "unfinished";
+  first.node("#lesson-message").listeners.input();
+  first.node("#lesson-reading").scrollTop = 410;
+  first.node("#lesson-reading").listeners.scroll();
+  first.node("#lesson-exercises").children[0].children.at(-1).children[2].children[1].listeners.click();
+  const second = application("#lesson/older", respond, browser);
+  second.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await second.run("renderView()");
+  assert.equal(second.node("#lesson-message").value, "unfinished");
+  assert.equal(second.node("#lesson-reading").scrollTop, 410);
+  assert.equal(second.node("#selected-reference-label").textContent, "Exercise: Introduce yourself");
+  assert.equal(second.node("#lesson-layout").dataset.tab, "discussion");
+  await second.run('manageSession("delete", {session: "one"})');
+  assert.equal(createLessonState(browser).get("one", "older").draft, "");
 });
 
-test("skills show derived mastery beside current evidence", () => {
-  const app = application();
-  app.run(`renderLearning({lessons: [], skills: [{
-    id: "pronouns", name: "Subject pronouns", mastered: true,
-    progress: {independent_since_difficulty: 2, observations: 3}
-  }]})`);
-  const card = app.node("#skills").children[0];
-  assert.equal(card.children[0].textContent, "Subject pronouns");
-  assert.equal(card.children[1].children[0].textContent, "Mastered");
-  assert.equal(card.children[1].children[0].className, "positive");
-});
-
-test("visiting Sessions and returning preserves draft and conversation position", async () => {
-  const app = application();
-  app.node("#message").value = "draft";
-  app.node("#messages").scrollTop = 123;
-  await app.run('location.hash = "sessions"; renderView()');
-  assert.equal(app.node("#session-heading").hidden, true);
-  await app.run('location.hash = "chat"; renderView()');
-  assert.equal(app.node("#message").value, "draft");
-  assert.equal(app.node("#messages").scrollTop, 123);
-  assert.equal(app.requests.length, 0);
-});
-
-for (const action of ["rename", "delete", "select", "create"]) {
-  test(`${action} uses the selected session row and the appropriate destination`, async () => {
-    const app = application("#sessions", async () => ({ok: true, json: async () => ({
-      session: action === "select" || action === "create" ? "other" : "active",
-      sessions: [{id: "active", title: "Active"}, {id: "other", title: "Other"}],
-      conversation: [], learning: {}, exercise_status: {}, lesson_anchors: {},
-    })}));
-    app.run(`activeSession = "active"; renderSessions([{id: "active", title: "Active"}, {id: "other", title: "Other"}]);`);
-    const row = app.node("#sessions").children[1];
-    if (action === "rename" || action === "delete") {
-      row.children[1].children[action === "rename" ? 0 : 1].listeners.click();
-      assert.equal(app.run("dialogSession"), "other");
-      await app.run('manageSession(dialogAction, {session: dialogSession, title: "Updated"})');
-    } else await app.run(`manageSession("${action}", {session: "other"})`);
-    assert.equal(app.requests[0].body.session, "other");
-    assert.equal(app.run("location.hash"), action === "select" || action === "create" ? "#chat" : "#sessions");
-  });
-}
-
-test("navigation cannot reveal conversation before an answer", async () => {
-  const app = application();
-  app.run(`exercise.setSession("one"); openExercise({id: "exercise", title: "Task"});`);
-  await app.run('location.hash = "sessions"; renderView()');
-  assert.equal(app.node(".path-rail").hidden, true);
-  assert.equal(app.node(".chat-panel").hidden, true);
-  assert.equal(app.node("#exercise-view").hidden, false);
-  assert.equal(app.run('location.hash'), '#chat');
-  assert.equal(app.requests.length, 0);
-  assert.equal(app.node('#exercise-status').textContent, 'Submit an answer before continuing.');
-});
-
-test("navigation after an assessed answer does not call the exercise API", async () => {
-  const app = application();
-  app.run('exercise.setSession("one"); openExercise({id: "exercise", title: "Task"});');
-  app.run('exercise.setStatuses({exercise: {assessments: [{id: "attempt"}], completed: false}}); renderExercise();');
-  await app.run('location.hash = "skills"; renderView()');
-  assert.equal(app.run('location.hash'), '#skills');
-  assert.equal(app.node('#exercise-view').hidden, true);
-  assert.equal(app.requests.length, 0);
-});
-
-test("renaming from Sessions does not overwrite the saved chat scroll", async () => {
-  const app = application("#sessions", async () => ({ok: true, json: async () => ({
-    session: "one", sessions: [{id: "one", title: "Updated"}],
-    conversation: [], learning: {}, exercise_status: {}, lesson_anchors: {},
-  })}));
-  app.run('activeSession = "one"; scrollPositions.set("one", 321);');
-  // Hidden scroll containers may report zero in a real browser.
-  app.node('#messages').scrollTop = 0;
-  await app.run('manageSession("rename", {session: "one", title: "Updated"})');
-  await app.run('location.hash = "chat"; renderView()');
-  assert.equal(app.node('#messages').scrollTop, 321);
+test("session switching changes the lesson scope without recording an attempt", async () => {
+  const app = application("#lesson/older", async (path) => ({ok: true, json: async () => path.startsWith("/api/lessons/") ? detail() : sessionPayload("other")}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  await app.run('manageSession("select", {session: "other"})');
+  assert.equal(app.run("location.hash"), "#chat");
+  assert.equal(app.requests.filter((request) => request.path === "/api/chat/stream").length, 0);
+  assert.equal(app.node("#lesson-view").hidden, true);
 });

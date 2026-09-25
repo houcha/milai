@@ -1,5 +1,56 @@
 # Validation reports
 
+## 2026-09-25 — Lesson model default changed
+
+Complete lesson and review generation now defaults to `gpt-6-sol` with low
+reasoning and requested Fast processing. The compatibility probe and synthetic
+teaching review below used the previous Luna configuration; they remain historical
+results. Offline verification: `just qa` passed Ruff, ty, and all 75 Python tests. The
+serialized generation request test confirms Sol, low reasoning, Fast tier, and
+the unchanged 32,768-token budget.
+
+A live `milai probe` passed tool use, replay, and Sol's low-reasoning structured
+output request; the provider reported `fast` for that request. Probe trace:
+`d05562acd1ad8c164b7b61fc1d256af8`. The subsequent full synthetic lesson
+run did not finish during the diagnostic window and was interrupted during
+`main_generation`; its [partial report](lesson-acceptance-sol-interrupted.json)
+contains no committed lesson. Local Langfuse export was also unavailable. This
+run establishes neither full-lesson compatibility nor teaching quality for Sol.
+
+## 2026-09-25 — Complete lessons and scoped conversations
+
+Validation is recorded in three separate layers so a passing contract does not
+become a claim about teaching quality.
+
+| Layer | Evidence from the previous Luna configuration |
+| --- | --- |
+| Model compatibility | The live `milai probe` completed a tool round trip and replay on `gpt-6-sol`, and a structured response on `gpt-6-luna` with `xhigh` and requested Fast mode. The provider reported `fast` as the processing tier for this request. Probe trace: `caf87d9c62e6db2636242b02d49390d5`. A Fast request does not guarantee that tier on every response. |
+| Application contracts | The [live synthetic acceptance](lesson-acceptance.json) passed all 16 checks: complete lesson/card, scoped questions, answer assessment, continuation, discussion summary, focus, history isolation, and restart persistence. The [incomplete-answer run](lesson-acceptance-incomplete-answer.json) also passed all 16, with an `uncertain` assessment when required irregular forms were absent. Deterministic tests cover configuration, document/exercise validation, provider rejection and timeout rollback, scoped state, ownership, and browser navigation. |
+| Teaching quality | [Assistant transcript review](teaching-review.md) is partial: feedback and pacing were useful, but the generated theory incorrectly labels the valid emphatic form “did go” as wrong. The planner prompt now requires accurate contrasts; this particular saved lesson remains an honest record of the observed output. This is not a learner study. |
+
+The synthetic runner asked for a complete lesson, asked about a section and an
+exercise, submitted a task-matched answer, continued from the lesson in main
+chat, and reopened the session before another lesson question. The answer had
+correct regular and irregular past verbs but omitted required `was/were`; the
+tutor identified that omission, recorded a minor issue without mastery, left
+prepared practice available, and deferred a new remedial drill. An initial
+[exploratory run](lesson-acceptance-failed.json) did not assess an answer that
+failed to address its selected fill-in task; the runner was corrected to choose
+the independent writing task. The older Gemini reports below remain historical
+evidence for the superseded design.
+
+The browser layout was reviewed with this synthetic lesson at 1440 × 900 and a
+true 390 × 844 emulated viewport. See the [desktop lesson](screenshots/lesson-desktop.png),
+[desktop exercises](screenshots/lesson-desktop-exercises.png),
+[narrow lesson](screenshots/lesson-narrow.png), and
+[narrow discussion](screenshots/lesson-narrow-discussion.png) captures. The narrow
+document width measured 390px, matching its viewport without horizontal overflow.
+
+Final checks: `just qa` passed Ruff format/lint, ty, and 75 Python tests;
+`npm run test:web` passed the browser/renderer Node tests; `uv build` produced
+the wheel and source distribution. The checked-in Markdown bundle did not need
+rebuilding because renderer source was unchanged.
+
 ## 2026-09-24 — Skill-focused lessons
 
 - The full offline suite passed: 45 Python tests, browser tests, Ruff, and ty.

@@ -35,15 +35,39 @@
           </form>
           <p class="composer-hint">Enter to send · Shift + Enter for a new line</p>
         </section>
-        <section id="exercise-view" class="exercise-view" aria-label="Exercise" hidden>
-          <p class="eyebrow">Practice</p><h2 id="exercise-title"></h2>
-          <div id="exercise-context" class="markdown"></div><div id="exercise-task" class="markdown"></div>
-          <div id="exercise-history" aria-live="polite"></div>
-          <form id="exercise-form"><label for="exercise-answer">Your answer</label>
-            <textarea id="exercise-answer" maxlength="8000" rows="4"></textarea>
-            <button id="exercise-submit" type="submit">Submit</button></form>
-          <div class="exercise-actions"><button id="exercise-continue" type="button" hidden>Continue</button></div>
-          <p id="exercise-status" role="status" aria-live="polite"></p>
+        <section id="lesson-view" class="lesson-view" data-view="lesson" aria-label="Lesson" hidden>
+          <div class="lesson-toolbar">
+            <button id="back-to-conversation" class="quiet-button" type="button">← Back to conversation</button>
+            <button id="continue-learning" class="new-session" type="button">Continue learning ↗</button>
+          </div>
+          <div class="lesson-tabs" role="tablist" aria-label="Lesson areas">
+            <button id="lesson-tab" type="button" role="tab" aria-controls="lesson-reading" aria-selected="true">Lesson</button>
+            <button id="discussion-tab" type="button" role="tab" aria-controls="lesson-discussion" aria-selected="false">Discussion</button>
+          </div>
+          <div id="lesson-layout" class="lesson-layout" data-tab="lesson">
+            <div id="lesson-reading" class="lesson-reading" role="tabpanel" aria-labelledby="lesson-tab">
+              <div id="lesson-document"></div>
+              <section class="lesson-practice" aria-labelledby="practice-heading">
+                <p class="eyebrow">Apply what you learned</p>
+                <h2 id="practice-heading">Exercises</h2>
+                <div id="lesson-exercises"></div>
+              </section>
+            </div>
+            <section id="lesson-discussion" class="lesson-discussion" role="tabpanel" aria-labelledby="discussion-tab">
+              <div class="discussion-heading"><p class="eyebrow">Your lesson conversation</p><h2>Discussion</h2></div>
+              <div id="lesson-messages" class="lesson-messages" aria-live="polite"></div>
+              <div id="selected-reference" class="selected-reference" hidden>
+                <span id="selected-reference-label"></span>
+                <button id="remove-reference" type="button" aria-label="Remove lesson reference">×</button>
+              </div>
+              <form id="lesson-composer" class="composer">
+                <label for="lesson-message" class="sr-only">Ask about this lesson</label>
+                <textarea id="lesson-message" maxlength="8000" rows="2" placeholder="Ask about this lesson…"></textarea>
+                <button id="lesson-send" type="submit">Send <span aria-hidden="true">↗</span></button>
+              </form>
+              <p id="lesson-progress" class="composer-hint" role="status" aria-live="polite">Ask about a section or exercise at any time.</p>
+            </section>
+          </div>
         </section>
         <section class="detail-view" data-view="sessions" aria-labelledby="sessions-heading" hidden>
           <div class="sessions-heading"><h1 id="sessions-heading">Sessions</h1><button id="new-session" class="new-session" type="button">New session</button></div>

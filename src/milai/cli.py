@@ -12,7 +12,7 @@ from openai import APITimeoutError, RateLimitError
 from milai.config import Settings
 from milai.observability import Telemetry
 from milai.probe import probe
-from milai.store import SCHEMA_VERSION, SchemaMismatch, Store
+from milai.store import SCHEMA_VERSION, InvalidReference, SchemaMismatch, Store
 from milai.tutor import Tutor, TutorReply
 from milai.web import serve
 
@@ -23,10 +23,11 @@ async def chat(settings: Settings, session: str | None):
     tutor = Tutor(settings, store, telemetry)
     try:
         session = store.session(store.owner, session)
+        lesson_id: str | None = None
+        origin_lesson_id: str | None = None
         print(f"Milai · session {session}")
-        print(
-            "/quit to exit · /state to inspect learning · /new for a new conversation"
-        )
+        print("/lessons to see lessons · /lesson <id> to open · /back for main chat")
+        print("/answer <exercise-id> <text> to submit · /state · /new · /quit")
         if not store.conversation(store.owner, session):
             print(
                 "Tutor: What language would you like to learn, "
@@ -34,7 +35,8 @@ async def chat(settings: Settings, session: str | None):
             )
         while True:
             try:
-                message = await asyncio.to_thread(input, "You: ")
+                place = "lesson" if lesson_id else "main"
+                message = await asyncio.to_thread(input, f"You ({place}): ")
             except EOFError:
                 break
             if message.strip() == "/quit":
@@ -50,11 +52,95 @@ async def chat(settings: Settings, session: str | None):
                 continue
             if message.strip() == "/new":
                 session = store.session(store.owner)
+                lesson_id = None
+                origin_lesson_id = None
                 print(f"New session: {session}; a fresh learning path.")
                 continue
+            if message.strip() == "/lessons":
+                scope = store.learning_scope(store.owner, session)
+                lessons = store.lessons(scope)
+                if not lessons:
+                    print("No lessons yet. Use the main conversation to choose one.")
+                for lesson in lessons:
+                    marker = " (open)" if lesson["id"] == lesson_id else ""
+                    print(f"{lesson['title']} · {lesson['id']}{marker}")
+                continue
+            if message.strip().startswith("/lesson"):
+                parts = message.strip().split()
+                if len(parts) != 2 or parts[0] != "/lesson":
+                    print("Use /lesson <id> from /lessons.")
+                    continue
+                try:
+                    detail = store.lesson_detail(store.owner, session, parts[1])
+                    for exercise in detail["exercises"]:
+                        exercise["status"] = store.exercise_status(
+                            store.owner, session, exercise["id"]
+                        )
+                    discussion = store.conversation(
+                        store.owner, session, limit=3, lesson_id=parts[1]
+                    )
+                except (InvalidReference, ValueError):
+                    print("That lesson is not in this session. Use /lessons.")
+                    continue
+                lesson_id = parts[1]
+                origin_lesson_id = None
+                print_lesson(detail)
+                if discussion:
+                    print("Recent discussion:")
+                    for item in discussion:
+                        speaker = "You" if item["role"] == "user" else "Tutor"
+                        print(f"{speaker}: {item['content']}")
+                continue
+            if message.strip() == "/back":
+                if lesson_id is None:
+                    print("Already in the main conversation.")
+                else:
+                    origin_lesson_id = lesson_id
+                    lesson_id = None
+                    print(
+                        "Main conversation. Your next message can continue "
+                        "from the lesson."
+                    )
+                continue
+            answer_parts = message.strip().split(maxsplit=2)
+            if answer_parts and answer_parts[0] == "/answer":
+                if lesson_id is None:
+                    print("Open a lesson with /lesson <id> before answering.")
+                    continue
+                if len(answer_parts) != 3 or not answer_parts[2].strip():
+                    print("Use /answer <exercise-id> <text>.")
+                    continue
+                exercise_id, answer = answer_parts[1], answer_parts[2]
+                try:
+                    reply = await tutor.respond(
+                        store.owner,
+                        session,
+                        answer,
+                        lesson_id=lesson_id,
+                        exercise_id=exercise_id,
+                        action="answer",
+                    )
+                    print_reply(reply)
+                except (InvalidReference, ValueError) as exc:
+                    print(f"Answer not accepted: {exc}")
+                except RateLimitError:
+                    print("Provider quota reached; this turn was rolled back.")
+                except (APITimeoutError, TimeoutError):
+                    print("Model provider timed out; this turn was not saved.")
+                except Exception as exc:
+                    print(f"Turn failed ({type(exc).__name__}); changes rolled back.")
+                continue
             try:
-                reply = await tutor.respond(store.owner, session, message)
+                reply = await tutor.respond(
+                    store.owner,
+                    session,
+                    message,
+                    lesson_id=lesson_id,
+                    origin_lesson_id=origin_lesson_id if lesson_id is None else None,
+                )
                 print_reply(reply)
+                if lesson_id is None:
+                    origin_lesson_id = None
             except RateLimitError:
                 print(
                     "Provider quota reached; this turn's learning changes were rolled "
@@ -87,6 +173,44 @@ def print_reply(reply: TutorReply) -> None:
         skills = ", ".join(item["name"] for item in activity.get("skills", []))
         if skills:
             print(f"Skills: {skills}")
+    for lesson in getattr(reply, "lesson_cards", []):
+        print(f"\n[OPEN LESSON] {lesson['title']} · /lesson {lesson['id']}")
+
+
+def print_lesson(detail: dict) -> None:
+    """Print a stored document without changing the session's teaching focus."""
+    print(f"\n# {detail['title']}")
+    if detail.get("objective"):
+        print(f"\nObjective: {detail['objective']}")
+    for section in detail.get("sections", []):
+        print(f"\n## {section['title']} ({section['id']})")
+        print(section.get("markdown", section.get("content", section.get("body", ""))))
+    examples = detail.get("worked_examples", [])
+    if examples:
+        print("\n## Worked examples")
+        for example in examples:
+            if isinstance(example, dict):
+                if example.get("title"):
+                    print(f"\n### {example['title']}")
+                print(example.get("markdown", example.get("content", "")))
+            else:
+                print(example)
+    if detail.get("recap"):
+        print(f"\n## Recap\n{detail['recap']}")
+    if detail.get("exercises"):
+        print("\n## Exercises")
+        for exercise in detail["exercises"]:
+            status = exercise.get("status", {})
+            if status.get("completed"):
+                label = "complete"
+            elif status.get("assessments"):
+                label = "attempted"
+            else:
+                label = "ready"
+            print(f"\n[{label}] {exercise['title']} · {exercise['id']}")
+            print(exercise["task"])
+        print("\nSubmit with /answer <exercise-id> <text>.")
+    print("Ask questions here, or use /back for the main conversation.\n")
 
 
 def main():

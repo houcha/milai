@@ -32,6 +32,7 @@ class MockProvider:
     def __init__(self, steps):
         self.steps = list(steps)
         self.requests = []
+        self.service_tier = None
         self.client = AsyncOpenAI(
             api_key="test-only",
             base_url="https://model.invalid/v1",
@@ -57,22 +58,28 @@ class MockProvider:
             item["id"] = f"item-{len(self.requests)}-{index}"
             if item["type"] == "function_call":
                 item["call_id"] = f"call-{len(self.requests)}-{index}"
-        return httpx.Response(
-            200,
-            json={
-                "id": f"resp-{len(self.requests)}",
-                "object": "response",
-                "created_at": 1,
-                "status": "completed",
-                "model": "mock-model",
-                "output": items,
-                "parallel_tool_calls": False,
-                "tool_choice": "auto",
-                "tools": [],
-                "usage": {
-                    "input_tokens": 20,
-                    "output_tokens": 10,
-                    "total_tokens": 30,
-                },
+        response = {
+            "id": f"resp-{len(self.requests)}",
+            "object": "response",
+            "created_at": 1,
+            "status": "completed",
+            "model": "mock-model",
+            "service_tier": self.service_tier,
+            "output": items,
+            "parallel_tool_calls": False,
+            "tool_choice": "auto",
+            "tools": [],
+            "usage": {
+                "input_tokens": 20,
+                "output_tokens": 10,
+                "total_tokens": 30,
             },
-        )
+        }
+        if body.get("stream"):
+            event = {"type": "response.completed", "response": response}
+            return httpx.Response(
+                200,
+                headers={"content-type": "text/event-stream"},
+                text=f"event: response.completed\ndata: {json.dumps(event)}\n\n",
+            )
+        return httpx.Response(200, json=response)

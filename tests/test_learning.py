@@ -28,7 +28,77 @@ def skill_spec(key="subject-pronouns", name="Subject pronouns"):
     }
 
 
-def seed_graph(store, learner, session):
+def start_complete_lesson(
+    store, ctx, language, existing_skill_id, new_skill, prerequisite_ids, reason
+):
+    """Create a valid fixed lesson for storage tests without invoking a model."""
+    skill = (
+        new_skill
+        if new_skill is not None
+        else store.skill(ctx.learner, existing_skill_id)
+    )
+    name = skill["name"]
+    criterion = skill["success_criteria"][0]
+    document = {
+        "objective": f"Use {name.lower()} accurately in a short sentence.",
+        "sections": [
+            {
+                "id": "form",
+                "title": "Form",
+                "markdown": f"Identify the form needed for {name.lower()}.",
+            },
+            {
+                "id": "use",
+                "title": "Use",
+                "markdown": f"Choose {name.lower()} that fits the meaning.",
+            },
+        ],
+        "worked_examples": [
+            {
+                "id": "first-example",
+                "title": "First example",
+                "markdown": (
+                    f"Apply {name.lower()} in one sentence and explain the choice."
+                ),
+            },
+            {
+                "id": "second-example",
+                "title": "Second example",
+                "markdown": f"Compare another use of {name.lower()} in context.",
+            },
+        ],
+        "recap": f"Match the form of {name.lower()} to the intended meaning.",
+    }
+    exercises = [
+        {
+            "title": f"Prepared exercise {index}",
+            "task": f"Use {name.lower()} in situation {index}.",
+            "context": "A short sentence",
+            "scaffolding": "cues" if index == 1 else "none",
+            "skills": [
+                {
+                    "skill_id": "@focus",
+                    "role": "target",
+                    "success_criterion": criterion,
+                }
+            ],
+            "source_ids": [],
+        }
+        for index in range(1, 4)
+    ]
+    return store.start_lesson(
+        ctx,
+        language,
+        existing_skill_id,
+        new_skill,
+        prerequisite_ids,
+        reason,
+        document=document,
+        exercises=exercises,
+    )
+
+
+def seed_graph(store, learner, session, *, committed=False):
     ctx = context(store, learner, session)
     with store.transaction():
         store.record_facts(
@@ -41,9 +111,11 @@ def seed_graph(store, learner, session):
                 }
             ],
         )
-        lesson = store.start_lesson(
-            ctx, "German", None, skill_spec(), [], "Start with pronouns"
+        lesson = start_complete_lesson(
+            store, ctx, "German", None, skill_spec(), [], "Start with pronouns"
         )
+        if committed:
+            store.save_turn(ctx, "Open this lesson", [])
     return {"lesson": lesson}
 
 
@@ -157,7 +229,8 @@ def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
     first_id = first["focus_skill_id"]
     assert first["title"] == "German · Subject pronouns"
     with pytest.raises(ValueError, match="already the active lesson"):
-        store.start_lesson(
+        start_complete_lesson(
+            store,
             context(store, scope, session, "repeat"),
             "German",
             first_id,
@@ -166,7 +239,8 @@ def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
             "Same focus",
         )
     with pytest.raises(ValueError, match="master"), store.transaction():
-        store.start_lesson(
+        start_complete_lesson(
+            store,
             context(store, scope, session, "blocked"),
             "German",
             None,
@@ -181,7 +255,8 @@ def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
         observe(store, scope, session, task["id"], first_id, f"answer-{number}")
     assert store.mastered(scope, first_id)
     with store.transaction():
-        next_lesson = store.start_lesson(
+        next_lesson = start_complete_lesson(
+            store,
             context(store, scope, session, "next"),
             "German",
             None,
@@ -248,7 +323,8 @@ def test_mastery_requires_distinct_unassisted_exercises_since_last_difficulty(tm
         observe(store, scope, session, task["id"], skill_id, f"answer-{number}")
     assert store.mastered(scope, skill_id)
     with store.transaction():
-        store.start_lesson(
+        start_complete_lesson(
+            store,
             context(store, scope, session, "other"),
             "German",
             None,
@@ -257,7 +333,8 @@ def test_mastery_requires_distinct_unassisted_exercises_since_last_difficulty(tm
             "A different skill",
         )
     with store.transaction():
-        review = store.start_lesson(
+        review = start_complete_lesson(
+            store,
             context(store, scope, session, "review"),
             "German",
             skill_id,
@@ -274,7 +351,11 @@ def test_minor_slip_closes_exercise_and_returns_after_other_practice(tmp_path):
     store = Store(tmp_path / "minor.db")
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
-    pronouns = seed_graph(store, scope, session)["lesson"]["focus_skill_id"]
+    first_lesson = seed_graph(store, scope, session, committed=True)["lesson"]
+    pronouns = first_lesson["focus_skill_id"]
+    prepared = store.lesson_detail(store.owner, session, first_lesson["id"])[
+        "exercises"
+    ][2]
     first = exercise(store, scope, session, pronouns, "first")
     observe(store, scope, session, first["id"], pronouns, "first-answer")
     second = exercise(store, scope, session, pronouns, "second")
@@ -292,6 +373,7 @@ def test_minor_slip_closes_exercise_and_returns_after_other_practice(tmp_path):
     assert result["focus_mastered"]
     assert store.mastered(scope, pronouns)
     assert store.exercise_status(store.owner, session, second["id"])["completed"]
+    assert not store.exercise_status(store.owner, session, prepared["id"])["completed"]
     assert (
         store.prompt_state(scope)["deferred_reviews"][0]["other_exercises_remaining"]
         == 2
@@ -344,7 +426,8 @@ def test_minor_slip_closes_exercise_and_returns_after_other_practice(tmp_path):
         )
     assert requested["title"] == "Requested pronouns review"
     with store.transaction():
-        next_lesson = store.start_lesson(
+        next_lesson = start_complete_lesson(
+            store,
             context(store, scope, session, "next-lesson"),
             "German",
             None,
@@ -376,31 +459,51 @@ def test_minor_slip_closes_exercise_and_returns_after_other_practice(tmp_path):
         if number in (2, 3):
             assert store.review_due(scope)[0]["reason"] == "minor_followup"
             assert "review_lesson" not in later
-    assert later["review_lesson"]["focus_skill_id"] == pronouns
-    assert later["review_lesson"]["review"]
-    assert (
-        later["review_lesson"]["reason"] == "Recheck a small slip after other practice"
-    )
+    assert "review_lesson" not in later
+    assert later["review_recommendations"][0]["skill_id"] == pronouns
+    focus = store.active_lesson(scope)
+    assert focus is not None and focus["id"] == next_lesson["id"]
+    assert len(store.lessons(scope)) == 2
+    with store.transaction():
+        review = start_complete_lesson(
+            store,
+            context(store, scope, session, "requested-review"),
+            "German",
+            pronouns,
+            None,
+            [],
+            "Recheck a small slip after other practice",
+        )
+    assert review["review"] and review["focus_skill_id"] == pronouns
     store.close()
 
 
-def test_existing_schema_four_adds_severity_without_reset(tmp_path):
+def test_schema_four_requires_explicit_archival_reset(tmp_path):
     path = tmp_path / "existing.db"
     store = Store(path)
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
-    skill_id = seed_graph(store, scope, session)["lesson"]["focus_skill_id"]
-    task = exercise(store, scope, session, skill_id, "old-exercise")
-    observe(store, scope, session, task["id"], skill_id, "old-answer")
+    lesson = seed_graph(store, scope, session)["lesson"]
     store.close()
     db = sqlite3.connect(path)
-    db.execute("ALTER TABLE skill_observations DROP COLUMN issue_severity")
+    db.execute("UPDATE metadata SET value='4' WHERE key='schema_version'")
+    db.commit()
     db.close()
-    reopened = Store(path)
-    assert reopened.progress(scope, [skill_id])[0]["observations"] == 1
-    assert reopened.observations(scope, [skill_id])[0]["issue_severity"] is None
-    assert reopened.exercise_status(reopened.owner, session, task["id"])["completed"]
-    reopened.close()
+    with pytest.raises(SchemaMismatch, match="milai reset --yes"):
+        Store(path)
+    archived = Store.reset(path)
+    assert len(archived) == 1 and archived[0].exists()
+    with sqlite3.connect(archived[0]) as old:
+        assert old.execute("SELECT id FROM lessons").fetchone()[0] == lesson["id"]
+    fresh = Store(path)
+    assert fresh.sessions(fresh.owner) == []
+    assert (
+        fresh.db.execute(
+            "SELECT value FROM metadata WHERE key='schema_version'"
+        ).fetchone()[0]
+        == SCHEMA_VERSION
+    )
+    fresh.close()
 
 
 def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):
@@ -421,6 +524,70 @@ def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):
         "new_skill": skill_spec(),
         "prerequisite_keys": [],
         "reason": "Begin with subject pronouns",
+        "document": {
+            "objective": (
+                "Choose German subject pronouns to match the subject of a sentence."
+            ),
+            "sections": [
+                {
+                    "id": "forms",
+                    "title": "Forms",
+                    "markdown": (
+                        "German subject pronouns mark who performs the action. "
+                        "They change with person and number, so identify the "
+                        "subject before choosing a form."
+                    ),
+                },
+                {
+                    "id": "use",
+                    "title": "Use",
+                    "markdown": (
+                        "Use the subject pronoun that matches the person or "
+                        "group you mean. Compare singular and plural, and pay "
+                        "attention to formal address."
+                    ),
+                },
+            ],
+            "worked_examples": [
+                {
+                    "id": "speaker",
+                    "title": "The speaker",
+                    "markdown": (
+                        "**Ich lerne.** means *I am learning*. The speaker is "
+                        "the subject, so **ich** is the subject pronoun."
+                    ),
+                },
+                {
+                    "id": "group",
+                    "title": "A group",
+                    "markdown": (
+                        "**Wir lernen.** means *We are learning*. The subject "
+                        "is a group that includes the speaker, so **wir** is used."
+                    ),
+                },
+            ],
+            "recap": (
+                "Choose the subject first, then select the pronoun that "
+                "matches its person and number."
+            ),
+        },
+        "exercises": [
+            {
+                "title": f"Practice {index}",
+                "task": f"Write the correct German subject pronoun for case {index}.",
+                "context": "A short sentence",
+                "scaffolding": "none" if index > 1 else "cues",
+                "skills": [
+                    {
+                        "skill_key": "subject-pronouns",
+                        "role": "target",
+                        "success_criterion": skill_spec()["success_criteria"][0],
+                    }
+                ],
+                "source_ids": [],
+            }
+            for index in range(1, 4)
+        ],
     }
     from types import SimpleNamespace
 
@@ -434,7 +601,7 @@ def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):
 
     monkeypatch.setattr("milai.tools.Runner.run", planned)
     ctx = context(store, scope, session, message="German from scratch")
-    ctx.model = "test-model"
+    ctx.generation_model = "test-model"
     ctx.planner_instructions = "Choose one skill"
     with store.transaction():
         asyncio.run(
@@ -493,36 +660,48 @@ def test_tutor_streams_reply_before_committing_turn(tmp_path):
     store.close()
 
 
-def test_lesson_anchors_only_link_committed_turns(tmp_path):
-    store = Store(tmp_path / "anchors.db")
+def test_lesson_cards_link_directly_to_committed_lessons(tmp_path):
+    store = Store(tmp_path / "cards.db")
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
     first = seed_graph(store, scope, session)["lesson"]
-    assert store.lesson_anchors(store.owner, session) == {}
+    assert store.turn_lesson_cards(scope, "seed") == []
+    first_ctx = context(store, scope, session)
+    first_ctx.lesson_ids.append(first["id"])
+    first_ctx.exercise_ids.extend(
+        item["id"]
+        for item in store.lesson_detail(store.owner, session, first["id"])["exercises"]
+    )
     with store.transaction():
-        store.save_turn(context(store, scope, session), "First lesson", [])
-    assert store.lesson_anchors(store.owner, session) == {first["id"]: "seed"}
+        store.save_turn(first_ctx, "First lesson", [])
+    assert store.turn_lesson_cards(scope, "seed")[0]["id"] == first["id"]
+    other_ctx = context(store, scope, session, "other")
     with store.transaction():
-        store.start_lesson(
-            context(store, scope, session, "other"),
+        other = start_complete_lesson(
+            store,
+            other_ctx,
             "German",
             None,
             skill_spec("verb-forms", "Verb forms"),
             [],
             "Different skill",
         )
-        store.save_turn(context(store, scope, session, "other"), "Another lesson", [])
+        other_ctx.lesson_ids.append(other["id"])
+        store.save_turn(other_ctx, "Another lesson", [])
+    review_ctx = context(store, scope, session, "review")
     with store.transaction():
-        second = store.start_lesson(
-            context(store, scope, session, "review"),
+        second = start_complete_lesson(
+            store,
+            review_ctx,
             "German",
             first["focus_skill_id"],
             None,
             [],
             "Review",
         )
-        store.save_turn(context(store, scope, session, "review"), "Review lesson", [])
-    assert store.lesson_anchors(store.owner, session)[second["id"]] == "review"
+        review_ctx.lesson_ids.append(second["id"])
+        store.save_turn(review_ctx, "Review lesson", [])
+    assert store.turn_lesson_cards(scope, "review")[0]["id"] == second["id"]
     assert [item["id"] for item in store.lessons(scope)][::2] == [
         first["id"],
         second["id"],
@@ -538,7 +717,8 @@ def test_cross_session_skill_reference_is_rejected(tmp_path):
     b_scope = store.learning_scope(store.owner, second)
     assert store.lessons(b_scope) == []
     with pytest.raises(InvalidReference):
-        store.start_lesson(
+        start_complete_lesson(
+            store,
             context(store, b_scope, second),
             "German",
             a["focus_skill_id"],
@@ -554,8 +734,14 @@ def test_turn_rollback_removes_lesson_skill_and_events(tmp_path):
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
     with pytest.raises(RuntimeError, match="failed turn"), store.transaction():
-        store.start_lesson(
-            context(store, scope, session), "German", None, skill_spec(), [], "Start"
+        start_complete_lesson(
+            store,
+            context(store, scope, session),
+            "German",
+            None,
+            skill_spec(),
+            [],
+            "Start",
         )
         raise RuntimeError("failed turn")
     assert store.lessons(scope) == []
@@ -598,7 +784,8 @@ def test_supersession_keeps_historical_lesson_and_evidence(tmp_path):
     assert store.skill(scope, old)["status"] == "superseded"
     assert store.progress(scope, [old])[0]["observations"] == 1
     with store.transaction():
-        new_lesson = store.start_lesson(
+        new_lesson = start_complete_lesson(
+            store,
             context(store, scope, session, "new"),
             "German",
             new_id,
@@ -653,16 +840,20 @@ def test_prompt_state_excludes_full_source_bodies(tmp_path):
     state = store.prompt_state(scope)
     assert secret_text not in json.dumps(state)
     assert state["sources"][0]["id"] == saved["id"]
+    excerpt = store.source_excerpt(scope, saved["id"], 0, 20)
+    assert excerpt["provenance"] == "learner_pasted_unverified"
+    assert excerpt["text"] == secret_text[:20]
     store.close()
 
 
-def test_repeated_difficulty_starts_review_lesson_atomically(tmp_path):
+def test_repeated_difficulty_recommends_review_until_explicit_continuation(tmp_path):
     store = Store(tmp_path / "review.db")
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
     first_id = seed_graph(store, scope, session)["lesson"]["focus_skill_id"]
     with store.transaction():
-        current = store.start_lesson(
+        current = start_complete_lesson(
+            store,
             context(store, scope, session, "next"),
             "German",
             None,
@@ -703,11 +894,27 @@ def test_repeated_difficulty_starts_review_lesson_atomically(tmp_path):
                 outcome="needs_work",
             )
             assert "review_lesson" not in retry
-    review = result["review_lesson"]
-    assert review["review"] and review["focus_skill_id"] == first_id
+    assert "review_lesson" not in result
+    assert result["review_recommendations"][0]["skill_id"] == first_id
     active = store.active_lesson(scope)
-    assert active is not None and active["id"] == review["id"]
-    assert len(store.lessons(scope)) == 3
-    assert store.lesson_anchors(store.owner, session)[review["id"]] == "review-answer-2"
+    assert active is not None and active["id"] == current["id"]
+    assert len(store.lessons(scope)) == 2
+    review_ctx = context(store, scope, session, "review-request")
+    with store.transaction():
+        review = start_complete_lesson(
+            store,
+            review_ctx,
+            "German",
+            first_id,
+            None,
+            [],
+            "Review after repeated difficulty",
+        )
+        review_ctx.lesson_ids.append(review["id"])
+        store.save_turn(review_ctx, "Open this review lesson", [])
+    assert review["review"] and review["focus_skill_id"] == first_id
+    assert store.turn_lesson_cards(scope, review_ctx.turn_id)[0]["id"] == review["id"]
+    focus = store.active_lesson(scope)
+    assert focus is not None and focus["id"] == review["id"]
     assert store.review_due(scope) == []
     store.close()

@@ -1,0 +1,409 @@
+{
+  "kind": "live-synthetic-lesson",
+  "models": {
+    "chat": "gpt-6-sol",
+    "lesson": "gpt-6-luna"
+  },
+  "model_compatibility": {
+    "generation_completed": true,
+    "processing_tier": "See the separate live probe; requested Fast is not a tier guarantee."
+  },
+  "application_contracts": {
+    "lesson_card": true,
+    "complete_document": true,
+    "exercise_contract": true,
+    "section_question_scoped": true,
+    "exercise_question_scoped": true,
+    "question_without_attempt": true,
+    "answer_assessed": false,
+    "main_continuation_scoped": true,
+    "discussion_summary_saved": true,
+    "summary_updated_after_restart": true,
+    "explicit_preference_saved": true,
+    "histories_isolated": true,
+    "viewing_preserved_focus": true,
+    "document_persisted_after_restart": true,
+    "discussions_persisted_after_restart": true,
+    "post_restart_lesson_turn": true
+  },
+  "teaching_quality": {
+    "reviewed": false,
+    "note": "Review the transcript for accuracy, useful feedback, and suitable pacing."
+  },
+  "transcript": [
+    {
+      "phase": "main_generation",
+      "learner": "I speak Spanish and am learning English at about A2 level. I want to describe simple trips. Please explain in simple English, use short original examples, and create a complete lesson on one useful past-tense skill with practice. I prefer brief explanations before attempting exercises.",
+      "references": {},
+      "tutor": {
+        "text": "Let’s learn **affirmative simple past with regular verbs**. We use it for finished actions: “Yesterday, I walked to the beach.”\n\nOpen the lesson card for a brief explanation and short examples, then try the practice exercises when you’re ready.",
+        "activities": [],
+        "lesson_cards": [
+          {
+            "id": "28dc4958a53b4c5385b073f3a9b75cf0",
+            "language": "English",
+            "title": "English · Affirmative simple past with regular verbs",
+            "focus_skill_id": "eb8439677fa24c0da27c49986d8291ab",
+            "skill": {
+              "id": "eb8439677fa24c0da27c49986d8291ab",
+              "language": "English",
+              "key": "english_regular_simple_past_affirmative",
+              "name": "Affirmative simple past with regular verbs",
+              "definition": "Form and use regular English verbs in affirmative simple-past sentences to describe completed actions, including common spelling patterns for -ed and its usual pronunciations.",
+              "success_criteria": [
+                "Identify a completed past action and form an affirmative sentence using a subject + regular past verb, with optional time or place details.",
+                "Spell common regular simple-past forms correctly, including verbs ending in -e, consonant + y, and one-syllable consonant-vowel-consonant verbs.",
+                "Choose the /t/, /d/, or /ɪd/ pronunciation of -ed from the final sound of the base verb and say regular past forms understandably.",
+                "Keep regular affirmative past verbs in past form throughout a short account and use time or order words to make the completed-trip sequence clear."
+              ],
+              "status": "active",
+              "version": 1
+            },
+            "reason": "The requested regular affirmative past is a useful, teachable starting point for describing trips. No reusable skills or prerequisite evidence were supplied, so this lesson focuses on the requested skill.",
+            "objective": "Describe completed trip actions in affirmative sentences using regular simple-past verbs, with common -ed spellings and understandable -ed pronunciation.",
+            "review": false,
+            "created": "2026-09-25T16:00:43.472523+00:00"
+          }
+        ],
+        "assessments": [],
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784"
+      },
+      "trace_id": "79844e9416f17e784423ae62d49dceff"
+    },
+    {
+      "phase": "section_question",
+      "learner": "Can you explain this section with another short example?",
+      "references": {
+        "lesson_id": "28dc4958a53b4c5385b073f3a9b75cf0",
+        "section_id": "when-and-how"
+      },
+      "tutor": {
+        "text": "The **simple past** tells us about an action that is finished. In an affirmative sentence, use **subject + past verb**.\n\nFor example: **Last Saturday, I visited a museum.** The visit is finished, and *last Saturday* tells us when. The verb **visit** becomes **visited**. You can also put the time at the end: **I visited a museum last Saturday.**",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "775e29be69c64cecaad29b5f614a926c"
+      },
+      "trace_id": "fcd9449263098c524bc6fa37ceb6b6ec"
+    },
+    {
+      "phase": "exercise_question",
+      "learner": "What is this exercise asking me to do? Please do not assess me yet.",
+      "references": {
+        "lesson_id": "28dc4958a53b4c5385b073f3a9b75cf0",
+        "exercise_id": "03a82bfc3609443cb546a4c856b446b5"
+      },
+      "tutor": {
+        "text": "This exercise asks you to write **six complete sentences**. For each one, change the verb in parentheses to its regular simple-past form and put it in the blank. Keep the rest of the sentence.\n\nFor example, if you saw “We ___ the park yesterday. (visit),” you would write: “We visited the park yesterday.”\n\nYou haven’t submitted an answer, so I’m not assessing you yet.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "09821b924b6b4ed1981724e1b105bd42"
+      },
+      "trace_id": "0fa1122f4cf9aa32d45a565f7abf97c7"
+    },
+    {
+      "phase": "answer_submission",
+      "learner": "My answer is: I goed to the park yesterday.",
+      "references": {
+        "lesson_id": "28dc4958a53b4c5385b073f3a9b75cf0",
+        "exercise_id": "03a82bfc3609443cb546a4c856b446b5",
+        "action": "answer"
+      },
+      "tutor": {
+        "text": "For this exercise, please complete the **six sentences shown on the card** using the verbs in parentheses. Your sentence about the park doesn’t answer those prompts, so I won’t assess the exercise from it.\n\nOne quick correction: **go → went**, so you’d say **“I went to the park yesterday.”** *Go* is irregular; this exercise practises regular past verbs.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "62acd7b41c2e4219b3186bbd29599511"
+      },
+      "trace_id": "aadffd4fb1f7ed9b67a73c1b7fbb43b1"
+    },
+    {
+      "phase": "main_continuation",
+      "learner": "Continue learning from that lesson using my attempt. If a review is due, recommend it; otherwise choose a useful next step.",
+      "references": {
+        "origin_lesson_id": "28dc4958a53b4c5385b073f3a9b75cf0"
+      },
+      "tutor": {
+        "text": "Your earlier sentence, “I goed to the park yesterday,” shows a useful distinction: **go → went** is irregular. Our lesson focuses on regular past verbs, such as **walk → walked**. There isn’t a review due yet.\n\nFor the next step, try the lesson’s **“Tell about a trip”** exercise: write 5–7 sentences using at least six different regular past verbs. I’ll use your answer to see what you’re ready for next.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "5d74cd4d842e4d74ba1e14e58847b504"
+      },
+      "trace_id": "806a8548f4039867d998693535f63e4c"
+    },
+    {
+      "phase": "lesson_after_restart",
+      "learner": "What is the most useful thing to remember from this lesson?",
+      "references": {
+        "lesson_id": "28dc4958a53b4c5385b073f3a9b75cf0"
+      },
+      "tutor": {
+        "text": "Remember this pattern: **finished action → subject + past verb**. For a regular verb, that usually means **-ed**: “Yesterday, we walked to the harbor.” The past form stays the same with every subject: **I walked, she walked, we walked**.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "657843bd1b0141dd837f7eec9847eab8"
+      },
+      "trace_id": "a925ab307ae9c89ec7919aa45a380f06"
+    }
+  ],
+  "learning": {
+    "learning_sessions": [],
+    "schema_version": "5",
+    "state": {
+      "profile": {
+        "target_language": {
+          "id": "b8d7f9ff2bf8429aa84621c2d32fb66e",
+          "value": "English",
+          "learner_quote": "am learning English",
+          "created": "2026-09-25T16:00:06.510558+00:00"
+        },
+        "explanation_language": {
+          "id": "1302b2871bbe4050bdf8b77df10d753f",
+          "value": "simple English",
+          "learner_quote": "Please explain in simple English",
+          "created": "2026-09-25T16:00:06.510608+00:00"
+        },
+        "level": {
+          "id": "edf96c799a5047b5be3f85c5eac86c9e",
+          "value": "about A2",
+          "learner_quote": "at about A2 level",
+          "created": "2026-09-25T16:00:06.510627+00:00"
+        },
+        "goals": {
+          "id": "212dc8e8d0d74b20962cb58b4b2819f9",
+          "value": "describe simple trips",
+          "learner_quote": "I want to describe simple trips.",
+          "created": "2026-09-25T16:00:06.510640+00:00"
+        },
+        "teaching_preferences": {
+          "id": "a7403a09e39f422cb53211853b76e3fd",
+          "value": "short original examples and brief explanations before exercises",
+          "learner_quote": "Please explain in simple English, use short original examples, and create a complete lesson on one useful past-tense skill with practice. I prefer brief explanations before attempting exercises.",
+          "created": "2026-09-25T16:00:06.510651+00:00"
+        }
+      },
+      "lessons": [
+        {
+          "id": "28dc4958a53b4c5385b073f3a9b75cf0",
+          "language": "English",
+          "title": "English · Affirmative simple past with regular verbs",
+          "focus_skill_id": "eb8439677fa24c0da27c49986d8291ab",
+          "skill": {
+            "id": "eb8439677fa24c0da27c49986d8291ab",
+            "language": "English",
+            "key": "english_regular_simple_past_affirmative",
+            "name": "Affirmative simple past with regular verbs",
+            "definition": "Form and use regular English verbs in affirmative simple-past sentences to describe completed actions, including common spelling patterns for -ed and its usual pronunciations.",
+            "success_criteria": [
+              "Identify a completed past action and form an affirmative sentence using a subject + regular past verb, with optional time or place details.",
+              "Spell common regular simple-past forms correctly, including verbs ending in -e, consonant + y, and one-syllable consonant-vowel-consonant verbs.",
+              "Choose the /t/, /d/, or /ɪd/ pronunciation of -ed from the final sound of the base verb and say regular past forms understandably.",
+              "Keep regular affirmative past verbs in past form throughout a short account and use time or order words to make the completed-trip sequence clear."
+            ],
+            "status": "active",
+            "version": 1
+          },
+          "reason": "The requested regular affirmative past is a useful, teachable starting point for describing trips. No reusable skills or prerequisite evidence were supplied, so this lesson focuses on the requested skill.",
+          "objective": "Describe completed trip actions in affirmative sentences using regular simple-past verbs, with common -ed spellings and understandable -ed pronunciation.",
+          "review": false,
+          "created": "2026-09-25T16:00:43.472523+00:00"
+        }
+      ],
+      "active_lesson": {
+        "id": "28dc4958a53b4c5385b073f3a9b75cf0",
+        "language": "English",
+        "title": "English · Affirmative simple past with regular verbs",
+        "focus_skill_id": "eb8439677fa24c0da27c49986d8291ab",
+        "skill": {
+          "id": "eb8439677fa24c0da27c49986d8291ab",
+          "language": "English",
+          "key": "english_regular_simple_past_affirmative",
+          "name": "Affirmative simple past with regular verbs",
+          "definition": "Form and use regular English verbs in affirmative simple-past sentences to describe completed actions, including common spelling patterns for -ed and its usual pronunciations.",
+          "success_criteria": [
+            "Identify a completed past action and form an affirmative sentence using a subject + regular past verb, with optional time or place details.",
+            "Spell common regular simple-past forms correctly, including verbs ending in -e, consonant + y, and one-syllable consonant-vowel-consonant verbs.",
+            "Choose the /t/, /d/, or /ɪd/ pronunciation of -ed from the final sound of the base verb and say regular past forms understandably.",
+            "Keep regular affirmative past verbs in past form throughout a short account and use time or order words to make the completed-trip sequence clear."
+          ],
+          "status": "active",
+          "version": 1
+        },
+        "reason": "The requested regular affirmative past is a useful, teachable starting point for describing trips. No reusable skills or prerequisite evidence were supplied, so this lesson focuses on the requested skill.",
+        "objective": "Describe completed trip actions in affirmative sentences using regular simple-past verbs, with common -ed spellings and understandable -ed pronunciation.",
+        "review": false,
+        "created": "2026-09-25T16:00:43.472523+00:00"
+      },
+      "skills": [
+        {
+          "id": "eb8439677fa24c0da27c49986d8291ab",
+          "language": "English",
+          "key": "english_regular_simple_past_affirmative",
+          "name": "Affirmative simple past with regular verbs",
+          "definition": "Form and use regular English verbs in affirmative simple-past sentences to describe completed actions, including common spelling patterns for -ed and its usual pronunciations.",
+          "success_criteria": [
+            "Identify a completed past action and form an affirmative sentence using a subject + regular past verb, with optional time or place details.",
+            "Spell common regular simple-past forms correctly, including verbs ending in -e, consonant + y, and one-syllable consonant-vowel-consonant verbs.",
+            "Choose the /t/, /d/, or /ɪd/ pronunciation of -ed from the final sound of the base verb and say regular past forms understandably.",
+            "Keep regular affirmative past verbs in past form throughout a short account and use time or order words to make the completed-trip sequence clear."
+          ],
+          "status": "active",
+          "version": 1,
+          "mastered": false,
+          "progress": {
+            "id": "eb8439677fa24c0da27c49986d8291ab",
+            "name": "Affirmative simple past with regular verbs",
+            "status": "active",
+            "observations": 0,
+            "successes": 0,
+            "needs_work": 0,
+            "minor_errors": 0,
+            "uncertain": 0,
+            "independent_successes": 0,
+            "independent_since_difficulty": 0,
+            "assistance_events": 0,
+            "last_observed": null,
+            "contexts": []
+          }
+        }
+      ],
+      "active_exercise": {
+        "id": "e96553dea5124d4a9370798b070bdb10",
+        "kind": "exercise",
+        "lesson_id": "28dc4958a53b4c5385b073f3a9b75cf0",
+        "title": "Tell about a trip",
+        "task": "Write 5–7 sentences about a real or imaginary day trip. Use at least six different regular verbs in the affirmative simple past. Include a finished-time phrase, such as **last weekend** or **yesterday**, and at least one order word, such as **first**, **then**, or **after that**. Keep the regular action verbs in the past form throughout.",
+        "context": "An independent short account of a completed trip.",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "eb8439677fa24c0da27c49986d8291ab",
+            "name": "Affirmative simple past with regular verbs",
+            "role": "target",
+            "success_criterion": "Keep regular affirmative past verbs in past form throughout a short account and use time or order words to make the completed-trip sequence clear."
+          }
+        ],
+        "source_ids": []
+      },
+      "recent_observations": [],
+      "sources": []
+    },
+    "events": [
+      {
+        "id": "820297049f0c415ba6c486924e6c17c6",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "b8d7f9ff2bf8429aa84621c2d32fb66e",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:00:06.510590+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "a83e0f5009c246a8bcab87ca7a27d9bc",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "1302b2871bbe4050bdf8b77df10d753f",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:00:06.510616+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "b5e4584bf15b4e1ab5197d509144ba3d",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "edf96c799a5047b5be3f85c5eac86c9e",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:00:06.510634+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "2fbc96fd4e2c4282bc0100aae8330d74",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "212dc8e8d0d74b20962cb58b4b2819f9",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:00:06.510645+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "be5cede436d14785bf2478c4784b1893",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "a7403a09e39f422cb53211853b76e3fd",
+        "kind": "learner_fact",
+        "created": "2026-09-25T16:00:06.510657+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "3e2dc8f45b7b45b8ba78a7851cadcb67",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "eb8439677fa24c0da27c49986d8291ab",
+        "kind": "skill",
+        "created": "2026-09-25T16:00:43.472310+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "2ad7950241e54a3480ff88f783ac505b",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "28dc4958a53b4c5385b073f3a9b75cf0",
+        "kind": "lesson",
+        "created": "2026-09-25T16:00:43.472751+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "3083077d533946deaed3edf445c41ab3",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "03a82bfc3609443cb546a4c856b446b5",
+        "kind": "exercise",
+        "created": "2026-09-25T16:00:43.473420+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "e9237055547f4143b76a28dd0f51e624",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "c3ded06b28684b7c8c025a6b6eb33202",
+        "kind": "exercise",
+        "created": "2026-09-25T16:00:43.473675+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "6a2b4b8e342f49478da87813334ef2ce",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "36ef550d56ce41e3880368e62368ffdd",
+        "kind": "exercise",
+        "created": "2026-09-25T16:00:43.473823+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      },
+      {
+        "id": "c20e457b459949d1826682663af155e1",
+        "learner": "session:e97385bb75f24a139b14be83934f316e",
+        "session": "e97385bb75f24a139b14be83934f316e",
+        "turn_id": "f2ece9c6bc30402691ae0f86ae7f9784",
+        "entity_id": "e96553dea5124d4a9370798b070bdb10",
+        "kind": "exercise",
+        "created": "2026-09-25T16:00:43.473955+00:00",
+        "prompt_version": "657877e5eb28e28d"
+      }
+    ],
+    "sessions": []
+  }
+}

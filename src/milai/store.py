@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-SCHEMA_VERSION = "4"
+SCHEMA_VERSION = "5"
 
 
 def identifier() -> str:
@@ -45,12 +45,20 @@ PRAGMA foreign_keys=ON;
 PRAGMA journal_mode=WAL;
 CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE sessions (id TEXT PRIMARY KEY, learner TEXT NOT NULL, created TEXT NOT NULL);
+CREATE TABLE session_scopes (
+    session TEXT PRIMARY KEY REFERENCES sessions(id),
+    scope TEXT NOT NULL UNIQUE, title TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE turns (
     id TEXT PRIMARY KEY, session TEXT NOT NULL REFERENCES sessions(id),
     learner TEXT NOT NULL, created TEXT NOT NULL, message TEXT NOT NULL,
-    reply TEXT NOT NULL, items TEXT NOT NULL, prompt_version TEXT NOT NULL
+    reply TEXT NOT NULL, items TEXT NOT NULL, prompt_version TEXT NOT NULL,
+    lesson_id TEXT REFERENCES lessons(id), section_id TEXT, exercise_id TEXT,
+    action TEXT NOT NULL CHECK(action IN ('message', 'answer')),
+    origin_lesson_id TEXT REFERENCES lessons(id)
 );
 CREATE INDEX turns_session ON turns(session, created);
+CREATE INDEX turns_lesson ON turns(session, lesson_id, created);
 CREATE TABLE events (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL,
     session TEXT NOT NULL REFERENCES sessions(id), turn_id TEXT NOT NULL,
@@ -101,6 +109,24 @@ CREATE TABLE lessons (
     reason TEXT NOT NULL, created TEXT NOT NULL
 );
 CREATE INDEX lessons_learner ON lessons(learner, created);
+CREATE TABLE lesson_documents (
+    lesson_id TEXT PRIMARY KEY REFERENCES lessons(id), learner TEXT NOT NULL,
+    objective TEXT NOT NULL, sections TEXT NOT NULL,
+    worked_examples TEXT NOT NULL, recap TEXT NOT NULL,
+    created TEXT NOT NULL
+);
+CREATE TABLE current_focus (
+    learner TEXT PRIMARY KEY, lesson_id TEXT NOT NULL REFERENCES lessons(id)
+);
+CREATE TABLE discussion_summaries (
+    lesson_id TEXT PRIMARY KEY REFERENCES lessons(id), learner TEXT NOT NULL,
+    summary TEXT NOT NULL, updating_turn_id TEXT NOT NULL REFERENCES turns(id),
+    updated TEXT NOT NULL
+);
+CREATE TABLE turn_lessons (
+    turn_id TEXT NOT NULL REFERENCES turns(id), lesson_id TEXT NOT NULL REFERENCES lessons(id),
+    position INTEGER NOT NULL, PRIMARY KEY(turn_id, lesson_id)
+);
 CREATE TABLE exercises (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, lesson_id TEXT NOT NULL REFERENCES lessons(id),
     title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL,
@@ -203,44 +229,12 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
-        # Additive schema 4 extension; existing evidence retains its original meaning.
-        if "issue_severity" not in {
-            row[1] for row in self.db.execute("PRAGMA table_info(skill_observations)")
-        }:
-            self.db.execute(
-                "ALTER TABLE skill_observations ADD COLUMN issue_severity TEXT "
-                "CHECK(issue_severity IN ('none', 'minor', 'substantial', 'unclear'))"
-            )
-
-        # Add session ownership without resetting existing conversations. The old
-        # shared learning state belongs to the most recently used legacy session.
-        if "session_scopes" not in tables:
-            with self.transaction():
-                self.db.execute(
-                    "CREATE TABLE IF NOT EXISTS session_scopes ("
-                    "session TEXT PRIMARY KEY REFERENCES sessions(id), "
-                    "scope TEXT NOT NULL UNIQUE, title TEXT NOT NULL DEFAULT '')"
-                )
-                seen = set()
-                for row in self.db.execute(
-                    "SELECT s.id, s.learner FROM sessions s ORDER BY "
-                    "EXISTS (SELECT 1 FROM turns WHERE session=s.id) DESC, "
-                    "coalesce((SELECT max(created) FROM turns WHERE session=s.id), s.created) DESC, s.rowid DESC"
-                ).fetchall():
-                    scope = (
-                        row["learner"]
-                        if row["learner"] not in seen
-                        else f"session:{row['id']}"
-                    )
-                    seen.add(row["learner"])
-                    self.db.execute(
-                        "INSERT INTO session_scopes(session, scope) VALUES (?, ?)",
-                        (row["id"], scope),
-                    )
+        # Schema 5 has no implicit migration: older learning state needs an
+        # explicit archival reset before any new turns are accepted.
 
     @classmethod
     def reset(cls, path: Path) -> list[Path]:
-        """Archive an existing database and sidecars, then create schema v4."""
+        """Archive an existing database and sidecars, then create schema v5."""
         path = Path(path)
         archived: list[Path] = []
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
@@ -320,6 +314,17 @@ class Store:
                     f"DELETE FROM {table} WHERE {column} IN (SELECT id FROM {parent} WHERE learner=?)",
                     (scope,),
                 )
+            self.db.execute(
+                "DELETE FROM turn_lessons WHERE turn_id IN (SELECT id FROM turns WHERE session=?)",
+                (session,),
+            )
+            self.db.execute(
+                "DELETE FROM turn_exercises WHERE turn_id IN (SELECT id FROM turns WHERE session=?)",
+                (session,),
+            )
+            self.db.execute(
+                "DELETE FROM discussion_summaries WHERE learner=?", (scope,)
+            )
             for table in (
                 "skill_observations",
                 "attempts",
@@ -327,20 +332,16 @@ class Store:
                 "exercises",
                 "skill_prerequisites",
                 "skill_changes",
-                "lessons",
-                "skills",
-                "sources",
-                "learner_facts",
             ):
                 self.db.execute(f"DELETE FROM {table} WHERE learner=?", (scope,))
-            self.db.execute(
-                "DELETE FROM turn_exercises WHERE turn_id IN (SELECT id FROM turns WHERE session=?)",
-                (session,),
-            )
             self.db.execute(
                 "DELETE FROM events WHERE session=? OR learner=?", (session, scope)
             )
             self.db.execute("DELETE FROM turns WHERE session=?", (session,))
+            self.db.execute("DELETE FROM current_focus WHERE learner=?", (scope,))
+            self.db.execute("DELETE FROM lesson_documents WHERE learner=?", (scope,))
+            for table in ("lessons", "skills", "sources", "learner_facts"):
+                self.db.execute(f"DELETE FROM {table} WHERE learner=?", (scope,))
             self.db.execute("DELETE FROM session_scopes WHERE session=?", (session,))
             self.db.execute("DELETE FROM sessions WHERE id=?", (session,))
 
@@ -497,6 +498,8 @@ class Store:
             "source_id": source_id,
             "title": row["title"],
             "url": row["url"],
+            "provenance": row["provenance"],
+            "truncated": bool(row["truncated"]),
             "start": start,
             "text": text[start : start + length],
             "has_more": start + length < len(text),
@@ -682,7 +685,11 @@ class Store:
         new_skill: dict | None,
         prerequisite_ids: list[str],
         reason: str,
+        *,
+        document: dict,
+        exercises: list[dict],
     ) -> dict:
+        self._validate_lesson_document(document, exercises)
         if self.db.execute(
             "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
             (ctx.learner, ctx.turn_id),
@@ -739,8 +746,91 @@ class Store:
             "INSERT INTO lessons VALUES (?, ?, ?, ?, ?, ?)",
             (lesson_id, ctx.learner, language, skill_id, reason, now()),
         )
+        self.db.execute(
+            "INSERT INTO lesson_documents VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                lesson_id,
+                ctx.learner,
+                document["objective"],
+                _json(document["sections"]),
+                _json(document["worked_examples"]),
+                document["recap"],
+                now(),
+            ),
+        )
+        self.db.execute(
+            "INSERT INTO current_focus(learner, lesson_id) VALUES (?, ?) "
+            "ON CONFLICT(learner) DO UPDATE SET lesson_id=excluded.lesson_id",
+            (ctx.learner, lesson_id),
+        )
         self._event(ctx, "lesson", lesson_id)
+        for exercise in exercises:
+            resolved = {
+                **exercise,
+                "skills": [
+                    {
+                        **item,
+                        "skill_id": skill_id
+                        if item["skill_id"] == "@focus"
+                        else item["skill_id"],
+                    }
+                    for item in exercise["skills"]
+                ],
+            }
+            self.present_exercise(ctx, resolved, lesson_id=lesson_id)
         return self.lesson(ctx.learner, lesson_id, review=bool(previous))
+
+    @staticmethod
+    def _validate_lesson_document(document: dict, exercises: list[dict]) -> None:
+        """Reject a partial lesson before any skill or document row is written."""
+        if not isinstance(document, dict) or not isinstance(exercises, list):
+            raise ValueError("A complete lesson document and exercises are required")
+        objective = document.get("objective")
+        recap = document.get("recap")
+        sections = document.get("sections")
+        examples = document.get("worked_examples")
+        if (
+            not isinstance(objective, str)
+            or not objective.strip()
+            or len(objective) > 800
+        ):
+            raise ValueError("Lesson objective is missing or too long")
+        if not isinstance(recap, str) or not recap.strip():
+            raise ValueError("Lesson recap is required")
+        if not isinstance(sections, list) or not sections or len(sections) > 16:
+            raise ValueError("Lesson needs ordered explanation sections")
+        if not isinstance(examples, list) or not examples or len(examples) > 12:
+            raise ValueError("Lesson needs worked examples")
+        identifiers: set[str] = set()
+        for item in [*sections, *examples]:
+            if not isinstance(item, dict) or any(
+                not isinstance(item.get(key), str) or not item[key].strip()
+                for key in ("id", "title", "markdown")
+            ):
+                raise ValueError("Lesson section or example is incomplete")
+            section_id = item["id"]
+            if (
+                len(section_id) > 80
+                or not all(char.isalnum() or char in "_-" for char in section_id)
+                or section_id in identifiers
+            ):
+                raise ValueError("Lesson section IDs must be stable and unique")
+            identifiers.add(section_id)
+        size = sum(
+            len(value)
+            for value in [
+                objective,
+                recap,
+                *(item["title"] + item["markdown"] for item in [*sections, *examples]),
+            ]
+        )
+        if size > 32_000:
+            raise ValueError("Lesson document exceeds 32,000 characters")
+        if (
+            not 3 <= len(exercises) <= 6
+            or sum(item.get("scaffolding") == "none" for item in exercises) < 2
+        ):
+            raise ValueError("Lesson needs 3–6 exercises, at least two unscaffolded")
 
     def supersede_skills(
         self,
@@ -868,6 +958,10 @@ class Store:
                     (learner, row["focus_skill_id"], lesson_id),
                 ).fetchone()
             )
+        document = self.db.execute(
+            "SELECT objective FROM lesson_documents WHERE lesson_id=? AND learner=?",
+            (lesson_id, learner),
+        ).fetchone()
         return {
             "id": lesson_id,
             "language": row["language"],
@@ -876,9 +970,122 @@ class Store:
             "focus_skill_id": skill["id"],
             "skill": skill,
             "reason": row["reason"],
+            "objective": document["objective"] if document else "",
             "review": review,
             "created": row["created"],
         }
+
+    def lesson_detail(self, learner: str, session: str, lesson_id: str) -> dict:
+        """Return a complete, owned lesson with its prepared and added exercises."""
+        scope = self.learning_scope(learner, session)
+        lesson = self.lesson(scope, lesson_id)
+        row = self.db.execute(
+            "SELECT objective, sections, worked_examples, recap FROM lesson_documents "
+            "WHERE lesson_id=? AND learner=?",
+            (lesson_id, scope),
+        ).fetchone()
+        if row is None:
+            raise InvalidReference("Lesson document is unavailable")
+        exercise_ids = self.db.execute(
+            "SELECT id FROM exercises WHERE lesson_id=? AND learner=? ORDER BY rowid",
+            (lesson_id, scope),
+        ).fetchall()
+        return {
+            **lesson,
+            "objective": row["objective"],
+            "sections": json.loads(row["sections"]),
+            "worked_examples": json.loads(row["worked_examples"]),
+            "recap": row["recap"],
+            "exercises": [self.exercise(scope, item[0]) for item in exercise_ids],
+            "discussion_summary": self.discussion_summary(scope, lesson_id),
+        }
+
+    def lesson_excerpt(
+        self, learner: str, lesson_id: str, start: int = 0, length: int = 4000
+    ) -> dict:
+        """Recall a bounded slice of one lesson document for main conversation."""
+        self.lesson(learner, lesson_id)
+        if start < 0 or not 1 <= length <= 4000:
+            raise ValueError("Lesson excerpt bounds exceeded")
+        row = self.db.execute(
+            "SELECT objective, sections, worked_examples, recap FROM lesson_documents "
+            "WHERE lesson_id=? AND learner=?",
+            (lesson_id, learner),
+        ).fetchone()
+        if row is None:
+            raise InvalidReference("Lesson document is unavailable")
+        content = "\n\n".join(
+            [
+                row["objective"],
+                *(
+                    f"{item['title']}\n{item['markdown']}"
+                    for item in json.loads(row["sections"])
+                ),
+                *(
+                    f"{item['title']}\n{item['markdown']}"
+                    for item in json.loads(row["worked_examples"])
+                ),
+                row["recap"],
+            ]
+        )
+        return {
+            "lesson_id": lesson_id,
+            "start": start,
+            "text": content[start : start + length],
+            "has_more": start + length < len(content),
+        }
+
+    def discussion_summary(self, learner: str, lesson_id: str) -> dict | None:
+        self.lesson(learner, lesson_id)
+        row = self.db.execute(
+            "SELECT summary, updating_turn_id, updated FROM discussion_summaries "
+            "WHERE lesson_id=? AND learner=?",
+            (lesson_id, learner),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def discussion_excerpt(
+        self, learner: str, lesson_id: str, limit: int = 6, max_chars: int = 6000
+    ) -> dict:
+        self.lesson(learner, lesson_id)
+        if not 1 <= limit <= 12 or not 1 <= max_chars <= 8000:
+            raise ValueError("Discussion excerpt bounds exceeded")
+        rows = self.db.execute(
+            "SELECT message, reply, section_id, exercise_id, action FROM turns "
+            "WHERE learner=? AND lesson_id=? ORDER BY rowid DESC LIMIT ?",
+            (learner, lesson_id, limit),
+        ).fetchall()
+        entries = [dict(row) for row in reversed(rows)]
+        while len(_json(entries)) > max_chars and len(entries) > 1:
+            entries.pop(0)
+        if entries and len(_json(entries)) > max_chars:
+            for field in ("reply", "message"):
+                overflow = len(_json(entries)) - max_chars
+                if overflow <= 0:
+                    break
+                entries[0][field] = entries[0][field][:-overflow]
+            if len(_json(entries)) > max_chars:
+                entries.clear()
+        return {"lesson_id": lesson_id, "turns": entries}
+
+    def save_discussion_summary(self, ctx: Any, summary: str) -> None:
+        lesson_id = getattr(ctx, "lesson_id", None)
+        if not lesson_id:
+            raise ValueError("A lesson discussion is required for its summary")
+        self.lesson(ctx.learner, lesson_id)
+        if not isinstance(summary, str) or len(summary) > 2000:
+            raise ValueError("Discussion summary exceeds 2,000 characters")
+        if not self.db.execute(
+            "SELECT 1 FROM turns WHERE id=? AND lesson_id=? AND learner=?",
+            (ctx.turn_id, lesson_id, ctx.learner),
+        ).fetchone():
+            raise InvalidReference("Summary updating turn is unavailable")
+        self.db.execute(
+            "INSERT INTO discussion_summaries VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(lesson_id) DO UPDATE SET summary=excluded.summary, "
+            "updating_turn_id=excluded.updating_turn_id, updated=excluded.updated",
+            (lesson_id, ctx.learner, summary, ctx.turn_id, now()),
+        )
 
     def lessons(self, learner: str) -> list[dict]:
         rows = self.db.execute(
@@ -888,7 +1095,7 @@ class Store:
 
     def active_lesson(self, learner: str) -> dict | None:
         row = self.db.execute(
-            "SELECT id FROM lessons WHERE learner=? ORDER BY rowid DESC LIMIT 1",
+            "SELECT lesson_id FROM current_focus WHERE learner=?",
             (learner,),
         ).fetchone()
         return self.lesson(learner, row[0]) if row else None
@@ -958,10 +1165,34 @@ class Store:
             if self._owned("sources", learner, source_id)["status"] != "available":
                 raise InvalidReference("Only available sources can support an activity")
 
-    def present_exercise(self, ctx: Any, exercise: dict) -> dict:
-        lesson = self.active_lesson(ctx.learner)
+    def present_exercise(
+        self, ctx: Any, exercise: dict, *, lesson_id: str | None = None
+    ) -> dict:
+        selected_lesson_id = (
+            lesson_id
+            or getattr(ctx, "lesson_id", None)
+            or (getattr(ctx, "lesson_ids", []) or [None])[-1]
+            or getattr(ctx, "origin_lesson_id", None)
+        )
+        lesson = (
+            self.lesson(ctx.learner, selected_lesson_id)
+            if selected_lesson_id
+            else self.active_lesson(ctx.learner)
+        )
         if lesson is None:
             raise ValueError("Start a lesson before presenting an exercise")
+        if (
+            not isinstance(exercise.get("title"), str)
+            or not 1 <= len(exercise["title"].strip()) <= 200
+            or not isinstance(exercise.get("task"), str)
+            or not 1 <= len(exercise["task"].strip()) <= 2400
+            or not isinstance(exercise.get("context"), str)
+            or len(exercise["context"]) > 800
+            or exercise.get("scaffolding") not in {"none", "cues", "worked_example"}
+            or not isinstance(exercise.get("source_ids"), list)
+            or not isinstance(exercise.get("skills"), list)
+        ):
+            raise ValueError("Exercise content or contract is incomplete")
         requirements = exercise["skills"]
         ids = [item["skill_id"] for item in requirements]
         targets = [
@@ -1170,11 +1401,11 @@ class Store:
             "feedback": feedback,
             "observations": saved,
         }
-        assessed_lesson = self.active_lesson(ctx.learner)
-        if assessed_lesson:
-            result["focus_mastered"] = self.mastered(
-                ctx.learner, assessed_lesson["focus_skill_id"]
-            )
+        assessed_lesson = self.lesson(ctx.learner, exercise["lesson_id"])
+        result["lesson_id"] = assessed_lesson["id"]
+        result["focus_mastered"] = self.mastered(
+            ctx.learner, assessed_lesson["focus_skill_id"]
+        )
         deferred = [
             item["skill_id"] for item in saved if item["issue_severity"] == "minor"
         ]
@@ -1183,45 +1414,7 @@ class Store:
                 "skill_ids": deferred,
                 "after_other_exercises": 2,
             }
-        if not self.db.execute(
-            "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
-            (ctx.learner, ctx.turn_id),
-        ).fetchone():
-            for due in self.review_due(ctx.learner):
-                skill_id = due["skill_id"]
-                current = self.active_lesson(ctx.learner)
-                if (
-                    due["reason"] == "minor_followup"
-                    and current
-                    and not self.mastered(ctx.learner, current["focus_skill_id"])
-                ):
-                    continue
-                unmet = next(
-                    (
-                        prerequisite
-                        for prerequisite in self.prerequisites(ctx.learner, skill_id)
-                        if not self.mastered(ctx.learner, prerequisite)
-                    ),
-                    None,
-                )
-                focus_id = unmet or skill_id
-                active = self.active_lesson(ctx.learner)
-                if active and active["focus_skill_id"] == focus_id:
-                    continue
-                skill = self.skill(ctx.learner, focus_id, active=True)
-                result["review_lesson"] = self.start_lesson(
-                    ctx,
-                    skill["language"],
-                    focus_id,
-                    None,
-                    [],
-                    (
-                        "Recheck a small slip after other practice"
-                        if due["reason"] == "minor_followup"
-                        else "Review a previously taught skill after repeated difficulty"
-                    ),
-                )
-                break
+        result["review_recommendations"] = self.review_due(ctx.learner)
         return result
 
     def exercise(self, learner: str, exercise_id: str) -> dict:
@@ -1251,6 +1444,7 @@ class Store:
         return {
             "id": exercise_id,
             "kind": "exercise",
+            "lesson_id": row["lesson_id"],
             "title": row["title"],
             "task": row["task"],
             "context": row["context"],
@@ -1339,8 +1533,21 @@ class Store:
         ]
 
     def save_turn(self, ctx: Any, reply: str, items: list) -> None:
+        lesson_id = getattr(ctx, "lesson_id", None)
+        section_id = getattr(ctx, "section_id", None)
+        exercise_id = getattr(ctx, "selected_exercise_id", None)
+        action = getattr(ctx, "action", "message")
+        origin_lesson_id = getattr(ctx, "origin_lesson_id", None)
+        if action not in {"message", "answer"}:
+            raise ValueError("Unknown conversation action")
+        if lesson_id:
+            self.lesson(ctx.learner, lesson_id)
+        if origin_lesson_id:
+            self.lesson(ctx.learner, origin_lesson_id)
         self.db.execute(
-            "INSERT INTO turns VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO turns (id, session, learner, created, message, reply, items, "
+            "prompt_version, lesson_id, section_id, exercise_id, action, origin_lesson_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 ctx.turn_id,
                 ctx.session,
@@ -1350,6 +1557,11 @@ class Store:
                 reply,
                 _json(items),
                 ctx.prompt_version,
+                lesson_id,
+                section_id,
+                exercise_id,
+                action,
+                origin_lesson_id,
             ),
         )
         for position, exercise_id in enumerate(ctx.exercise_ids):
@@ -1362,16 +1574,44 @@ class Store:
                 "INSERT INTO turn_exercises VALUES (?, ?, ?)",
                 (ctx.turn_id, position, exercise_id),
             )
+        for position, presented_id in enumerate(getattr(ctx, "lesson_ids", [])):
+            self.lesson(ctx.learner, presented_id)
+            self.db.execute(
+                "INSERT INTO turn_lessons VALUES (?, ?, ?)",
+                (ctx.turn_id, presented_id, position),
+            )
+
+    def turn_lesson_cards(self, learner: str, turn_id: str) -> list[dict]:
+        return [
+            self.lesson(learner, row[0])
+            for row in self.db.execute(
+                "SELECT lesson_id FROM turn_lessons WHERE turn_id=? ORDER BY position",
+                (turn_id,),
+            )
+        ]
 
     def conversation(
-        self, learner: str, session: str, limit: int | None = 50
+        self,
+        learner: str,
+        session: str,
+        limit: int | None = 50,
+        *,
+        lesson_id: str | None = None,
     ) -> list[dict]:
         self.authorize(learner, session)
-        query = "SELECT id, learner, created, message, reply FROM turns WHERE session=? ORDER BY rowid DESC"
-        parameters: tuple = (session,)
+        scope = self.learning_scope(learner, session)
+        if lesson_id:
+            self.lesson(scope, lesson_id)
+        query = (
+            "SELECT id, learner, created, message, reply, lesson_id, section_id, "
+            "exercise_id, action, origin_lesson_id FROM turns WHERE session=? "
+            + ("AND lesson_id=? " if lesson_id else "AND lesson_id IS NULL ")
+            + "ORDER BY rowid DESC"
+        )
+        parameters: tuple = (session, lesson_id) if lesson_id else (session,)
         if limit is not None:
             query += " LIMIT ?"
-            parameters = (session, limit)
+            parameters += (limit,)
         rows = self.db.execute(query, parameters).fetchall()
         messages = []
         for row in reversed(rows):
@@ -1382,13 +1622,26 @@ class Store:
                         "turn_id": row["id"],
                         "content": row["message"],
                         "created": row["created"],
+                        "lesson_id": row["lesson_id"],
+                        "section_id": row["section_id"],
+                        "exercise_id": row["exercise_id"],
+                        "action": row["action"],
+                        "origin_lesson_id": row["origin_lesson_id"],
                     },
                     {
                         "role": "assistant",
                         "turn_id": row["id"],
                         "content": row["reply"],
                         "activities": self._turn_activities(row["learner"], row["id"]),
+                        "lesson_cards": self.turn_lesson_cards(
+                            row["learner"], row["id"]
+                        ),
                         "created": row["created"],
+                        "lesson_id": row["lesson_id"],
+                        "section_id": row["section_id"],
+                        "exercise_id": row["exercise_id"],
+                        "action": row["action"],
+                        "origin_lesson_id": row["origin_lesson_id"],
                     },
                 )
             )
@@ -1412,12 +1665,22 @@ class Store:
         return anchors
 
     def model_history(
-        self, learner: str, session: str, max_turns: int = 6, max_chars: int = 20_000
+        self,
+        learner: str,
+        session: str,
+        max_turns: int = 6,
+        max_chars: int = 20_000,
+        *,
+        lesson_id: str | None = None,
     ) -> list[dict]:
         self.authorize(learner, session)
+        if lesson_id:
+            self.lesson(self.learning_scope(learner, session), lesson_id)
         rows = self.db.execute(
-            "SELECT id, learner, message, reply FROM turns WHERE session=? ORDER BY rowid DESC LIMIT ?",
-            (session, max_turns),
+            "SELECT id, learner, message, reply FROM turns WHERE session=? "
+            + ("AND lesson_id=? " if lesson_id else "AND lesson_id IS NULL ")
+            + "ORDER BY rowid DESC LIMIT ?",
+            (session, lesson_id, max_turns) if lesson_id else (session, max_turns),
         ).fetchall()
         selected: list[tuple[sqlite3.Row, str]] = []
         size = 0
@@ -1558,8 +1821,19 @@ class Store:
                     "id": item["id"],
                     "title": item["title"],
                     "focus_skill_id": item["focus_skill_id"],
+                    "objective": item["objective"],
                 }
                 for item in lessons[-10:]
+            ],
+            "lesson_summaries": [
+                {
+                    "id": item["id"],
+                    "title": item["title"],
+                    "summary": summary["summary"],
+                    "updating_turn_id": summary["updating_turn_id"],
+                }
+                for item in lessons[-10:]
+                if (summary := self.discussion_summary(learner, item["id"]))
             ],
             "review_due": self.review_due(learner),
             "deferred_reviews": deferred,
@@ -1582,7 +1856,13 @@ class Store:
                 )
             ],
         }
-        for key in ("recent_lessons", "recent_focus_observations", "sources", "skills"):
+        for key in (
+            "recent_lessons",
+            "lesson_summaries",
+            "recent_focus_observations",
+            "sources",
+            "skills",
+        ):
             while len(_json(state)) > max_chars and state[key]:
                 state[key].pop(0)
         if len(_json(state)) > max_chars and state["active_exercise"]:

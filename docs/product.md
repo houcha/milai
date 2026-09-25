@@ -2,46 +2,54 @@
 
 Milai is a conversational language tutor that discovers why a person is learning,
 chooses a useful language ability, and teaches it until the learner can apply it.
-The learner does not need to choose a curriculum or a specific source to begin.
+The main conversation is the home for choosing direction. It introduces a complete
+lesson with an **Open lesson** card, then lets the learner return to discuss progress
+and choose what comes next. The learner does not need to choose a curriculum or a
+specific source to begin.
 
-Each lesson focuses on one new language skill or one previously taught weak skill.
-Skills are precise, reusable abilities in grammar, vocabulary, sound, spelling,
-or comprehension. A lesson remains active across turns. Future lessons may draw
-on earlier skills because complex language use builds on simpler abilities. Each
-exercise has one target matching the active lesson; previously taught skills may
-be supporting skills. A lesson title is derived from the language and focused
-skill, with a Review prefix for revisits.
+Each lesson is a fixed document focused on one precise, reusable language skill.
+It contains an objective, ordered explanation sections, worked examples, a recap,
+and three to six exercises, including at least two without scaffolding. The
+lesson's own conversation stays available beside the document. Learners can ask
+about a section or exercise, submit an answer, and return later to the same
+discussion. Further explanations appear in that discussion; additional practice
+is appended to the lesson. The generated-lesson list records history, not a future
+roadmap. Reopening a past lesson does not change the current teaching focus.
 
 Prerequisite edges form a directed acyclic graph. Every prerequisite must be
 mastered before a new dependent skill is taught. Mastery means two independent
-successes on distinct exercises since the most recent substantial `needs_work`
-observation. A mostly correct answer with a minor slip may count as success, with
-the slip recorded for a later check. Assisted, scaffolded, or uncertain responses
-do not count. An advanced request
-never bypasses the gate; the tutor explains the prerequisite and teaches the
-earliest unmet one. Repeated difficulty, a learner request, or a blocking weak
-skill can start a separate review lesson. A minor slip is revisited after practice
-on other skills, without an immediate repeat of the same exercise.
+successes on distinct unscaffolded exercises since the latest substantial
+`needs_work` observation. Assisted, scaffolded, or uncertain responses do not
+count. A mostly correct answer with a minor slip may count as success, with the
+slip recorded for a later check. Prepared exercises remain available after such a
+slip; newly generated remedial drills wait for the delayed review unless the
+learner asks for them. An advanced request never bypasses a prerequisite; the
+tutor explains the relationship and teaches the earliest eligible skill.
 
-The tutor explains a coherent system of related forms in enough depth to make it
-usable. It supplies examples relevant to the learner's goal and level. An example
-may be authentic when confidently recalled, but close reading requires supplied
-or retrieved source material. The example does not change the skill focus. Practice
-follows sufficient explanation and learner readiness, so many turns have no exercise.
+Each exercise belongs to one lesson and targets that lesson's focus skill.
+Previously taught skills may support it. Questions and clarification do not count
+as attempts. Help is attached only to the exercise skills it concerns, including
+help requested in main chat. Assessments record evidence and may recommend a
+review, but do not automatically open a new lesson. The learner can explicitly
+continue from an older or current lesson, and main chat chooses the next eligible
+lesson or review. Progress is derived from recorded attempts rather than a
+numeric score.
 
-Evidence consists of actual attempts and per-skill observations. Help is attached
-to the affected exercise skills. Skills can be superseded without rewriting old
-evidence or lesson history. The Skills view shows derived mastery, counts,
-assistance, recency, and contexts without a numeric score. The learning path is a
-chronological list of lessons that link to their creation turns.
+The shared learning profile records explicit goals, interests, source preferences,
+and quoted teaching preferences within the current session. A lesson discussion
+keeps a short summary of unresolved questions and requested next steps so it
+remains useful after long conversations and restarts. The main chat can retrieve a
+bounded portion of a lesson's document or discussion when needed. Sources may be
+learner-supplied or retrieved from a public HTTPS URL. Original examples are
+distinguished from verified source excerpts.
 
-Milai runs locally in terminal or browser, uses the OpenAI Agents SDK and local
-SQLite, and keeps one learner-facing agent. A private read-only planner selects
-one lesson skill when the focus changes. The application validates the choice,
-prerequisites, exercise contracts, ownership, and persistence. A schema change
-requires an explicit archival reset when old learning records cannot be converted
-safely. The additive observation severity field is added to existing schema 4
-databases without changing old evidence.
+Milai runs locally in terminal or browser, uses the OpenAI Agents SDK and SQLite,
+and keeps one learner-facing tutor. Chat and assessment use the configured
+`OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
+lesson model and generation settings; the application validates its draft before
+saving the document, exercises, lesson card, and main reply together. A failed
+generation leaves the turn unchanged. Existing databases require an explicit
+`milai reset --yes` archival reset for schema 5.
 
 ## Open product questions
 

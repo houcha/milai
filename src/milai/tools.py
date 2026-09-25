@@ -20,7 +20,6 @@ from agents import (
     function_tool,
 )
 from agents.exceptions import ModelBehaviorError
-from openai.types.responses import ResponseTextDeltaEvent
 from openai.types.shared import Reasoning
 from pydantic import BaseModel, Field
 
@@ -61,6 +60,7 @@ class LearnerFact(BaseModel):
         "goals",
         "interests",
         "source_preferences",
+        "teaching_preferences",
     ]
     value: str = Field(min_length=1, max_length=600)
     learner_quote: str = Field(min_length=1, max_length=1000)
@@ -134,12 +134,23 @@ class Context:
     message: str
     prompt_version: str
     model: Model | None = None
+    generation_model: Model | None = None
+    generation_max_tokens: int = 32768
+    generation_reasoning_effort: Literal[
+        "none", "minimal", "low", "medium", "high", "xhigh", "max"
+    ] = "low"
+    generation_service_tier: str = "fast"
     planner_instructions: str = ""
     lesson_planning_calls: int = 0
     max_tools: int = 20
     calls: int = 0
     event_ids: list[str] = field(default_factory=list)
     exercise_ids: list[str] = field(default_factory=list)
+    lesson_ids: list[str] = field(default_factory=list)
+    lesson_id: str | None = None
+    section_id: str | None = None
+    origin_lesson_id: str | None = None
+    action: Literal["message", "answer"] = "message"
     selected_exercise_id: str | None = None
     assessments: list[dict] = field(default_factory=list)
     on_progress: Callable[[dict], Awaitable[None]] | None = None
@@ -181,13 +192,145 @@ async def search_skills(
     return {"skills": c.store.search_skills(c.learner, language, query, limit)}
 
 
-class _LessonPlan(BaseModel):
-    """Exactly one language skill selected by the private lesson planner."""
+class LessonSection(BaseModel):
+    id: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    title: str = Field(min_length=1, max_length=160)
+    markdown: str = Field(min_length=80, max_length=16000)
 
-    existing_skill_key: str | None = None
-    new_skill: SkillSpec | None = None
-    prerequisite_keys: list[str] = Field(default_factory=list, max_length=8)
+
+class WorkedExample(BaseModel):
+    id: str = Field(min_length=1, max_length=80, pattern=r"^[a-z0-9][a-z0-9-]*$")
+    title: str = Field(min_length=1, max_length=160)
+    markdown: str = Field(min_length=40, max_length=8000)
+
+
+class LessonDocument(BaseModel):
+    objective: str = Field(min_length=20, max_length=800)
+    sections: list[LessonSection] = Field(min_length=2, max_length=8)
+    worked_examples: list[WorkedExample] = Field(min_length=2, max_length=8)
+    recap: str = Field(min_length=40, max_length=4000)
+
+
+class PlannedExerciseSkill(BaseModel):
+    skill_key: str = Field(min_length=1, max_length=120)
+    role: Literal["target", "supporting"]
+    success_criterion: str = Field(min_length=1, max_length=500)
+
+
+class PlannedExercise(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    task: str = Field(min_length=1, max_length=2400)
+    context: str = Field(min_length=1, max_length=800)
+    scaffolding: Literal["none", "cues", "worked_example"]
+    skills: list[PlannedExerciseSkill] = Field(min_length=1, max_length=6)
+    source_ids: list[str] = Field(max_length=5)
+
+
+class _LessonPlan(BaseModel):
+    """Complete read-only draft selected by the private lesson planner."""
+
+    existing_skill_key: str | None
+    new_skill: SkillSpec | None
+    prerequisite_keys: list[str] = Field(max_length=8)
     reason: str = Field(min_length=1, max_length=800)
+    document: LessonDocument
+    exercises: list[PlannedExercise] = Field(min_length=3, max_length=6)
+
+
+def _validated_lesson_draft(
+    plan: _LessonPlan, keyed: dict[str, dict], source_ids: set[str]
+) -> tuple[dict, list[dict]]:
+    """Resolve planner keys and reject an incomplete document before any write."""
+    if (plan.existing_skill_key is None) == (plan.new_skill is None):
+        raise RuntimeError("Planner must select exactly one existing or new skill")
+    if plan.existing_skill_key is not None:
+        if plan.existing_skill_key not in keyed:
+            raise RuntimeError("Planner referenced an unknown focus skill")
+        if plan.prerequisite_keys:
+            raise RuntimeError("Existing skill prerequisites cannot be changed")
+        focus_key = plan.existing_skill_key
+        focus_skill = keyed[focus_key]
+        focus_id = focus_skill["id"]
+    else:
+        if plan.new_skill is None:
+            raise RuntimeError("Planner omitted the new skill")
+        focus_key = plan.new_skill.key
+        if focus_key in keyed:
+            raise RuntimeError("Planner recreated an existing skill key")
+        if any(len(item) > 500 for item in plan.new_skill.success_criteria):
+            raise RuntimeError("Planner skill criteria exceed content bounds")
+        focus_skill = plan.new_skill.model_dump()
+        focus_id = "@focus"
+    if len(set(plan.prerequisite_keys)) != len(plan.prerequisite_keys):
+        raise RuntimeError("Planner repeated a prerequisite")
+    if any(key not in keyed for key in plan.prerequisite_keys):
+        raise RuntimeError("Planner referenced an unknown prerequisite")
+    if focus_key in plan.prerequisite_keys:
+        raise RuntimeError("A lesson skill cannot be its own prerequisite")
+
+    document = plan.document.model_dump()
+    section_ids = [item.id for item in plan.document.sections]
+    example_ids = [item.id for item in plan.document.worked_examples]
+    if len(set(section_ids + example_ids)) != len(section_ids + example_ids):
+        raise RuntimeError("Lesson section and example IDs must be unique")
+    document_text_length = len(plan.document.objective) + len(plan.document.recap)
+    document_text_length += sum(
+        len(item.title) + len(item.markdown) for item in plan.document.sections
+    )
+    document_text_length += sum(
+        len(item.title) + len(item.markdown) for item in plan.document.worked_examples
+    )
+    if document_text_length > 32000:
+        raise RuntimeError("Lesson document exceeds 32,000 characters")
+
+    if sum(item.scaffolding == "none" for item in plan.exercises) < 2:
+        raise RuntimeError("Lesson needs at least two unscaffolded exercises")
+    resolved_exercises: list[dict] = []
+    for exercise in plan.exercises:
+        keys = [item.skill_key for item in exercise.skills]
+        targets = [item.skill_key for item in exercise.skills if item.role == "target"]
+        if len(keys) != len(set(keys)) or targets != [focus_key]:
+            raise RuntimeError(
+                "Each exercise needs the selected focus as its sole target"
+            )
+        if len(exercise.source_ids) != len(set(exercise.source_ids)) or any(
+            source_id not in source_ids for source_id in exercise.source_ids
+        ):
+            raise RuntimeError("Exercise referenced an unavailable source excerpt")
+        skills = []
+        for item in exercise.skills:
+            skill = (
+                focus_skill
+                if item.skill_key == focus_key
+                else keyed.get(item.skill_key)
+            )
+            if skill is None:
+                raise RuntimeError("Exercise referenced an unknown skill key")
+            if item.success_criterion not in skill["success_criteria"]:
+                raise RuntimeError(
+                    "Exercise criterion does not match the skill catalog"
+                )
+            skills.append(
+                {
+                    "skill_id": focus_id
+                    if item.skill_key == focus_key
+                    else skill["id"],
+                    "role": item.role,
+                    "success_criterion": item.success_criterion,
+                }
+            )
+        resolved_exercises.append(
+            {
+                "title": exercise.title,
+                "task": exercise.task,
+                "context": exercise.context,
+                "scaffolding": exercise.scaffolding,
+                "skills": skills,
+                "source_ids": exercise.source_ids,
+                "early_revisit_request": None,
+            }
+        )
+    return document, resolved_exercises
 
 
 @function_tool(failure_error_function=tool_error)
@@ -199,7 +342,7 @@ async def start_lesson(ctx: RunContextWrapper[Context], lesson: LessonIntent) ->
     language_fact = profile.get("target_language")
     if language_fact is None:
         raise ValueError("Record the target language before starting a lesson")
-    if c.model is None or not c.planner_instructions:
+    if c.generation_model is None or not c.planner_instructions:
         raise RuntimeError("Lesson planner is unavailable")
     if c.store.db.execute(
         "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
@@ -207,19 +350,28 @@ async def start_lesson(ctx: RunContextWrapper[Context], lesson: LessonIntent) ->
     ).fetchone():
         raise ValueError("A lesson was already started in this learner turn")
     c.lesson_planning_calls += 1
-    if c.lesson_planning_calls > 2:
-        raise ValueError("Lesson planning retry limit reached for this learner turn")
+    if c.lesson_planning_calls > 1:
+        raise RuntimeError("Only one lesson generation is allowed per learner turn")
     language = language_fact["value"]
     candidates = c.store.search_skills(c.learner, language, "", 30)
     keyed = {skill["key"]: skill for skill in candidates}
+    source_rows = c.store.db.execute(
+        "SELECT id FROM sources WHERE learner=? AND status='available' "
+        "ORDER BY rowid DESC LIMIT 4",
+        (c.learner,),
+    ).fetchall()
+    source_excerpts = [
+        c.store.source_excerpt(c.learner, row["id"], 0, 2000) for row in source_rows
+    ]
     planner = Agent(
         name="Language lesson planner",
         instructions=c.planner_instructions,
-        model=c.model,
+        model=c.generation_model,
         output_type=_LessonPlan,
         model_settings=ModelSettings(
-            max_tokens=8192,
-            reasoning=Reasoning(effort="low"),
+            max_tokens=c.generation_max_tokens,
+            reasoning=Reasoning(effort=c.generation_reasoning_effort),
+            extra_body={"service_tier": c.generation_service_tier},
             store=False,
             response_include=["reasoning.encrypted_content"],
         ),
@@ -255,51 +407,51 @@ async def start_lesson(ctx: RunContextWrapper[Context], lesson: LessonIntent) ->
             "skill_evidence": c.store.progress(
                 c.learner, [skill["id"] for skill in candidates]
             ),
+            "validated_source_excerpts": source_excerpts,
         },
         ensure_ascii=False,
     )
-    if c.on_progress is None:
+    if c.on_progress is not None:
+        await c.on_progress({"type": "stage", "text": "Generating your lesson…"})
+    try:
         planned = await Runner.run(
             planner,
             planner_input,
             max_turns=1,
             run_config=RunConfig(trace_include_sensitive_data=True),
         )
-    else:
-        await c.on_progress({"type": "stage", "text": "Planning the next lesson…"})
-        planned = Runner.run_streamed(
-            planner,
-            planner_input,
-            max_turns=1,
-            run_config=RunConfig(trace_include_sensitive_data=True),
-        )
-        async for event in planned.stream_events():
-            if event.type == "raw_response_event" and isinstance(
-                event.data, ResponseTextDeltaEvent
-            ):
-                await c.on_progress({"type": "planner_delta", "text": event.data.delta})
+    except ModelBehaviorError as exc:
+        raise RuntimeError("Lesson planner returned invalid structured output") from exc
     plan = planned.final_output
     if not isinstance(plan, _LessonPlan):
         raise RuntimeError("Lesson planner returned an unexpected result")
-    if (plan.existing_skill_key is None) == (plan.new_skill is None):
-        raise ValueError("Planner must select exactly one existing or new skill")
-    if plan.new_skill and any(
-        len(item) > 500 for item in plan.new_skill.success_criteria
-    ):
-        raise ValueError("Skill success criteria must be at most 500 characters")
-    if plan.existing_skill_key and plan.existing_skill_key not in keyed:
-        raise InvalidReference("Planner referenced an unknown skill")
-    if any(key not in keyed for key in plan.prerequisite_keys):
-        raise InvalidReference("Planner referenced an unknown prerequisite")
+    if c.on_progress is not None:
+        await c.on_progress({"type": "stage", "text": "Checking lesson and practice…"})
+    document, exercises = _validated_lesson_draft(
+        plan, keyed, {item["source_id"] for item in source_excerpts}
+    )
+    if c.on_progress is not None:
+        await c.on_progress({"type": "stage", "text": "Saving lesson…"})
     with c.store.savepoint():
-        return c.store.start_lesson(
-            c,
-            language,
-            keyed[plan.existing_skill_key]["id"] if plan.existing_skill_key else None,
-            plan.new_skill.model_dump() if plan.new_skill else None,
-            [keyed[key]["id"] for key in plan.prerequisite_keys],
-            plan.reason,
-        )
+        try:
+            saved = c.store.start_lesson(
+                c,
+                language,
+                keyed[plan.existing_skill_key]["id"]
+                if plan.existing_skill_key
+                else None,
+                plan.new_skill.model_dump() if plan.new_skill else None,
+                [keyed[key]["id"] for key in plan.prerequisite_keys],
+                plan.reason,
+                document=document,
+                exercises=exercises,
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "Generated lesson failed application validation"
+            ) from exc
+    c.lesson_ids.append(saved["id"])
+    return saved
 
 
 @function_tool(failure_error_function=tool_error)
@@ -358,6 +510,8 @@ async def assess_attempt(
     """Save reply and observations; repeated prior-skill difficulty may open a review."""
     c = ctx.context
     c.check()
+    if c.action != "answer":
+        raise ValueError("Assess only an explicit exercise answer submission")
     if c.selected_exercise_id and c.selected_exercise_id != assessment.exercise_id:
         raise ValueError("Assessment must match the selected exercise answer")
     result = c.store.assess_attempt(
@@ -376,6 +530,26 @@ async def recall_learning_context(ctx: RunContextWrapper[Context]) -> dict:
     c = ctx.context
     c.check()
     return c.store.prompt_state(c.learner)
+
+
+@function_tool(failure_error_function=tool_error)
+async def recall_lesson_context(
+    ctx: RunContextWrapper[Context],
+    lesson_id: str,
+    include: Literal["content", "discussion"] = "content",
+    start: int = 0,
+    length: int = 4000,
+) -> dict:
+    """Recall bounded content or discussion from one lesson owned by this session."""
+    c = ctx.context
+    c.check()
+    if start < 0 or not 1 <= length <= 4000:
+        raise ValueError("Lesson excerpt start or length is outside bounds")
+    if include == "content":
+        return c.store.lesson_excerpt(c.learner, lesson_id, start, length)
+    if start != 0:
+        raise ValueError("Discussion retrieval does not use content offsets")
+    return c.store.discussion_excerpt(c.learner, lesson_id)
 
 
 @function_tool(failure_error_function=tool_error)
@@ -441,6 +615,7 @@ TOOLS: list[Tool] = [
     record_assistance,
     assess_attempt,
     recall_learning_context,
+    recall_lesson_context,
     retrieve_source,
     save_pasted_source,
     get_source_excerpt,

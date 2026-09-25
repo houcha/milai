@@ -1,102 +1,7 @@
 import { renderMarkdown } from "/markdown.bundle.js";
-import { createExerciseController } from "/exercise-controller.js";
+import { createLessonState } from "/exercise-controller.js";
 
-const exercise = createExerciseController((body) => api("/api/exercise", {
-  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-}));
-const exerciseView = document.querySelector("#exercise-view");
-const exerciseAnswer = document.querySelector("#exercise-answer");
-let conversationScroll = 0;
-let lessonAnchors = {};
-let currentView = "chat";
-const scrollPositions = new Map();
-
-function renderExercise() {
-  const item = exercise.active;
-  const requested = location.hash.slice(1);
-  const inConversation = !Object.hasOwn(viewNames, requested) || requested === "chat";
-  const practicing = Boolean(item) && inConversation;
-  exerciseView.hidden = !practicing;
-  document.querySelector(".chat-panel").hidden = !inConversation || practicing;
-  document.querySelector(".path-rail").hidden = practicing || requested === "sessions";
-  document.querySelector(".app-shell").classList.toggle("wide-view", practicing || requested === "sessions");
-  if (!practicing) return;
-  document.querySelector("#exercise-title").textContent = item.title;
-  document.querySelector("#exercise-context").innerHTML = renderMarkdown(item.context || "");
-  document.querySelector("#exercise-task").innerHTML = renderMarkdown((item.task || "").replaceAll("\\n", "\n"));
-  const status = exercise.status;
-  const history = document.querySelector("#exercise-history");
-  history.replaceChildren();
-  for (const attempt of status.assessments || []) {
-    for (const [label, value] of [["Your answer", attempt.learner_response], ["Milai", attempt.feedback]]) {
-      const entry = document.createElement("div");
-      if (label === "Milai") {
-        entry.className = "markdown";
-        entry.innerHTML = `<strong>${label}:</strong> ${renderMarkdown(value || "")}`;
-      } else entry.textContent = `${label}: ${value}`;
-      history.append(entry);
-    }
-  }
-  exerciseAnswer.value = exercise.draft;
-  document.querySelector("#exercise-form").hidden = Boolean(status.completed);
-  document.querySelector("#exercise-continue").hidden = !exercise.canContinue;
-  document.querySelector("#exercise-submit").disabled = exercise.pending;
-}
-
-function openExercise(item) {
-  conversationScroll = elements.messages.scrollTop;
-  exercise.open(item);
-  document.querySelector("#exercise-status").textContent = "";
-  location.hash = "chat";
-  renderView();
-  exerciseAnswer.focus();
-}
-
-function closeExercise() {
-  exercise.setDraft(exerciseAnswer.value);
-  exercise.close();
-  renderView();
-  elements.messages.scrollTop = conversationScroll;
-  elements.message.focus();
-}
-
-async function submitExercise() {
-  if (busy || exercise.pending) return;
-  const item = exercise.active;
-  if (!item) return;
-  const answer = exerciseAnswer.value;
-  exercise.setDraft(answer);
-  elements.notice.textContent = "";
-  const statusMessage = document.querySelector("#exercise-status");
-  statusMessage.textContent = "Checking your answer…";
-  setBusy(true);
-  try {
-    const result = await exercise.answer(answer);
-    if (!result) return;
-    if (result.reply) {
-      appendMessage("user", answer);
-      appendMessage("assistant", result.reply.text, false, result.reply.activities || [], result.reply.turn_id);
-      lessonAnchors = result.lesson_anchors || {};
-      renderSessions(result.sessions);
-      renderLearning(result.learning);
-    }
-    renderExercise();
-    statusMessage.textContent = "";
-    if (!exercise.status.completed) exerciseAnswer.focus();
-  } catch (error) {
-    exerciseAnswer.value = answer;
-    statusMessage.textContent = error.message;
-    elements.notice.textContent = error.message;
-  } finally { setBusy(false); }
-}
-
-document.querySelector("#exercise-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (exerciseAnswer.value.trim()) submitExercise();
-});
-exerciseAnswer.addEventListener("input", () => exercise.setDraft(exerciseAnswer.value));
-document.querySelector("#exercise-continue").addEventListener("click", closeExercise);
-
+const savedWork = createLessonState();
 const elements = {
   composer: document.querySelector("#composer"),
   message: document.querySelector("#message"),
@@ -108,87 +13,46 @@ const elements = {
   skills: document.querySelector("#skills"),
   skillCount: document.querySelector("#skill-count"),
   newSession: document.querySelector("#new-session"),
+  lessonView: document.querySelector("#lesson-view"),
+  lessonDocument: document.querySelector("#lesson-document"),
+  lessonExercises: document.querySelector("#lesson-exercises"),
+  lessonReading: document.querySelector("#lesson-reading"),
+  lessonMessages: document.querySelector("#lesson-messages"),
+  lessonMessage: document.querySelector("#lesson-message"),
+  lessonProgress: document.querySelector("#lesson-progress"),
 };
 
-let busy = false;
 let activeSession = null;
 let sessionItems = [];
-const drafts = new Map();
+let currentRoute = { view: "chat", lessonId: null };
+let lessonData = null;
+let lessonConversation = [];
+let exerciseStatuses = {};
+let busy = false;
+let routeSequence = 0;
+const chatScroll = new Map();
 
-const viewNames = { chat: "Conversation", sessions: "Sessions", skills: "Skills" };
-
-function leaveExercise() {
-  if (!exercise.active) return;
-  if (!exercise.canContinue) {
-    const message = "Submit an answer before continuing.";
-    document.querySelector("#exercise-status").textContent = message;
-    throw new Error(message);
+function routeFromHash() {
+  const hash = location.hash.slice(1);
+  if (hash.startsWith("lesson/")) {
+    try {
+      const id = decodeURIComponent(hash.slice(7));
+      if (id) return { view: "lesson", lessonId: id };
+    } catch { /* Invalid links return to the conversation. */ }
   }
-  exercise.setDraft(exerciseAnswer.value);
-  exercise.close();
-  elements.messages.scrollTop = conversationScroll;
+  return { view: ["sessions", "skills"].includes(hash) ? hash : "chat", lessonId: null };
 }
 
-async function renderView() {
-  const requested = location.hash.slice(1);
-  const view = Object.hasOwn(viewNames, requested) ? requested : "chat";
-  if (view !== currentView && busy) {
-    location.hash = currentView;
-    return;
-  }
-  if (exercise.active && view !== "chat") {
-    setBusy(true);
-    try { leaveExercise(); }
-    catch (error) {
-      elements.notice.textContent = error.message;
-      location.hash = "chat";
-      return;
-    } finally { setBusy(false); }
-  }
-  if (currentView === "chat" && view !== "chat") {
-    scrollPositions.set(activeSession, elements.messages.scrollTop);
-  }
-  const previousView = currentView;
-  currentView = view;
-  if (requested !== view) location.hash = view;
-  document.querySelectorAll("[data-view]").forEach((panel) => {
-    panel.hidden = panel.dataset.view !== view;
-  });
-  document.querySelector("#session-heading").hidden = view === "sessions";
-  document.querySelector("#sessions-link").textContent = view === "sessions" ? "Sessions" : "← Sessions";
-  for (const [id, selected] of [["sessions-link", view === "sessions"], ["session-label", view === "chat"], ["skills-link", view === "skills"]]) {
-    const link = document.querySelector(`#${id}`);
-    if (selected) link.setAttribute("aria-current", "page");
-    else link.removeAttribute("aria-current");
-  }
-  document.title = `${viewNames[view]} · Milai`;
-  renderExercise();
-  if (view === "chat" && previousView !== "chat") {
-    elements.messages.scrollTop = scrollPositions.get(activeSession) ?? elements.messages.scrollHeight;
-  }
+function routeHash(route) {
+  return route.view === "lesson" ? `lesson/${encodeURIComponent(route.lessonId)}` : route.view;
 }
 
-async function jumpToLesson(lessonId) {
-  if (busy) return;
-  setBusy(true);
-  try { leaveExercise(); }
-  catch (error) { elements.notice.textContent = error.message; return; }
-  finally { setBusy(false); }
-  location.hash = "chat";
-  await renderView();
-  const turnId = lessonAnchors[lessonId];
-  const target = turnId && document.getElementById(`turn-${turnId}`);
-  if (!target) {
-    elements.notice.textContent = "The original discussion for this lesson is unavailable.";
-    return;
-  }
-  elements.notice.textContent = "";
-  target.scrollIntoView({ block: "start" });
-  target.focus({ preventScroll: true });
-}
+function sameRoute(a, b) { return a.view === b.view && a.lessonId === b.lessonId; }
 
-window.addEventListener("hashchange", renderView);
-renderView();
+function navigate(view, lessonId = null) {
+  location.hash = routeHash({ view, lessonId });
+  return renderView();
+}
 
 async function api(path, options = {}) {
   const response = await fetch(path, options);
@@ -197,13 +61,16 @@ async function api(path, options = {}) {
   return payload;
 }
 
-async function streamChat(message, onEvent) {
+async function streamChat(body, onEvent) {
   const response = await fetch("/api/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, session: activeSession }),
+    body: JSON.stringify(body),
   });
-  if (!response.ok || !response.body) throw new Error("Could not start the chat stream");
+  if (!response.ok || !response.body) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || "Could not start the chat stream");
+  }
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -225,33 +92,69 @@ async function streamChat(message, onEvent) {
   if (!completed) throw new Error("The chat stream ended before the turn was saved");
 }
 
-function activityNode(activity) {
-  const start = document.createElement("button");
-  start.type = "button";
-  start.className = "exercise-launch";
-  start.textContent = "Start exercise";
-  start.addEventListener("click", () => openExercise(activity));
-  return start;
+function text(value, fallback = "") {
+  return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function messageNode(role, content, pending = false, activities = [], turnId = null) {
+function lessonCardNode(card) {
   const wrapper = document.createElement("article");
-  wrapper.className = `message ${role}${pending ? " pending" : ""}`;
-  if (role === "assistant" && turnId) {
-    wrapper.id = `turn-${turnId}`;
+  wrapper.className = "lesson-card";
+  const eyebrow = document.createElement("p");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = "Lesson ready";
+  const title = document.createElement("h3");
+  title.textContent = text(card.title, "Your lesson");
+  const objective = document.createElement("p");
+  objective.textContent = text(card.objective);
+  objective.hidden = !objective.textContent;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = "Open lesson ↗";
+  button.addEventListener("click", () => navigate("lesson", card.id));
+  wrapper.append(eyebrow, title, objective, button);
+  return wrapper;
+}
+
+function activityNode(activity) {
+  const wrapper = document.createElement("article");
+  wrapper.className = "practice-card";
+  const title = document.createElement("strong");
+  title.textContent = text(activity.title, "New exercise");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = "Open exercise ↗";
+  button.addEventListener("click", async () => {
+    await navigate("lesson", activity.lesson_id);
+    document.getElementById(`lesson-exercise-${activity.id}`)?.scrollIntoView({ block: "start" });
+  });
+  wrapper.append(title, button);
+  return wrapper;
+}
+
+function messageNode(role, content, options = {}) {
+  const wrapper = document.createElement("article");
+  wrapper.className = `message ${role}${options.pending ? " pending" : ""}`;
+  if (options.turnId) {
+    wrapper.id = `turn-${options.turnId}`;
     wrapper.tabIndex = -1;
   }
+  const header = document.createElement("div");
+  header.className = "message-header";
   const label = document.createElement("span");
   label.className = "role";
   label.textContent = role === "user" ? "You" : "Milai";
-  const header = document.createElement("div");
-  header.className = "message-header";
   header.append(label);
+  if (options.reference) {
+    const reference = document.createElement("span");
+    reference.className = "message-reference";
+    reference.textContent = options.reference;
+    header.append(reference);
+  }
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  if (role === "assistant" && !pending) {
+  if (role === "assistant" && !options.pending) {
     bubble.classList.add("markdown");
-    bubble.innerHTML = renderMarkdown(content);
+    bubble.innerHTML = renderMarkdown(content || "");
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "message-format-toggle";
@@ -262,33 +165,32 @@ function messageNode(role, content, pending = false, activities = [], turnId = n
       const raw = toggle.getAttribute("aria-pressed") !== "true";
       toggle.setAttribute("aria-pressed", String(raw));
       toggle.textContent = raw ? "View rendered" : "View raw";
-      toggle.setAttribute(
-        "aria-label",
-        raw ? "View rendered message from Milai" : "View raw message from Milai",
-      );
+      toggle.setAttribute("aria-label", raw ? "View rendered message from Milai" : "View raw message from Milai");
       bubble.classList.toggle("markdown", !raw);
       if (raw) bubble.textContent = content;
-      else bubble.innerHTML = renderMarkdown(content);
+      else bubble.innerHTML = renderMarkdown(content || "");
     });
     header.append(toggle);
-  } else {
-    bubble.textContent = content;
-  }
+  } else bubble.textContent = content;
   wrapper.append(header, bubble);
-  activities.forEach((activity) => wrapper.append(activityNode(activity)));
+  for (const card of options.lessonCards || []) wrapper.append(lessonCardNode(card));
+  const cardIds = new Set((options.lessonCards || []).map((card) => card.id));
+  for (const activity of options.activities || []) {
+    if (activity.lesson_id && !cardIds.has(activity.lesson_id)) wrapper.append(activityNode(activity));
+  }
   return wrapper;
 }
 
-function appendMessage(role, content, pending = false, activities = [], turnId = null) {
-  const node = messageNode(role, content, pending, activities, turnId);
-  elements.messages.append(node);
-  elements.messages.scrollTop = elements.messages.scrollHeight;
+function appendMessage(container, role, content, options = {}) {
+  const node = messageNode(role, content, options);
+  container.append(node);
+  container.scrollTop = container.scrollHeight;
   return node;
 }
 
 function renderConversation(conversation) {
   elements.messages.replaceChildren();
-  if (!conversation.length) {
+  if (!conversation?.length) {
     const welcome = document.createElement("div");
     welcome.className = "welcome";
     const eyebrow = document.createElement("p");
@@ -307,7 +209,7 @@ function renderConversation(conversation) {
     ]) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = label + " ↗";
+      button.textContent = `${label} ↗`;
       button.addEventListener("click", () => { elements.message.value = message; elements.message.focus(); });
       suggestions.append(button);
     }
@@ -315,15 +217,16 @@ function renderConversation(conversation) {
     elements.messages.append(welcome);
     return;
   }
-  conversation.forEach((item) => appendMessage(item.role, item.content, false, item.activities || [], item.turn_id));
+  for (const item of conversation) {
+    appendMessage(elements.messages, item.role, item.content, {
+      turnId: item.turn_id, lessonCards: item.lesson_cards || [], activities: item.activities || [],
+    });
+  }
 }
 
-function text(value, fallback = "") {
-  return typeof value === "string" && value.trim() ? value : fallback;
-}
-
-function renderLearning(learning) {
+function renderLearning(learning = {}) {
   const lessons = learning.lessons || [];
+  const focusId = learning.current_focus_lesson_id || learning.current_focus?.id || learning.active_lesson?.id;
   elements.path.replaceChildren();
   document.querySelector("#path-empty").hidden = lessons.length > 0;
   for (const lesson of lessons) {
@@ -333,15 +236,14 @@ function renderLearning(learning) {
     link.className = "lesson-link";
     link.textContent = lesson.title;
     link.disabled = busy;
-    if (lesson.id === learning.active_lesson?.id) {
+    if (lesson.id === focusId) {
       link.setAttribute("aria-current", "step");
       item.classList.add("current");
     }
-    link.addEventListener("click", () => jumpToLesson(lesson.id));
+    link.addEventListener("click", () => navigate("lesson", lesson.id));
     item.append(link);
     elements.path.append(item);
   }
-
   const skills = learning.skills || [];
   elements.skillCount.textContent = String(skills.length);
   elements.skills.replaceChildren();
@@ -350,41 +252,307 @@ function renderLearning(learning) {
     empty.className = "empty-card";
     empty.textContent = "Evidence from your practice will appear here.";
     elements.skills.append(empty);
-  } else {
-    skills.forEach((skill) => {
-      const card = document.createElement("article");
-      card.className = "skill-card";
-      const title = document.createElement("h3");
-      title.textContent = skill.name;
-      const stats = document.createElement("div");
-      stats.className = "skill-stats";
-      const progress = skill.progress || {};
-      const values = [
-        [progress.observations, "observations", ""],
-        [progress.independent_since_difficulty, "independent since last difficulty", "positive"],
-        [progress.assistance_events, "help events", ""],
-        [progress.needs_work, "to revisit", "attention"],
-        [progress.minor_errors, "small slips", "attention"],
-      ];
-      values.filter(([count]) => count).forEach(([count, label, className]) => {
-        const badge = document.createElement("span");
-        badge.className = className;
-        badge.textContent = `${count} ${label}`;
-        stats.append(badge);
-      });
-      const mastery = document.createElement("span");
-      mastery.className = skill.mastered ? "positive" : "";
-      mastery.textContent = skill.mastered ? "Mastered" : "In progress";
-      stats.prepend(mastery);
-      card.append(title, stats);
-      if ((progress.contexts || []).length) {
-        const contexts = document.createElement("p");
-        contexts.className = "skill-contexts";
-        contexts.textContent = `Seen in: ${progress.contexts.join(", ")}`;
-        card.append(contexts);
+  } else for (const skill of skills) {
+    const card = document.createElement("article");
+    card.className = "skill-card";
+    const title = document.createElement("h3");
+    title.textContent = skill.name;
+    const stats = document.createElement("div");
+    stats.className = "skill-stats";
+    const progress = skill.progress || {};
+    const values = [
+      [progress.observations, "observations", ""],
+      [progress.independent_since_difficulty, "independent since last difficulty", "positive"],
+      [progress.assistance_events, "help events", ""],
+      [progress.needs_work, "to revisit", "attention"],
+      [progress.minor_errors, "small slips", "attention"],
+    ];
+    for (const [count, label, className] of values.filter(([count]) => count)) {
+      const badge = document.createElement("span");
+      badge.className = className;
+      badge.textContent = `${count} ${label}`;
+      stats.append(badge);
+    }
+    const mastery = document.createElement("span");
+    mastery.className = skill.mastered ? "positive" : "";
+    mastery.textContent = skill.mastered ? "Mastered" : "In progress";
+    stats.prepend(mastery);
+    card.append(title, stats);
+    if ((progress.contexts || []).length) {
+      const contexts = document.createElement("p");
+      contexts.className = "skill-contexts";
+      contexts.textContent = `Seen in: ${progress.contexts.join(", ")}`;
+      card.append(contexts);
+    }
+    elements.skills.append(card);
+  }
+}
+
+function lessonState() { return savedWork.get(activeSession, currentRoute.lessonId); }
+
+function updateLessonState(changes) {
+  if (activeSession && currentRoute.lessonId) savedWork.update(activeSession, currentRoute.lessonId, changes);
+}
+
+function saveReadingPosition() {
+  if (currentRoute.view === "lesson" && lessonData) {
+    updateLessonState({ readingPosition: elements.lessonReading.scrollTop });
+  }
+}
+
+function setLessonTab(tab) {
+  document.querySelector("#lesson-layout").dataset.tab = tab;
+  document.querySelector("#lesson-tab").setAttribute("aria-selected", String(tab === "lesson"));
+  document.querySelector("#discussion-tab").setAttribute("aria-selected", String(tab === "discussion"));
+  updateLessonState({ tab });
+}
+
+function selectedReferenceLabel(selected) {
+  if (!selected) return "";
+  const items = selected.kind === "section" ? lessonData?.sections : lessonData?.exercises;
+  const item = items?.find((entry) => entry.id === selected.id);
+  return item ? `${selected.kind === "section" ? "Section" : "Exercise"}: ${item.title}` : "";
+}
+
+function renderSelectedReference() {
+  const selected = lessonState().selected;
+  const label = selectedReferenceLabel(selected);
+  document.querySelector("#selected-reference").hidden = !label;
+  document.querySelector("#selected-reference-label").textContent = label;
+  if (selected && !label) updateLessonState({ selected: null });
+}
+
+function chooseReference(kind, id) {
+  updateLessonState({ selected: { kind, id } });
+  renderSelectedReference();
+  setLessonTab("discussion");
+  elements.lessonMessage.focus();
+}
+
+function markdownBlock(content, className = "markdown") {
+  const block = document.createElement("div");
+  block.className = className;
+  block.innerHTML = renderMarkdown(content || "");
+  return block;
+}
+
+function renderLessonDocument() {
+  elements.lessonDocument.replaceChildren();
+  const eyebrow = document.createElement("p");
+  eyebrow.className = "eyebrow";
+  eyebrow.textContent = "Lesson";
+  const title = document.createElement("h1");
+  title.textContent = lessonData.title;
+  const objective = document.createElement("p");
+  objective.className = "lesson-objective";
+  objective.textContent = text(lessonData.objective);
+  elements.lessonDocument.append(eyebrow, title, objective);
+  for (const section of lessonData.sections || []) {
+    const wrapper = document.createElement("section");
+    wrapper.className = "lesson-section";
+    wrapper.id = `lesson-section-${section.id}`;
+    const heading = document.createElement("div");
+    heading.className = "lesson-section-heading";
+    const name = document.createElement("h2");
+    name.textContent = section.title;
+    const ask = document.createElement("button");
+    ask.type = "button";
+    ask.className = "quiet-button";
+    ask.textContent = "Ask about this section";
+    ask.addEventListener("click", () => chooseReference("section", section.id));
+    heading.append(name, ask);
+    wrapper.append(heading, markdownBlock(section.markdown));
+    elements.lessonDocument.append(wrapper);
+  }
+  const examples = lessonData.worked_examples || [];
+  if (examples.length) {
+    const wrapper = document.createElement("section");
+    wrapper.className = "lesson-section";
+    const heading = document.createElement("h2");
+    heading.textContent = "Worked examples";
+    wrapper.append(heading);
+    for (const example of Array.isArray(examples) ? examples : [examples]) {
+      if (typeof example === "string") wrapper.append(markdownBlock(example));
+      else {
+        const card = document.createElement("div");
+        card.className = "worked-example";
+        if (example.title) {
+          const name = document.createElement("h3");
+          name.textContent = example.title;
+          card.append(name);
+        }
+        card.append(markdownBlock(example.markdown || example.explanation || ""));
+        wrapper.append(card);
       }
-      elements.skills.append(card);
+    }
+    elements.lessonDocument.append(wrapper);
+  }
+  if (lessonData.recap) {
+    const wrapper = document.createElement("section");
+    wrapper.className = "lesson-section lesson-recap";
+    const heading = document.createElement("h2");
+    heading.textContent = "Recap";
+    wrapper.append(heading, markdownBlock(lessonData.recap));
+    elements.lessonDocument.append(wrapper);
+  }
+}
+
+function renderLessonExercises() {
+  elements.lessonExercises.replaceChildren();
+  for (const [index, item] of (lessonData.exercises || []).entries()) {
+    const status = exerciseStatuses[item.id] || item.status || {};
+    const card = document.createElement("article");
+    card.className = "lesson-exercise";
+    card.id = `lesson-exercise-${item.id}`;
+    const meta = document.createElement("div");
+    meta.className = "exercise-meta";
+    const number = document.createElement("span");
+    number.textContent = `Exercise ${index + 1}`;
+    const state = document.createElement("span");
+    state.className = `exercise-state${status.completed ? " completed" : ""}`;
+    state.textContent = status.completed ? "Completed" : status.assessments?.length ? "In progress" : "Ready";
+    meta.append(number, state);
+    const title = document.createElement("h3");
+    title.textContent = text(item.title, `Exercise ${index + 1}`);
+    const context = markdownBlock(item.context || "", "markdown exercise-context");
+    const task = markdownBlock((item.task || item.prompt || "").replaceAll("\\n", "\n"), "markdown exercise-task");
+    card.append(meta, title, context, task);
+    const attempts = document.createElement("div");
+    attempts.className = "exercise-attempts";
+    for (const attempt of status.assessments || []) {
+      const entry = document.createElement("div");
+      entry.className = "exercise-attempt";
+      const answer = document.createElement("p");
+      answer.textContent = `Your answer: ${attempt.learner_response || ""}`;
+      const feedback = markdownBlock(attempt.feedback || "");
+      entry.append(answer, feedback);
+      attempts.append(entry);
+    }
+    card.append(attempts);
+    const form = document.createElement("form");
+    form.className = "exercise-answer-form";
+    const label = document.createElement("label");
+    label.textContent = "Your answer";
+    label.htmlFor = `answer-${item.id}`;
+    const answer = document.createElement("textarea");
+    answer.id = `answer-${item.id}`;
+    answer.maxLength = 8000;
+    answer.rows = 3;
+    answer.disabled = Boolean(status.completed);
+    answer.value = lessonState().answers[item.id] || "";
+    answer.addEventListener("focus", () => {
+      updateLessonState({ selected: { kind: "exercise", id: item.id } });
+      renderSelectedReference();
     });
+    answer.addEventListener("input", () => updateLessonState({ answers: { [item.id]: answer.value } }));
+    const actions = document.createElement("div");
+    actions.className = "exercise-actions";
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.textContent = "Submit answer";
+    submit.disabled = busy || Boolean(status.completed);
+    const ask = document.createElement("button");
+    ask.type = "button";
+    ask.className = "quiet-button";
+    ask.textContent = "Ask about this exercise";
+    ask.addEventListener("click", () => chooseReference("exercise", item.id));
+    actions.append(submit, ask);
+    form.append(label, answer, actions);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (answer.value.trim()) return submitLessonTurn(answer.value, "answer", { exercise_id: item.id });
+    });
+    card.append(form);
+    elements.lessonExercises.append(card);
+  }
+}
+
+function discussionReference(turn) {
+  if (turn.exercise_id) {
+    const item = lessonData?.exercises?.find((entry) => entry.id === turn.exercise_id);
+    return `${turn.action === "answer" ? "Answer to" : "About"} ${item?.title || "exercise"}`;
+  }
+  if (turn.section_id) {
+    const item = lessonData?.sections?.find((entry) => entry.id === turn.section_id);
+    return `About ${item?.title || "section"}`;
+  }
+  return "";
+}
+
+function renderLessonConversation() {
+  elements.lessonMessages.replaceChildren();
+  if (!lessonConversation.length) {
+    const empty = document.createElement("p");
+    empty.className = "discussion-empty";
+    empty.textContent = "Ask about the explanation or an exercise whenever you need to.";
+    elements.lessonMessages.append(empty);
+  }
+  for (const turn of lessonConversation) {
+    appendMessage(elements.lessonMessages, turn.role, turn.content, {
+      turnId: turn.turn_id, reference: discussionReference(turn),
+    });
+  }
+  elements.lessonMessages.scrollTop = elements.lessonMessages.scrollHeight;
+}
+
+function renderLesson() {
+  renderLessonDocument();
+  renderLessonExercises();
+  renderLessonConversation();
+  const state = lessonState();
+  elements.lessonMessage.value = state.draft;
+  renderSelectedReference();
+  setLessonTab(state.tab);
+  elements.lessonReading.scrollTop = state.readingPosition;
+  document.title = `${lessonData.title} · Milai`;
+}
+
+async function refreshLesson(lessonId, sequence = routeSequence) {
+  const session = activeSession;
+  const payload = await api(`/api/lessons/${encodeURIComponent(lessonId)}?session=${encodeURIComponent(session)}`);
+  if (sequence !== routeSequence || session !== activeSession || currentRoute.lessonId !== lessonId) return;
+  lessonData = payload.lesson;
+  lessonConversation = payload.conversation || [];
+  exerciseStatuses = payload.exercise_status || {};
+  renderLesson();
+}
+
+async function renderView() {
+  const route = routeFromHash();
+  if (busy && !sameRoute(route, currentRoute)) {
+    location.hash = routeHash(currentRoute);
+    return;
+  }
+  const changed = !sameRoute(route, currentRoute);
+  if (changed && currentRoute.view === "lesson") saveReadingPosition();
+  if (changed && currentRoute.view === "chat") chatScroll.set(activeSession, elements.messages.scrollTop);
+  currentRoute = route;
+  if (changed) routeSequence++;
+  document.querySelectorAll("[data-view]").forEach((panel) => { panel.hidden = panel.dataset.view !== route.view; });
+  document.querySelector(".path-rail").hidden = route.view === "sessions";
+  document.querySelector(".app-shell").classList.toggle("wide-view", route.view === "sessions");
+  document.querySelector("#session-heading").hidden = route.view === "sessions";
+  document.querySelector("#sessions-link").textContent = route.view === "sessions" ? "Sessions" : "← Sessions";
+  for (const [id, selected] of [["sessions-link", route.view === "sessions"], ["session-label", route.view === "chat"], ["skills-link", route.view === "skills"]]) {
+    const link = document.querySelector(`#${id}`);
+    if (selected) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+  if (route.view === "lesson") {
+    if (!activeSession) return;
+    if (changed || !lessonData || lessonData.id !== route.lessonId) {
+      lessonData = null;
+      elements.lessonDocument.textContent = "Opening lesson…";
+      elements.lessonExercises.replaceChildren();
+      elements.lessonMessages.replaceChildren();
+      try { await refreshLesson(route.lessonId, routeSequence); }
+      catch (error) { elements.lessonDocument.textContent = "Could not open this lesson."; elements.notice.textContent = error.message; }
+    }
+  } else {
+    document.title = `${{ chat: "Conversation", sessions: "Sessions", skills: "Skills" }[route.view]} · Milai`;
+    if (route.view === "chat" && changed) {
+      elements.messages.scrollTop = chatScroll.get(activeSession) ?? elements.messages.scrollHeight;
+    }
   }
 }
 
@@ -392,81 +560,101 @@ function setBusy(value) {
   busy = value;
   elements.send.disabled = value;
   elements.message.disabled = value;
-  for (const selector of ["#exercise-submit", "#exercise-continue"]) {
-    document.querySelector(selector).disabled = value;
-  }
-  document.querySelectorAll("#new-session, .session-list button, .lesson-link, .suggestions button, .exercise-launch").forEach((button) => { button.disabled = value; });
-}
-
-async function bootstrap() {
-  setBusy(true);
-  try {
-    const payload = await api("/api/bootstrap");
-    applySession(payload);
-  } catch (error) {
-    elements.notice.textContent = error.message;
-  } finally {
-    setBusy(false);
+  elements.lessonMessage.disabled = value;
+  document.querySelector("#lesson-send").disabled = value;
+  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .lesson-section button, .lesson-toolbar button"]) {
+    document.querySelectorAll(selector).forEach((button) => { button.disabled = value; });
   }
 }
 
-elements.composer.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const message = elements.message.value.trim();
+async function sendMainMessage(message, originLessonId = null, preserveDraft = false) {
   if (!message || busy) return;
+  const previousDraft = preserveDraft ? elements.message.value : "";
   elements.notice.textContent = "";
   elements.messages.querySelector(".welcome")?.remove();
-  appendMessage("user", message);
+  const user = appendMessage(elements.messages, "user", message);
   elements.message.value = "";
-  const pending = appendMessage("assistant", "Thinking with your learning history…", true);
+  savedWork.setMainDraft(activeSession, "");
+  const pending = appendMessage(elements.messages, "assistant", "Thinking with your learning history…", { pending: true });
   setBusy(true);
   try {
     const bubble = pending.querySelector(".bubble");
-    let plannerDraft = "";
     let replyDraft = "";
-    await streamChat(message, (event) => {
+    await streamChat({ session: activeSession, message, action: "message", ...(originLessonId ? { origin_lesson_id: originLessonId } : {}) }, (event) => {
       if (event.type === "stage") bubble.textContent = event.text;
-      if (event.type === "planner_delta") {
-        plannerDraft += event.text;
-        bubble.textContent = `Draft lesson plan (not saved yet):\n${plannerDraft}`;
-      }
       if (event.type === "reply_delta") {
         replyDraft += event.text;
-        bubble.textContent = `Draft reply (not saved yet):\n${replyDraft}`;
+        bubble.textContent = replyDraft;
       }
       if (event.type === "complete") {
         const payload = event.result;
         pending.remove();
-        appendMessage("assistant", payload.reply.text, false, payload.reply.activities || [], payload.reply.turn_id);
-        lessonAnchors = payload.lesson_anchors || {};
+        appendMessage(elements.messages, "assistant", payload.reply.text, {
+          turnId: payload.reply.turn_id, lessonCards: payload.reply.lesson_cards || [], activities: payload.reply.activities || [],
+        });
         renderLearning(payload.learning);
-        exercise.setStatuses(payload.exercise_status || {});
         renderSessions(payload.sessions);
       }
       elements.messages.scrollTop = elements.messages.scrollHeight;
     });
   } catch (error) {
-    elements.message.value = message;
-    pending.previousElementSibling?.remove();
+    user.remove();
     pending.remove();
+    elements.message.value = preserveDraft ? previousDraft : message;
+    savedWork.setMainDraft(activeSession, elements.message.value);
     elements.notice.textContent = error.message;
   } finally {
+    if (preserveDraft && !elements.notice.textContent) {
+      elements.message.value = previousDraft;
+      savedWork.setMainDraft(activeSession, previousDraft);
+    }
     setBusy(false);
-    if (!elements.message.closest("[data-view]").hidden) elements.message.focus();
+    if (currentRoute.view === "chat") elements.message.focus();
   }
-});
+}
 
-elements.message.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    elements.composer.requestSubmit();
-  }
-});
-
-elements.message.addEventListener("input", () => {
-  elements.message.style.height = "auto";
-  elements.message.style.height = `${Math.min(elements.message.scrollHeight, 130)}px`;
-});
+async function submitLessonTurn(message, action = "message", reference = {}) {
+  if (!message.trim() || busy || !lessonData) return;
+  const lessonId = currentRoute.lessonId;
+  const selected = action === "message" ? lessonState().selected : null;
+  const context = { ...reference };
+  if (selected?.kind === "section") context.section_id = selected.id;
+  if (selected?.kind === "exercise") context.exercise_id = selected.id;
+  elements.notice.textContent = "";
+  const user = appendMessage(elements.lessonMessages, "user", message, {
+    pending: true, reference: discussionReference({ ...context, action }),
+  });
+  const pending = appendMessage(elements.lessonMessages, "assistant", "Working on your lesson…", { pending: true });
+  elements.lessonProgress.textContent = action === "answer" ? "Checking your answer…" : "Thinking about your question…";
+  setBusy(true);
+  try {
+    let committedReply = null;
+    await streamChat({ session: activeSession, lesson_id: lessonId, message, action, ...context }, (event) => {
+      if (event.type === "stage") pending.querySelector(".bubble").textContent = event.text;
+      if (event.type === "complete") committedReply = event.result.reply;
+      // Structured lesson output is shown only after the complete event commits.
+    });
+    if (action === "answer") updateLessonState({ answers: { [context.exercise_id]: "" }, selected: { kind: "exercise", id: context.exercise_id } });
+    else updateLessonState({ draft: "" });
+    try {
+      await refreshLesson(lessonId);
+      elements.lessonProgress.textContent = "Saved to this lesson.";
+    } catch (error) {
+      user.className = "message user";
+      pending.remove();
+      appendMessage(elements.lessonMessages, "assistant", committedReply?.text || "Your reply was saved.", {
+        reference: discussionReference({ ...context, action }),
+      });
+      elements.lessonProgress.textContent = "Saved. Reopen the lesson to refresh exercise status.";
+      elements.notice.textContent = error.message;
+    }
+  } catch (error) {
+    user.remove();
+    pending.remove();
+    elements.lessonProgress.textContent = error.message;
+    elements.notice.textContent = error.message;
+  } finally { setBusy(false); }
+}
 
 function renderSessions(sessions) {
   sessionItems = sessions || sessionItems;
@@ -506,16 +694,20 @@ function renderSessions(sessions) {
 }
 
 function applySession(payload) {
-  if (activeSession) drafts.set(activeSession, elements.message.value);
+  if (activeSession) savedWork.setMainDraft(activeSession, elements.message.value);
+  const changed = activeSession !== payload.session;
   activeSession = payload.session;
-  lessonAnchors = payload.lesson_anchors || {};
-  exercise.setSession(activeSession, payload.exercise_status || {});
-  elements.message.value = drafts.get(activeSession) || "";
+  if (changed) {
+    lessonData = null;
+    lessonConversation = [];
+    exerciseStatuses = {};
+    routeSequence++;
+  }
+  elements.message.value = savedWork.mainDraft(activeSession);
   renderSessions(payload.sessions);
   renderConversation(payload.conversation);
-  elements.messages.scrollTop = scrollPositions.get(activeSession) ?? elements.messages.scrollHeight;
+  elements.messages.scrollTop = chatScroll.get(activeSession) ?? elements.messages.scrollHeight;
   renderLearning(payload.learning);
-  renderView();
 }
 
 async function manageSession(action, extra = {}) {
@@ -523,28 +715,55 @@ async function manageSession(action, extra = {}) {
   setBusy(true);
   elements.notice.textContent = "";
   try {
-    leaveExercise();
-    if (currentView === "chat") scrollPositions.set(activeSession, elements.messages.scrollTop);
+    saveReadingPosition();
+    if (currentRoute.view === "chat") chatScroll.set(activeSession, elements.messages.scrollTop);
     const payload = await api("/api/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, ...extra }),
     });
     applySession(payload);
-    if (action === "delete") drafts.delete(extra.session);
-    if (action === "delete") exercise.forgetSession(extra.session);
-    if (action === "delete") scrollPositions.delete(extra.session);
+    if (action === "delete") {
+      savedWork.forgetSession(extra.session);
+      chatScroll.delete(extra.session);
+    }
     setBusy(false);
-    location.hash = action === "create" || action === "select" ? "chat" : "sessions";
-    await renderView();
-  } catch (error) {
-    elements.notice.textContent = error.message;
-  } finally {
-    setBusy(false);
-  }
+    await navigate(action === "create" || action === "select" ? "chat" : "sessions");
+  } catch (error) { elements.notice.textContent = error.message; }
+  finally { setBusy(false); }
 }
 
+elements.composer.addEventListener("submit", (event) => {
+  event.preventDefault();
+  sendMainMessage(elements.message.value.trim());
+});
+elements.message.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); elements.composer.requestSubmit(); }
+});
+elements.message.addEventListener("input", () => {
+  if (activeSession) savedWork.setMainDraft(activeSession, elements.message.value);
+  elements.message.style.height = "auto";
+  elements.message.style.height = `${Math.min(elements.message.scrollHeight, 130)}px`;
+});
+document.querySelector("#lesson-composer").addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitLessonTurn(elements.lessonMessage.value, "message");
+});
+elements.lessonMessage.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); document.querySelector("#lesson-composer").requestSubmit(); }
+});
+elements.lessonMessage.addEventListener("input", () => updateLessonState({ draft: elements.lessonMessage.value }));
+elements.lessonReading.addEventListener("scroll", saveReadingPosition);
+document.querySelector("#remove-reference").addEventListener("click", () => { updateLessonState({ selected: null }); renderSelectedReference(); });
+document.querySelector("#lesson-tab").addEventListener("click", () => setLessonTab("lesson"));
+document.querySelector("#discussion-tab").addEventListener("click", () => setLessonTab("discussion"));
+document.querySelector("#back-to-conversation").addEventListener("click", () => navigate("chat"));
+document.querySelector("#continue-learning").addEventListener("click", async () => {
+  const origin = currentRoute.lessonId;
+  await navigate("chat");
+  await sendMainMessage("Continue learning from this lesson.", origin, true);
+});
 elements.newSession.addEventListener("click", () => manageSession("create"));
+
 const dialog = document.querySelector("#session-dialog");
 let dialogAction;
 let dialogSession;
@@ -570,4 +789,13 @@ document.querySelector("#session-dialog-form").addEventListener("submit", (event
   dialog.close();
   manageSession(dialogAction, { session: dialogSession, title: document.querySelector("#session-name").value });
 });
+
+window.addEventListener("hashchange", renderView);
+renderView();
+async function bootstrap() {
+  setBusy(true);
+  try { applySession(await api("/api/bootstrap")); }
+  catch (error) { elements.notice.textContent = error.message; }
+  finally { setBusy(false); await renderView(); }
+}
 bootstrap();

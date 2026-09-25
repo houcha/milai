@@ -1,8 +1,9 @@
-"""Live synthetic learner scenario; produces a reviewable transcript, never a mock."""
+"""Live synthetic lesson journey; writes a reviewable report, never a mock."""
 
 import argparse
 import asyncio
 import json
+import re
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -12,134 +13,289 @@ from milai.observability import Telemetry
 from milai.store import Store
 from milai.tutor import Tutor
 
-MESSAGES = [
-    "Hi, I'd like help learning a language.",
-    "English. I speak Spanish, but please explain in simple English. "
-    "I think I'm A2. I want to talk about trips and read basic websites. "
-    "I like technology and walking. What else do you need to know?",
-    "I prefer short public web pages and original exercises. "
-    "Please retrieve https://example.com as a short reading warmup, "
-    "choose one useful language skill, then give me an explanation and original "
-    "past-tense exercise: Yesterday I ___ to the park (go).",
-    "Yesterday I goed to the park.",
-    "Why isn't goed right? Please explain before I try again.",
-    "Yesterday I went to the park.",
-    "Let's continue with a fresh exercise based on how I did.",
+START = (
+    "I speak Spanish and am learning English at about A2 level. I want to describe "
+    "simple trips. Please explain in simple English, use short original examples, "
+    "and create a complete lesson on one useful past-tense skill with practice. "
+    "I prefer brief explanations before attempting exercises. "
+    "Include an independent exercise where I write a short trip account."
+)
+
+REGULAR_TRIP_SENTENCES = [
+    "Last Saturday, I visited a town and walked to a museum.",
+    "That afternoon, I explored the square and photographed a bridge.",
+    "That evening, I tasted local food and returned home.",
+    "Last Sunday, I planned another visit and shared my photos.",
+    "Last Monday, I described the trip and thanked my friend.",
+    "Yesterday, I organized the pictures and remembered the day.",
 ]
+MIXED_TRIP_SENTENCES = [
+    "Last Saturday, I went to a town and visited a museum.",
+    "That afternoon, I saw a bridge and walked beside the river.",
+    "That evening, I ate local food and explored the square.",
+    "Later that night, I took a photo and returned home.",
+    "Last Sunday, I met a friend and described the trip.",
+    "Yesterday, I wrote a postcard and shared the photos.",
+]
+
+
+def choose_trip_exercise(exercises: list[dict]) -> dict:
+    """Choose an open writing task this synthetic answer can actually address."""
+    for exercise in exercises:
+        task = exercise["task"].lower()
+        if (
+            exercise.get("scaffolding") == "none"
+            and any(word in task for word in ("write", "describe", "tell"))
+            and any(word in task for word in ("trip", "journey", "travel", "visit"))
+            and not re.search(r"\b(?:blank|blanks|parentheses|complete)\b", task)
+        ):
+            return exercise
+    raise RuntimeError("Generated lesson has no compatible trip-writing exercise")
+
+
+def trip_answer_for(exercise: dict) -> str:
+    """Meet the selected open-writing task's sentence and verb requirements."""
+    task = exercise["task"].lower()
+    exact_count = re.search(
+        r"\b(?:write|compose)\s+(three|four|five|six|[3-6])\s+", task
+    )
+    counts = {"three": 3, "four": 4, "five": 5, "six": 6}
+    if exact_count:
+        count = counts.get(
+            exact_count[1], int(exact_count[1]) if exact_count[1].isdigit() else 6
+        )
+    elif re.search(r"\b(?:5|five)\s*[–-]\s*(?:7|seven)\s+sentences\b", task):
+        count = 6
+    else:
+        count = 6
+    sentences = MIXED_TRIP_SENTENCES if "irregular" in task else REGULAR_TRIP_SENTENCES
+    return " ".join(sentences[:count])
+
+
+def attempt_count(store: Store, session: str) -> int:
+    return int(
+        store.db.execute(
+            "SELECT count(*) FROM attempts a JOIN turns t ON t.id=a.turn_id "
+            "WHERE t.session=?",
+            (session,),
+        ).fetchone()[0]
+    )
 
 
 async def run(settings: Settings, pause: float = 0, report: Path | None = None):
     telemetry = Telemetry()
-    transcript = []
-    # Isolate synthetic evidence from the real learner database.
+    transcript: list[dict] = []
+    phase = "setup"
+    completed_report = False
     with tempfile.TemporaryDirectory(prefix="milai-acceptance-") as directory:
         config = replace(settings, database=Path(directory) / "acceptance.db")
         store = Store(config.database)
         learner = store.owner
         session = store.session(learner)
+        scope = store.learning_scope(learner, session)
         tutor = Tutor(config, store, telemetry)
-        events_before_restart: set[str] = set()
+
+        async def turn(label: str, message: str, **references):
+            nonlocal phase
+            phase = label
+            if transcript and pause:
+                await asyncio.sleep(pause)
+            print(f"[{label}] Learner: {message}", flush=True)
+            reply = await tutor.respond(learner, session, message, **references)
+            print(f"Tutor: {reply.text}", flush=True)
+            entry = {
+                "phase": label,
+                "learner": message,
+                "references": references,
+                "tutor": reply.model_dump(mode="json"),
+                "trace_id": telemetry.last_trace_id,
+            }
+            transcript.append(entry)
+            return reply
+
         try:
-            for index, message in enumerate(MESSAGES):
-                if index and pause:
-                    await asyncio.sleep(pause)
-                if index == len(MESSAGES) - 1:
-                    events_before_restart = {
-                        row[0]
-                        for row in store.db.execute(
-                            "SELECT id FROM events WHERE session=?", (session,)
-                        )
-                    }
-                    await tutor.close()
-                    store.close()
-                    store = Store(config.database)
-                    session = store.session(learner, session)
-                    tutor = Tutor(config, store, telemetry)
-                print(f"Learner: {message}", flush=True)
-                reply = await tutor.respond(learner, session, message)
-                print(f"Tutor: {reply.text}", flush=True)
-                for activity in reply.activities:
-                    print(
-                        f"[{activity['kind']}] {activity['title']}: {activity['task']}",
-                        flush=True,
-                    )
-                print(flush=True)
-                transcript.append(
-                    {
-                        "learner": message,
-                        "tutor": reply.model_dump(mode="json"),
-                        "trace_id": telemetry.last_trace_id,
-                    }
-                )
-            snapshot = store.inspect(store.learning_scope(learner, session))
-            state = snapshot["state"]
+            opening = await turn("main_generation", START)
+            lessons = store.lessons(scope)
+            if not lessons:
+                raise RuntimeError("The opening request did not create a lesson")
+            lesson_id = lessons[-1]["id"]
+            detail = store.lesson_detail(learner, session, lesson_id)
+            sections = detail["sections"]
+            exercises = detail["exercises"]
+            if not sections or not exercises:
+                raise RuntimeError("The generated lesson has no sections or exercises")
+            section_id = sections[0]["id"]
+            selected_exercise = choose_trip_exercise(exercises)
+            exercise_id = selected_exercise["id"]
+
+            await turn(
+                "section_question",
+                "Can you explain this section with another short example?",
+                lesson_id=lesson_id,
+                section_id=section_id,
+            )
+            attempts_before_question = attempt_count(store, session)
+            await turn(
+                "exercise_question",
+                "What is this exercise asking me to do? Please do not assess me yet.",
+                lesson_id=lesson_id,
+                exercise_id=exercise_id,
+            )
+            question_added_no_attempt = (
+                attempt_count(store, session) == attempts_before_question
+            )
+
+            attempts_before_answer = attempt_count(store, session)
+            await turn(
+                "answer_submission",
+                trip_answer_for(selected_exercise),
+                lesson_id=lesson_id,
+                exercise_id=exercise_id,
+                action="answer",
+            )
+            answer_was_assessed = attempt_count(store, session) > attempts_before_answer
+            await turn(
+                "main_continuation",
+                "Continue learning from that lesson using my attempt. If a review is "
+                "due, recommend it; otherwise choose a useful next step.",
+                origin_lesson_id=lesson_id,
+            )
+
+            phase = "restart"
+            focus_before_reopen = store.active_lesson(scope)
+            before_restart = store.lesson_detail(learner, session, lesson_id)
+            local_before_restart = store.conversation(
+                learner, session, lesson_id=lesson_id
+            )
+            main_before_restart = store.conversation(learner, session)
+            await tutor.close()
+            store.close()
+            store = Store(config.database)
+            session = store.session(learner, session)
+            scope = store.learning_scope(learner, session)
+            tutor = Tutor(config, store, telemetry)
+            after_restart = store.lesson_detail(learner, session, lesson_id)
+            local_after_restart = store.conversation(
+                learner, session, lesson_id=lesson_id
+            )
+            main_after_restart = store.conversation(learner, session)
+            after_restart_reply = await turn(
+                "lesson_after_restart",
+                "What is the most useful thing to remember from this lesson?",
+                lesson_id=lesson_id,
+            )
+
+            local_users = [
+                item for item in local_before_restart if item["role"] == "user"
+            ]
+            main_users = [
+                item for item in main_before_restart if item["role"] == "user"
+            ]
+            preference = store.profile(scope).get("teaching_preferences", {})
+            latest_summary = store.discussion_summary(scope, lesson_id)
             checks = {
-                "profile_saved": all(
-                    field in state["profile"]
-                    for field in (
-                        "target_language",
-                        "explanation_language",
-                        "level",
-                        "goals",
-                        "interests",
-                        "source_preferences",
-                    )
+                "lesson_card": any(
+                    card["id"] == lesson_id for card in opening.lesson_cards
                 ),
-                "lesson_focus": bool(state["lessons"])
-                and all(lesson["focus_skill_id"] for lesson in state["lessons"]),
-                "live_source_available": any(
-                    s["status"] == "available" for s in state["sources"]
+                "complete_document": bool(
+                    detail.get("objective")
+                    and detail.get("recap")
+                    and detail.get("worked_examples")
+                    and sections
                 ),
-                "exercise_saved": any(
-                    e["kind"] == "exercise" for e in snapshot["events"]
+                "exercise_contract": 3 <= len(exercises) <= 6
+                and sum(e.get("scaffolding") == "none" for e in exercises) >= 2,
+                "section_question_scoped": any(
+                    item.get("section_id") == section_id for item in local_users
                 ),
-                "needs_work_evidence": any(
-                    e["outcome"] == "needs_work" for e in state["recent_observations"]
+                "exercise_question_scoped": any(
+                    item.get("exercise_id") == exercise_id
+                    and item.get("action") == "message"
+                    for item in local_users
                 ),
-                "assisted_success": any(
-                    e["outcome"] == "success" and not e["independent_success"]
-                    for e in state["recent_observations"]
+                "question_without_attempt": question_added_no_attempt,
+                "answer_assessed": answer_was_assessed,
+                "main_continuation_scoped": any(
+                    item.get("origin_lesson_id") == lesson_id for item in main_users
                 ),
-                "adapted_action_after_restart": any(
-                    e["session"] == session
-                    and e["id"] not in events_before_restart
-                    and e["kind"] in {"lesson", "exercise"}
-                    for e in snapshot["events"]
+                "discussion_summary_saved": bool(
+                    before_restart.get("discussion_summary")
                 ),
+                "summary_updated_after_restart": bool(
+                    latest_summary
+                    and latest_summary["updating_turn_id"]
+                    == after_restart_reply.turn_id
+                    and len(latest_summary["summary"]) <= 2000
+                ),
+                "explicit_preference_saved": bool(
+                    preference.get("value")
+                    and "brief explanations" in preference.get("learner_quote", "")
+                ),
+                "histories_isolated": all(
+                    item.get("lesson_id") == lesson_id for item in local_users
+                )
+                and all(item.get("lesson_id") is None for item in main_users),
+                "viewing_preserved_focus": focus_before_reopen
+                == store.active_lesson(scope),
+                "document_persisted_after_restart": before_restart == after_restart,
+                "discussions_persisted_after_restart": (
+                    local_before_restart == local_after_restart
+                    and main_before_restart == main_after_restart
+                ),
+                "post_restart_lesson_turn": len(
+                    store.conversation(learner, session, lesson_id=lesson_id)
+                )
+                > len(local_after_restart),
             }
             result = {
-                "kind": "live-synthetic",
-                "model": settings.model,
-                "checks": checks,
+                "kind": "live-synthetic-lesson",
+                "models": {
+                    "chat": config.model,
+                    "lesson": config.lesson_model,
+                },
+                "model_compatibility": {
+                    "generation_completed": checks["complete_document"],
+                    "processing_tier": (
+                        "See the separate live probe; requested Fast is not a "
+                        "tier guarantee."
+                    ),
+                },
+                "application_contracts": checks,
+                "teaching_quality": {
+                    "reviewed": False,
+                    "note": (
+                        "Review the transcript for accuracy, useful feedback, "
+                        "and suitable pacing."
+                    ),
+                },
+                "lesson": detail,
                 "transcript": transcript,
-                "learning": snapshot,
+                "learning": store.inspect(scope),
             }
             serialized = json.dumps(result, indent=2, ensure_ascii=False)
             if report:
                 report.write_text(serialized + "\n")
+            completed_report = True
             print(serialized)
             if not all(checks.values()):
-                raise RuntimeError(
-                    "Live acceptance missing capabilities; review transcript"
-                )
-        finally:
-            if report and len(transcript) < len(MESSAGES):
+                raise RuntimeError("Live acceptance missing contracts; review report")
+        except Exception:
+            if report and not completed_report:
+                failure = {
+                    "kind": "live-synthetic-lesson-incomplete",
+                    "phase": phase,
+                    "models": {
+                        "chat": config.model,
+                        "lesson": config.lesson_model,
+                    },
+                    "transcript": transcript,
+                    "failed_trace_id": telemetry.last_trace_id,
+                }
                 report.write_text(
-                    json.dumps(
-                        {
-                            "kind": "live-synthetic-incomplete",
-                            "model": settings.model,
-                            "transcript": transcript,
-                            "learning": store.inspect(
-                                store.learning_scope(learner, session)
-                            ),
-                            "failed_trace_id": telemetry.last_trace_id,
-                        },
-                        indent=2,
-                        ensure_ascii=False,
-                    )
-                    + "\n"
+                    json.dumps(failure, indent=2, ensure_ascii=False) + "\n"
                 )
+            raise
+        finally:
             await tutor.close()
             store.close()
 

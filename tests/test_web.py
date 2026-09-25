@@ -146,7 +146,8 @@ def test_bootstrap_replays_complete_conversation_and_latest_session(tmp_path):
 
     for index in range(60):
         store.db.execute(
-            "INSERT INTO turns VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO turns (id, session, learner, created, message, reply, "
+            "items, prompt_version, action) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 f"turn-{index}",
                 second,
@@ -156,6 +157,7 @@ def test_bootstrap_replays_complete_conversation_and_latest_session(tmp_path):
                 f"answer {index}",
                 "[]",
                 "test",
+                "message",
             ),
         )
     empty = store.session(learner)
@@ -196,4 +198,53 @@ def test_lesson_anchors_follow_committed_session_turns(tmp_path):
     assert "turn_id" not in history[1]
     application = WebApplication(store, cast(Any, object()), session, 8765)
     assert application.bootstrap()["lesson_anchors"] == {lesson["id"]: "seed"}
+    store.close()
+
+
+def test_lesson_detail_route_returns_document_and_scoped_discussion(tmp_path):
+    from tests.test_lesson_conversations import _seed_lesson
+
+    class Writer:
+        def __init__(self):
+            self.data = bytearray()
+
+        def write(self, value):
+            self.data.extend(value)
+
+        async def drain(self):
+            pass
+
+        def close(self):
+            pass
+
+        async def wait_closed(self):
+            pass
+
+    store = Store(tmp_path / "route.db")
+    session = store.session(store.owner)
+    lesson = _seed_lesson(store, session, "start", "pronouns", "Subject pronouns")
+    app = WebApplication(store, cast(Any, object()), session, 8765)
+    writer = Writer()
+
+    async def request():
+        reader = asyncio.StreamReader()
+        reader.feed_data(
+            (
+                f"GET /api/lessons/{lesson['id']}?session={session} HTTP/1.1\r\n"
+                "Host: 127.0.0.1:8765\r\n\r\n"
+            ).encode()
+        )
+        reader.feed_eof()
+        await app.handle(reader, cast(Any, writer))
+
+    asyncio.run(request())
+    headers, body = bytes(writer.data).split(b"\r\n\r\n", 1)
+    payload = json.loads(body)
+    assert b"200 OK" in headers
+    assert payload["lesson"]["objective"].startswith("Use Subject pronouns")
+    assert len(payload["lesson"]["exercises"]) == 3
+    assert payload["conversation"] == []
+    assert set(payload["exercise_status"]) == {
+        exercise["id"] for exercise in payload["lesson"]["exercises"]
+    }
     store.close()

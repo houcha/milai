@@ -4,7 +4,7 @@ import asyncio
 import json
 from contextlib import suppress
 from importlib.resources import files
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from openai import APITimeoutError, RateLimitError
 
@@ -82,6 +82,38 @@ class WebApplication:
             ),
         }
 
+    def _turn_view(self, reply) -> dict:
+        return {
+            "reply": reply.model_dump(mode="json"),
+            "conversation": self.store.conversation(
+                self.learner, self.session, limit=None
+            ),
+            "sessions": self.store.sessions(self.learner),
+            "exercise_status": self.store.exercise_statuses(self.learner, self.session),
+            "learning": learning_view(
+                self.store.learning_view(
+                    self.store.learning_scope(self.learner, self.session)
+                )
+            ),
+        }
+
+    @staticmethod
+    def _turn_options(payload: dict) -> dict:
+        options = {}
+        for key in (
+            "lesson_id",
+            "section_id",
+            "exercise_id",
+            "origin_lesson_id",
+            "action",
+        ):
+            if key in payload:
+                value = payload[key]
+                if not isinstance(value, str):
+                    raise ValueError(f"{key} must be text")
+                options[key] = value
+        return options
+
     async def handle(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
@@ -99,7 +131,8 @@ class WebApplication:
                 if line and ":" in line
                 for key, value in [line.split(":", 1)]
             }
-            path = target.split("?", 1)[0]
+            parsed_target = urlsplit(target)
+            path = parsed_target.path
             if not self.valid_host(headers.get("host", "")):
                 await self.respond(writer, 400, b"Invalid host")
                 return
@@ -112,6 +145,42 @@ class WebApplication:
             if method == "GET" and path == "/api/bootstrap":
                 async with self.lock:
                     await self.json_response(writer, 200, self.bootstrap())
+                return
+            if method == "GET" and path.startswith("/api/lessons/"):
+                lesson_id = path.removeprefix("/api/lessons/")
+                query = parse_qs(parsed_target.query)
+                if not lesson_id or query.get("session") != [self.session]:
+                    await self.json_response(
+                        writer, 400, {"error": "Choose a lesson in the active session"}
+                    )
+                    return
+                async with self.lock:
+                    try:
+                        scope = self.store.learning_scope(self.learner, self.session)
+                        lesson = self.store.lesson_detail(
+                            scope, self.session, lesson_id
+                        )
+                        conversation = self.store.conversation(
+                            self.learner, self.session, limit=None, lesson_id=lesson_id
+                        )
+                        exercise_status = {
+                            exercise["id"]: self.store.exercise_status(
+                                self.learner, self.session, exercise["id"]
+                            )
+                            for exercise in lesson["exercises"]
+                        }
+                    except ValueError as exc:
+                        await self.json_response(writer, 400, {"error": str(exc)})
+                        return
+                await self.json_response(
+                    writer,
+                    200,
+                    {
+                        "lesson": lesson,
+                        "conversation": conversation,
+                        "exercise_status": exercise_status,
+                    },
+                )
                 return
             if method == "POST" and path in {
                 "/api/chat",
@@ -185,22 +254,13 @@ class WebApplication:
                     raise ValueError(
                         "The active session changed. Reopen your session and retry."
                     )
-                reply = await self.tutor.respond(self.learner, self.session, message)
-                result = {
-                    "reply": reply.model_dump(mode="json"),
-                    "lesson_anchors": self.store.lesson_anchors(
-                        self.learner, self.session
-                    ),
-                    "sessions": self.store.sessions(self.learner),
-                    "exercise_status": self.store.exercise_statuses(
-                        self.learner, self.session
-                    ),
-                    "learning": learning_view(
-                        self.store.learning_view(
-                            self.store.learning_scope(self.learner, self.session)
-                        )
-                    ),
-                }
+                reply = await self.tutor.respond(
+                    self.learner,
+                    self.session,
+                    message,
+                    **self._turn_options(payload),
+                )
+                result = self._turn_view(reply)
             await self.json_response(writer, 200, result)
         except RateLimitError:
             await self.json_response(
@@ -220,7 +280,7 @@ class WebApplication:
                     "Your message was not saved; try again shortly."
                 },
             )
-        except ValueError as exc:
+        except (ValueError, PermissionError) as exc:
             await self.json_response(writer, 400, {"error": str(exc)})
         except Exception as exc:
             print(f"Tutor turn failed: {type(exc).__name__}")
@@ -261,23 +321,13 @@ class WebApplication:
                 if not isinstance(message, str):
                     raise ValueError("Message must be text")
                 reply = await self.tutor.respond(
-                    self.learner, self.session, message, on_progress=send
+                    self.learner,
+                    self.session,
+                    message,
+                    on_progress=send,
+                    **self._turn_options(payload),
                 )
-                result = {
-                    "reply": reply.model_dump(mode="json"),
-                    "lesson_anchors": self.store.lesson_anchors(
-                        self.learner, self.session
-                    ),
-                    "sessions": self.store.sessions(self.learner),
-                    "exercise_status": self.store.exercise_statuses(
-                        self.learner, self.session
-                    ),
-                    "learning": learning_view(
-                        self.store.learning_view(
-                            self.store.learning_scope(self.learner, self.session)
-                        )
-                    ),
-                }
+                result = self._turn_view(reply)
             await send({"type": "complete", "result": result})
         except RateLimitError:
             await send(
@@ -293,7 +343,7 @@ class WebApplication:
                     "error": "The model provider timed out. This turn was not saved.",
                 }
             )
-        except ValueError as exc:
+        except (ValueError, PermissionError) as exc:
             await send({"type": "error", "error": str(exc)})
         except Exception as exc:
             print(f"Tutor turn failed: {type(exc).__name__}")
@@ -348,21 +398,20 @@ class WebApplication:
         message = payload.get("text", "")
         if not isinstance(message, str):
             raise ValueError("Answer must be text")
+        scope = self.store.learning_scope(self.learner, self.session)
+        exercise = self.store.exercise(scope, exercise_id)
         reply = await self.tutor.respond(
-            self.learner, self.session, message, exercise_id
+            self.learner,
+            self.session,
+            message,
+            lesson_id=exercise["lesson_id"],
+            exercise_id=exercise_id,
+            action="answer",
         )
         return {
-            "reply": reply.model_dump(mode="json"),
-            "lesson_anchors": self.store.lesson_anchors(self.learner, self.session),
-            "sessions": self.store.sessions(self.learner),
+            **self._turn_view(reply),
             "status": self.store.exercise_status(
                 self.learner, self.session, exercise_id
-            ),
-            "exercise_status": self.store.exercise_statuses(self.learner, self.session),
-            "learning": learning_view(
-                self.store.learning_view(
-                    self.store.learning_scope(self.learner, self.session)
-                )
             ),
         }
 

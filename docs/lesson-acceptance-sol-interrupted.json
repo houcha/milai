@@ -1,0 +1,10 @@
+{
+  "kind": "live-synthetic-lesson-incomplete",
+  "phase": "main_generation",
+  "models": {
+    "chat": "gpt-6-sol",
+    "lesson": "gpt-6-sol"
+  },
+  "transcript": [],
+  "failed_trace_id": "01189ba2f968f31f734ebaeb2ffd0226"
+}

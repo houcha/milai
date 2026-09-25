@@ -2,90 +2,103 @@
 
 `CLI/Web -> Tutor -> OpenAI Agents SDK Runner -> OpenAI Responses API`
 
-Milai has one learner-facing tutor. The tutor discovers intent, explains, exercises,
-assesses, and adapts. `start_lesson` invokes a private read-only structured planner
-when the focused skill changes. The application validates and persists the result
-atomically. The planner has no write authority or learner-facing reply.
+Milai has one learner-facing tutor with two conversation scopes in each session:
+main chat and one discussion per lesson. The main chat chooses direction and
+introduces a generated lesson with a card. Lesson discussions answer questions,
+assess submitted answers, and add requested practice. The tutor keeps its chat
+model separate from a private structured lesson planner; both share one
+authenticated API client and one shutdown path.
+
+## Lesson generation
+
+`start_lesson` supplies the planner with explicit learner goals, evidence,
+reusable skills, prerequisite status, validated source excerpts, and a focused
+lesson intent. The planner returns a typed draft with one focus skill and its
+direct prerequisites, objective, ordered Markdown sections with stable IDs,
+worked examples, recap, and three to six exercises. At least two exercises are
+unscaffolded. The application resolves skill references, checks ownership,
+prerequisite mastery, content bounds, and exercise contracts before saving.
+The document is capped at 32,000 characters; the generation request allows
+32,768 output tokens shared by reasoning and visible output.
+
+Generation uses `OPENAI_LESSON_MODEL=gpt-6-sol`,
+`OPENAI_LESSON_REASONING_EFFORT=low`, and
+`OPENAI_LESSON_SERVICE_TIER=fast` by default. The SDK receives the reasoning
+effort and `ModelSettings.extra_body={"service_tier": "fast"}`. Chat, lesson
+questions, assessments, and extra practice retain the configured chat model,
+low reasoning, and its existing processing setting. No model or effort fallback
+occurs on unsupported configuration, provider errors, or timeouts. A SQLite
+transaction covers lesson content, exercises, card linkage, main reply, and the
+rest of the turn. Progress stages can be shown while generation runs; only
+committed content is exposed as a finished lesson.
 
 ## Learning state
 
-Each session has a skill graph and a chronological lesson list. A skill is a
-language-specific, reusable ability with a definition and observable success
-criteria. Directed prerequisite edges must be acyclic. A lesson references exactly
-one focus skill. The latest lesson is active until a new lesson is created. Repeating
-a focus skill creates a new Review entry while preserving the earlier entry. Titles
-are derived from language and skill, so a context or source cannot become a lesson
-title.
+Each session has a skill graph and a chronological list of generated lessons.
+A skill is a language-specific, reusable ability with a definition and observable
+success criteria. Directed prerequisite edges must be acyclic. A lesson references
+exactly one focus skill. Generating a lesson updates the session's current
+teaching focus; viewing an older lesson does not. A later lesson on the same skill
+is a separate Review entry. Titles are derived from language and skill, so an
+example context or source cannot become the lesson title.
 
-New skills can be taught only after every ancestor prerequisite is mastered. Mastery
-is derived from observations: two independent successes on distinct exercises since
-the latest substantial `needs_work`. An independent success requires an unscaffolded
-exercise and no skill-specific assistance. A mostly correct response with a minor
-slip can count as success while retaining its severity for a later check. `uncertain`
-and assisted success do not count.
-The gate is checked in storage, including when a learner requests advanced material.
-The planner selects the earliest eligible prerequisite when needed.
-Two consecutive `needs_work` observations on distinct exercises flag an earlier
-active skill for review. A minor slip on a previous skill becomes due after two
-distinct exercises targeting other skills; its automatic Review waits until the
-current skill is mastered. Assessment atomically opens a due Review lesson and
-returns it to the tutor for learner-facing explanation. Until that point,
-an immediate repeat of the same skill is rejected unless the learner explicitly
-requests it.
+New skills require every ancestor prerequisite to be mastered. Mastery is derived
+from two independent successes on distinct unscaffolded exercises since the
+latest substantial `needs_work` observation. An independent success has no
+skill-specific assistance. A minor slip can count as success while remaining
+due for a later check. Reading, navigation, and discussion without an answer
+submission create no attempt or mastery evidence. Prepared exercises remain
+accessible after a minor slip; automatic new remedial practice waits for the
+existing delayed-review rule. An explicit request can bring practice forward.
+Assessments record due-review recommendations. Only an explicit continuation
+request lets main chat generate the next eligible lesson or review.
 
-An exercise belongs to the active lesson and has exactly one target skill, the
-lesson focus. Supporting skills must have appeared in earlier lessons and use the
-same language. Observations, assistance, and attempts keep their skill IDs. Skill
-supersession preserves historical lessons and evidence; the next lesson can use a
-replacement skill. Progress summaries remain derived from evidence.
+Exercises belong to a lesson, target its focus skill, and may list previously
+taught supporting skills. Attempts and help retain exact exercise and skill
+references. Ambiguous requests are clarified before evidence is assigned. Skills
+can be superseded without rewriting historical lessons or observations.
 
-## Tutor loop and tools
+## Tutor loop and context
 
-One `Tutor.respond` call is one learner turn. The Runner can make multiple model
-calls and tool calls before final prose. Local writes are serialized with
-`ToolExecutionConfig(max_function_tool_concurrency=1)`. A SQLite transaction wraps
-the full turn; per-tool savepoints make correctable validation failures no-write.
-The final reply and structured exercises commit together.
+One `Tutor.respond` call is one learner turn. The application validates the
+session, lesson, section, and exercise relationship before model execution and
+distinguishes a question from an answer submission. The Runner can make several
+model and tool calls. Local writes are serialized with
+`ToolExecutionConfig(max_function_tool_concurrency=1)`. A SQLite transaction
+wraps the turn; per-tool savepoints keep correctable validation failures free of
+partial writes. The model cannot choose ownership or event provenance.
 
-The stable tool inventory covers profile facts, skill search, `start_lesson`, skill
-supersession, exercise presentation, assistance, attempt assessment, bounded recall,
-and source handling. `start_lesson` takes lesson intent, derives target language from
-saved facts, and gives the planner the profile, learner message, active lesson,
-reusable skills, prerequisite mastery, and evidence. Its typed output selects one
-existing skill key or one new skill specification with direct prerequisites. Storage
-checks ownership, duplicates, language, DAG constraints, and prerequisite mastery.
-The learner-facing tutor explains any prerequisite detour in plain language.
-
-The tutor receives up to six learner-facing turns or 20,000 characters of replay.
-Dynamic learning state is capped at 16,000 characters and includes profile, active
-lesson, recent lessons, skill catalog and mastery, active exercise, recent focus
-evidence, and source metadata. Full source bodies and raw tool traffic are excluded.
-The tutor requests bounded source excerpts when needed. Web chat streams provisional
-planner and reply text; only the committed response replaces the draft.
-
-The browser opens a presented task through **Start exercise**. Answer turns carry
-selected exercise ID as application context. Questions without assessment stay
-clarifications. A successful latest assessment closes the task. Continue returns
-to conversation after an answered turn without recording assistance. Exercise
-status is rebuilt from attempts and assistance after reload.
+Main replay contains only main conversation turns. It includes the session's
+shared profile and evidence, lesson summaries, review recommendations, and
+bounded retrieval of a selected lesson's document or discussion. Lesson replay
+contains only that lesson's bounded local history, its complete document loaded
+outside the shared-state budget, a rolling discussion summary, the selected
+section or exercise, and relevant shared learning state. Lesson turns produce a
+structured learner-facing reply and an updated summary of at most 2,000
+characters. Both save atomically, with the updating turn recorded. Summaries
+retain unresolved questions and requested next steps. Persistent goals and
+preferences require explicit learner statements; `teaching_preferences` stores
+their quote.
 
 ## Storage and navigation
 
-SQLite schema 4 has normalized tables for sessions, turns, events, facts, sources,
-skills, prerequisites, supersessions, lessons, exercises, exercise skills and sources,
-assistance, attempts, observations, and ordered turn exercises. Opaque IDs are
-checked against the session's learning scope. The model cannot choose a learner,
-session, database, or event provenance. Opening an older schema fails with an
-explicit `milai reset --yes` instruction. Reset archives the database and WAL/SHM
-sidecars before creating fresh schema 4. Existing schema 4 databases gain an
-additive `issue_severity` observation column on open; old observations retain their
-original outcome and have no retrospective severity.
+SQLite schema 5 adds fixed lesson documents, scoped turns and references,
+discussion summaries, current teaching focus, and turn-to-lesson presentation
+links. Ownership checks and session deletion cover every record. Older schemas
+fail on open with an explicit `milai reset --yes` instruction; reset archives the
+database and WAL/SHM sidecars before creating fresh schema 5.
 
-The lesson sidebar is chronological; its latest entry is current. Clicking a lesson
-jumps to its original committed assistant turn without changing focus. Session-scoped
-`lesson_anchors` derive those links from audit events joined to committed turns.
-Sessions own create, select, rename, and delete controls. Deleting one session's
-learning state leaves other sessions intact.
+The browser lesson route shows the document beside its discussion. On narrow
+screens, **Lesson** and **Discussion** tabs replace the columns. Exercises appear
+under the explanation, with status, answer fields, and **Ask about this exercise**.
+Sections have stable **Ask about this section** references. The selected reference
+appears beside the composer and can be removed. Cards and sidebar entries open
+stored lessons directly. **Back to conversation** navigates without changing
+focus; **Continue learning** sends a main-chat continuation tied to its origin
+lesson. Browser session storage keeps per-session, per-lesson drafts, selected
+exercise, and reading position through reloads and clears them on session delete.
+The terminal mirrors navigation with `/lessons`, `/lesson <id>`, `/back`, and
+`/answer <exercise-id> <text>`.
 
 ## Sources and observability
 
@@ -94,6 +107,6 @@ and timeouts, pins public DNS addresses, and disallows redirects. Source text is
 untrusted data. Langfuse's Agents instrumentation exports framework spans; Milai
 adds one turn span with pseudonymous IDs, prompt hash, and committed event IDs.
 Content is masked by default unless `MILAI_TRACE_CONTENT=true`. Responses use
-`store=false` with encrypted reasoning items for tool continuation. Each model
-request and tutor turn has a 300-second timeout; failed turns roll back learning
-writes and transcript together.
+`store=false` with encrypted reasoning items for tool continuation. Model
+requests and tutor turns keep their existing 300-second timeout and no-retry
+behavior. A failed turn rolls back learning changes and transcript together.
