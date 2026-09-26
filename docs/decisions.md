@@ -1,5 +1,15 @@
 # Decision log
 
+## 2026-09-26 — Check exercise answers in the background
+
+- Scope pending answer state and disabled controls to the submitted exercise.
+  Keep navigation, reading, other exercises, and discussion drafting available.
+  Preserve other fields and focus by updating only the assessed card.
+- Keep model writes serialized, but serve lesson and bootstrap reads from
+  separate read-only snapshots so navigation sees committed data immediately.
+- Capture the originating session, lesson, and exercise for asynchronous work;
+  navigation must not redirect feedback or clear another lesson's draft.
+
 ## 2026-09-26 — Exercise responses stay on their cards
 
 - Do not replay answer submissions or assessment replies in the browser's

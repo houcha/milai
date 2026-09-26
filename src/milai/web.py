@@ -65,20 +65,17 @@ class WebApplication:
             ),
         }
 
-    def bootstrap(self) -> dict:
+    def bootstrap(self, store: Store | None = None) -> dict:
         """Return everything the browser needs to render the selected session."""
+        store = store or self.store
         return {
             "session": self.session,
-            "lesson_anchors": self.store.lesson_anchors(self.learner, self.session),
-            "sessions": self.store.sessions(self.learner),
-            "conversation": self.store.conversation(
-                self.learner, self.session, limit=None
-            ),
-            "exercise_status": self.store.exercise_statuses(self.learner, self.session),
+            "lesson_anchors": store.lesson_anchors(self.learner, self.session),
+            "sessions": store.sessions(self.learner),
+            "conversation": store.conversation(self.learner, self.session, limit=None),
+            "exercise_status": store.exercise_statuses(self.learner, self.session),
             "learning": learning_view(
-                self.store.learning_view(
-                    self.store.learning_scope(self.learner, self.session)
-                )
+                store.learning_view(store.learning_scope(self.learner, self.session))
             ),
         }
 
@@ -144,8 +141,9 @@ class WebApplication:
                 )
                 return
             if method == "GET" and path == "/api/bootstrap":
-                async with self.lock:
-                    await self.json_response(writer, 200, self.bootstrap())
+                with self.store.read_snapshot() as store:
+                    result = self.bootstrap(store)
+                await self.json_response(writer, 200, result)
                 return
             if method == "GET" and path.startswith("/api/lessons/"):
                 lesson_id = path.removeprefix("/api/lessons/")
@@ -155,24 +153,26 @@ class WebApplication:
                         writer, 400, {"error": "Choose a lesson in the active session"}
                     )
                     return
-                async with self.lock:
+                with self.store.read_snapshot() as store:
                     try:
-                        scope = self.store.learning_scope(self.learner, self.session)
-                        lesson = self.store.lesson_detail(
-                            scope, self.session, lesson_id
-                        )
-                        conversation = self.store.conversation(
+                        scope = store.learning_scope(self.learner, self.session)
+                        lesson = store.lesson_detail(scope, self.session, lesson_id)
+                        conversation = store.conversation(
                             self.learner, self.session, limit=None, lesson_id=lesson_id
                         )
                         exercise_status = {
-                            exercise["id"]: self.store.exercise_status(
+                            exercise["id"]: store.exercise_status(
                                 self.learner, self.session, exercise["id"]
                             )
                             for exercise in lesson["exercises"]
                         }
                     except ValueError as exc:
-                        await self.json_response(writer, 400, {"error": str(exc)})
-                        return
+                        error = str(exc)
+                    else:
+                        error = None
+                if error:
+                    await self.json_response(writer, 400, {"error": error})
+                    return
                 await self.json_response(
                     writer,
                     200,

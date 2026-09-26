@@ -278,6 +278,21 @@ class Store:
         # Schema 5 upgrades without losing learning state. Earlier schemas still
         # require an explicit archival reset.
 
+    @contextmanager
+    def read_snapshot(self) -> Iterator[Store]:
+        """Read committed state without waiting for an in-flight tutor turn."""
+        snapshot = object.__new__(Store)
+        snapshot.path = self.path
+        snapshot.db = sqlite3.connect(
+            self.path.resolve().as_uri() + "?mode=ro", uri=True, isolation_level=None
+        )
+        snapshot.db.row_factory = sqlite3.Row
+        try:
+            snapshot.db.execute("BEGIN")
+            yield snapshot
+        finally:
+            snapshot.db.close()
+
     @classmethod
     def reset(cls, path: Path) -> list[Path]:
         """Archive an existing database and sidecars, then create the current schema."""

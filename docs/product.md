@@ -39,6 +39,10 @@ numbered lines; saved exercises retain their original format. Submitted answers,
 assessment feedback, and answer clarification replies stay on the exercise cards.
 The discussion chat displays questions and their replies, including questions
 about exercises, without replaying answer submissions.
+Checking an answer disables only that exercise's answer controls. Learners can
+keep reading, navigate between lessons, draft questions, and work on or submit
+other exercises while feedback is pending. Feedback updates its own card without
+replacing other answer fields or moving focus.
 
 Each exercise belongs to one lesson and targets that lesson's focus skill.
 Previously taught skills may support it. Questions and clarification do not count

@@ -268,7 +268,10 @@ def test_lesson_anchors_follow_committed_session_turns(tmp_path):
     store.close()
 
 
-def test_lesson_detail_route_returns_document_and_scoped_discussion(tmp_path):
+@pytest.mark.parametrize("pending_turn", [False, True])
+def test_lesson_detail_route_returns_document_and_scoped_discussion(
+    tmp_path, pending_turn
+):
     from tests.test_lesson_conversations import _seed_lesson
 
     class Writer:
@@ -302,7 +305,27 @@ def test_lesson_detail_route_returns_document_and_scoped_discussion(tmp_path):
             ).encode()
         )
         reader.feed_eof()
-        await app.handle(reader, cast(Any, writer))
+        if pending_turn:
+            async with app.lock:
+                with store.transaction():
+                    store.db.execute(
+                        "UPDATE lesson_documents SET objective='Uncommitted' WHERE lesson_id=?",
+                        (lesson["id"],),
+                    )
+                    await asyncio.wait_for(app.handle(reader, cast(Any, writer)), 1)
+                    bootstrap_reader = asyncio.StreamReader()
+                    bootstrap_reader.feed_data(
+                        b"GET /api/bootstrap HTTP/1.1\r\nHost: 127.0.0.1:8765\r\n\r\n"
+                    )
+                    bootstrap_reader.feed_eof()
+                    bootstrap_writer = Writer()
+                    await asyncio.wait_for(
+                        app.handle(bootstrap_reader, cast(Any, bootstrap_writer)), 1
+                    )
+                    assert b"200 OK" in bootstrap_writer.data
+                    assert b"Uncommitted" not in bootstrap_writer.data
+        else:
+            await app.handle(reader, cast(Any, writer))
 
     asyncio.run(request())
     headers, body = bytes(writer.data).split(b"\r\n\r\n", 1)

@@ -29,6 +29,8 @@ let lessonData = null;
 let lessonConversation = [];
 let exerciseStatuses = {};
 let busy = false;
+const answerRequests = new Map();
+const answerKey = (session, lesson, exercise) => JSON.stringify([session, lesson, exercise]);
 let routeSequence = 0;
 const chatScroll = new Map();
 
@@ -442,9 +444,16 @@ function exerciseAttempts(exerciseId, status) {
   return attempts;
 }
 
-function renderLessonExercises() {
-  elements.lessonExercises.replaceChildren();
+function renderLessonExercises(onlyExerciseId = null) {
+  if (!onlyExerciseId) elements.lessonExercises.replaceChildren();
   for (const [index, item] of (lessonData.exercises || []).entries()) {
+    if (onlyExerciseId && item.id !== onlyExerciseId) continue;
+    const request = answerRequests.get(answerKey(activeSession, currentRoute.lessonId, item.id));
+    const disabled = busy || Boolean(request?.pending);
+    const mount = (card) => {
+      if (onlyExerciseId) document.getElementById(`lesson-exercise-${item.id}`)?.replaceWith(card);
+      else elements.lessonExercises.append(card);
+    };
     const status = exerciseStatuses[item.id] || item.status || {};
     const history = exerciseAttempts(item.id, status);
     const card = document.createElement("article");
@@ -487,6 +496,7 @@ function renderLessonExercises() {
     const progress = document.createElement("p");
     progress.id = `exercise-progress-${item.id}`;
     progress.className = "exercise-progress";
+    progress.textContent = request?.text || "";
     progress.setAttribute("role", "status");
     card.append(progress);
     if (status.completed) {
@@ -495,7 +505,7 @@ function renderLessonExercises() {
         blank.textContent = completedValues[index] || "____";
         blank.classList.add("completed");
       });
-      elements.lessonExercises.append(card);
+      mount(card);
       continue;
     }
     const form = document.createElement("form");
@@ -516,7 +526,7 @@ function renderLessonExercises() {
         input.spellcheck = false;
         input.required = true;
         input.maxLength = MAX_BLANK_ANSWER_LENGTH;
-        input.disabled = busy;
+        input.disabled = disabled;
         input.value = values[index];
         input.addEventListener("input", () => {
           updateLessonState({ answers: { [item.id]: inputs.map((field) => field.value) } });
@@ -533,6 +543,7 @@ function renderLessonExercises() {
       answer.id = `answer-${item.id}`;
       answer.maxLength = 8000;
       answer.rows = 3;
+      answer.disabled = disabled;
       answer.value = typeof draft === "string" ? draft : "";
       answer.addEventListener("input", () => updateLessonState({ answers: { [item.id]: answer.value } }));
       form.append(label, answer);
@@ -542,7 +553,7 @@ function renderLessonExercises() {
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.textContent = "Submit answer";
-    submit.disabled = busy;
+    submit.disabled = disabled;
     actions.append(submit);
     const error = document.createElement("p");
     error.className = "exercise-answer-error";
@@ -565,7 +576,7 @@ function renderLessonExercises() {
       if (answer?.value.trim()) return submitLessonTurn(answer.value, "answer", { exercise_id: item.id });
     });
     card.append(form);
-    elements.lessonExercises.append(card);
+    mount(card);
   }
 }
 
@@ -670,6 +681,7 @@ function setBusy(value) {
   for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .exercise-blank input, .lesson-section button, .lesson-toolbar button"]) {
     document.querySelectorAll(selector).forEach((button) => { button.disabled = value; });
   }
+  syncAnswerControls();
 }
 
 async function sendMainMessage(message, originLessonId = null, preserveDraft = false) {
@@ -718,14 +730,66 @@ async function sendMainMessage(message, originLessonId = null, preserveDraft = f
   }
 }
 
+function syncAnswerControls() {
+  for (const item of lessonData?.exercises || []) {
+    const request = answerRequests.get(answerKey(activeSession, currentRoute.lessonId, item.id));
+    const card = document.getElementById(`lesson-exercise-${item.id}`);
+    for (const selector of ["input", "textarea", "button"]) {
+      card?.querySelectorAll(selector).forEach((control) => { control.disabled = busy || Boolean(request?.pending); });
+    }
+  }
+}
+
+async function submitExerciseAnswer(message, exerciseId) {
+  const session = activeSession;
+  const lessonId = currentRoute.lessonId;
+  const key = answerKey(session, lessonId, exerciseId);
+  if (!exerciseId || answerRequests.get(key)?.pending) return;
+  const request = { pending: true, text: "Checking your answer…" };
+  answerRequests.set(key, request);
+  const visible = () => activeSession === session && currentRoute.view === "lesson"
+    && currentRoute.lessonId === lessonId && lessonData?.id === lessonId;
+  const progress = (text) => {
+    request.text = text;
+    if (visible()) {
+      const target = document.getElementById(`exercise-progress-${exerciseId}`);
+      if (target) target.textContent = text;
+    }
+  };
+  progress(request.text);
+  syncAnswerControls();
+  try {
+    await streamChat({ session, lesson_id: lessonId, message, action: "answer", exercise_id: exerciseId }, (event) => {
+      if (event.type === "stage") progress(event.text);
+    });
+    savedWork.update(session, lessonId, { answers: { [exerciseId]: "" } });
+    try {
+      const payload = await api(`/api/lessons/${encodeURIComponent(lessonId)}?session=${encodeURIComponent(session)}`);
+      request.text = "";
+      if (visible()) {
+        lessonData = payload.lesson;
+        lessonConversation = payload.conversation || [];
+        exerciseStatuses = payload.exercise_status || {};
+        // Replace only this card: other fields, selection, focus and scroll stay intact.
+        renderLessonExercises(exerciseId);
+      }
+    } catch (error) {
+      progress("Saved. Reopen the lesson to refresh exercise status.");
+    }
+  } catch (error) {
+    progress(error.message);
+  } finally {
+    request.pending = false;
+    syncAnswerControls();
+  }
+}
+
 async function submitLessonTurn(message, action = "message", reference = {}) {
   if (!message.trim() || busy || !lessonData) return;
+  if (action === "answer") return submitExerciseAnswer(message, reference.exercise_id);
   const lessonId = currentRoute.lessonId;
-  const isAnswer = action === "answer";
-  const discussionScroll = elements.lessonMessages.scrollTop;
   const progress = (text) => {
-    const target = isAnswer ? document.getElementById(`exercise-progress-${reference.exercise_id}`) : elements.lessonProgress;
-    if (target) target.textContent = text;
+    elements.lessonProgress.textContent = text;
   };
   const selected = action === "message" ? lessonState().selected : null;
   const context = { ...reference };
@@ -735,33 +799,28 @@ async function submitLessonTurn(message, action = "message", reference = {}) {
     if (selected.exercise_id) context.exercise_id = selected.exercise_id;
   }
   elements.notice.textContent = "";
-  const user = isAnswer ? null : appendMessage(elements.lessonMessages, "user", message, {
+  const user = appendMessage(elements.lessonMessages, "user", message, {
     pending: true, reference: discussionReference({ ...context, action }),
     selectedText: context.selected_text,
   });
-  const pending = isAnswer ? null : appendMessage(elements.lessonMessages, "assistant", "Working on your lesson…", { pending: true });
-  progress(isAnswer ? "Checking your answer…" : "Thinking about your question…");
+  const pending = appendMessage(elements.lessonMessages, "assistant", "Working on your lesson…", { pending: true });
+  progress("Thinking about your question…");
   setBusy(true);
   try {
     let committedReply = null;
     await streamChat({ session: activeSession, lesson_id: lessonId, message, action, ...context }, (event) => {
       if (event.type === "stage") {
-        if (pending) pending.querySelector(".bubble").textContent = event.text;
-        else progress(event.text);
+        pending.querySelector(".bubble").textContent = event.text;
       }
       if (event.type === "complete") committedReply = event.result.reply;
       // Structured lesson output is shown only after the complete event commits.
     });
-    if (action === "answer") updateLessonState({ answers: { [context.exercise_id]: "" } });
-    else {
-      updateLessonState({ draft: "" });
-      elements.lessonMessage.value = "";
-      clearLessonSelection();
-    }
+    updateLessonState({ draft: "" });
+    elements.lessonMessage.value = "";
+    clearLessonSelection();
     try {
       await refreshLesson(lessonId);
-      if (isAnswer) elements.lessonMessages.scrollTop = discussionScroll;
-      else progress("Saved to this lesson.");
+      progress("Saved to this lesson.");
     } catch (error) {
       if (user) {
         user.className = "message user";

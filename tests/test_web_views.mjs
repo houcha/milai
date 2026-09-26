@@ -76,6 +76,11 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
       append(...children) { for (const child of children) { child.parent = this; this.children.push(child); } },
       prepend(...children) { for (const child of children) { child.parent = this; this.children.unshift(child); } },
       replaceChildren(...children) { this.children = []; this.append(...children); },
+      replaceWith(other) {
+        const index = this.parent.children.indexOf(this);
+        this.parent.children[index] = other;
+        other.parent = this.parent;
+      },
       remove() { if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this); },
       addEventListener(name, handler) { this.listeners[name] = handler; },
       setAttribute(name, value) { this.attributes[name] = value; },
@@ -425,7 +430,7 @@ test("inline answers require every blank, restore drafts, survive failure and be
   restoredFields[1].value = "sie";
   restoredFields[1].listeners.input();
   await card.querySelector("form").listeners.submit({preventDefault() {}});
-  assert.equal(restored.node("#notice").textContent, "Try again");
+  assert.equal(card.querySelector(".exercise-progress").textContent, "Try again");
   assert.equal(restoredFields[1].value, "sie");
   assert.equal(restored.run("lessonState().selected"), null);
   fail = false;
@@ -534,3 +539,73 @@ for (const committed of [false, true]) {
       committed ? /Saved.*Reopen/ : /Please retry/);
   });
 }
+
+test("checking one answer permits editing and submitting another without rebuilding its fields", async () => {
+  const finish = new Map();
+  const app = application("#lesson/older", async (path, options) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => detail()};
+    const {exercise_id} = JSON.parse(options.body);
+    return new Promise((resolve) => finish.set(exercise_id, () => resolve(streamResponse([
+      {type: "complete", result: {reply: {text: "Try again."}}},
+    ]))));
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const cards = app.node("#lesson-exercises").children;
+  const otherField = cards[1].querySelector("textarea");
+  const first = app.run('submitLessonTurn("First", "answer", {exercise_id: "one"})');
+  assert.equal(app.run("busy"), false);
+  assert.equal(cards[0].querySelector("textarea").disabled, true);
+  assert.equal(cards[0].querySelector("button").disabled, true);
+  assert.equal(otherField.disabled, false);
+  assert.equal(app.node("#lesson-message").disabled, false);
+  otherField.value = "My next answer";
+  otherField.listeners.input();
+  await app.run('submitLessonTurn("Duplicate", "answer", {exercise_id: "one"})');
+  assert.equal(app.requests.filter((request) => request.body?.action === "answer").length, 1);
+  app.node("#lesson-message").value = "A question in progress";
+  app.node("#lesson-message").listeners.input();
+  finish.get("one")();
+  await first;
+  assert.equal(app.node("#lesson-exercises").children[1].querySelector("textarea"), otherField);
+  assert.equal(otherField.value, "My next answer");
+  assert.equal(app.node("#lesson-message").value, "A question in progress");
+  const retry = app.run('submitLessonTurn("Retry", "answer", {exercise_id: "one"})');
+  const second = app.run('submitLessonTurn("Second", "answer", {exercise_id: "two"})');
+  finish.get("one")();
+  await retry;
+  assert.equal(otherField.disabled, true, "another completion must not unlock a pending answer");
+  finish.get("two")();
+  await second;
+  assert.equal(app.node("#lesson-exercises").children[1].querySelector("textarea").disabled, false);
+});
+
+test("background answers survive navigation and update only their original lesson and draft", async () => {
+  let finish;
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({
+      ...detail(), lesson: {...lesson, id: path.includes("newer") ? "newer" : "older"},
+    })};
+    return new Promise((resolve) => { finish = () => resolve(streamResponse([
+      {type: "complete", result: {reply: {text: "Saved"}}},
+    ])); });
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  app.run('updateLessonState({answers: {one: "Old answer"}})');
+  const pending = app.run('submitLessonTurn("Old answer", "answer", {exercise_id: "one"})');
+  await app.run('navigate("chat")');
+  assert.equal(app.run("currentRoute.view"), "chat");
+  await app.run('navigate("lesson", "older")');
+  assert.equal(app.node("#lesson-exercises").children[0].querySelector("textarea").disabled, true);
+  assert.equal(app.node("#lesson-exercises").children[0].querySelector(".exercise-progress").textContent, "Checking your answer…");
+  await app.run('navigate("lesson", "newer")');
+  app.run('updateLessonState({answers: {one: "New lesson draft"}})');
+  const newCard = app.node("#lesson-exercises").children[0];
+  finish();
+  await pending;
+  assert.equal(app.run("lessonData.id"), "newer");
+  assert.equal(app.node("#lesson-exercises").children[0], newCard);
+  assert.equal(app.run('lessonState().answers.one'), "New lesson draft");
+  assert.equal(app.run('savedWork.get(activeSession, "older").answers.one'), "");
+});

@@ -1,5 +1,19 @@
 # Validation reports
 
+## 2026-09-26 — Background answer checking
+
+All 89 Python tests, browser/renderer Node tests, Ruff lint, and ty passed.
+Regression tests cover duplicate submission prevention, independent pending
+exercises, draft preservation, navigation away and back, and completion scoped
+to the original lesson. HTTP tests hold the turn lock and an uncommitted write
+while reading lesson/bootstrap data, verifying that reads finish promptly and
+return only committed state.
+
+Real Chromium checks with synthetic API data held an assessment open while
+navigating and typing in another exercise. Completion preserved that field's
+focus and value and the discussion draft. Reviewed screenshot:
+[checking an answer in the background](screenshots/exercise-background-check.png).
+
 ## 2026-09-26 — Exercise responses stay on their cards
 
 Offline checks passed all 88 Python tests, browser/renderer Node tests, Ruff

@@ -84,6 +84,18 @@ assessment still show their clarification reply on the card. All turns remain
 persisted and available to tutor history and learning evidence; ordinary
 questions about exercises remain visible in discussion.
 
+Answer requests use per-session, per-lesson, per-exercise pending state instead
+of the browser's global busy flag. Only the submitted exercise is disabled;
+duplicate submissions are ignored while it is pending. Completion clears the
+originating draft and updates only that card if its lesson is still visible.
+Other drafts, text selection, discussion messages, and focused fields remain
+untouched. Pending progress survives navigation within the page; failures remain
+on the owning card and unlock it for retry. Tutor writes still run serially.
+Lesson and bootstrap GETs use short-lived read-only SQLite snapshots of committed
+state, outside the model-turn lock. Read transactions close before sending the
+HTTP response, so navigation neither waits for model execution nor exposes its
+uncommitted changes.
+
 ## Tutor loop and context
 
 One `Tutor.respond` call is one learner turn. The application validates the
