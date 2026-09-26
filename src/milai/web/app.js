@@ -456,6 +456,7 @@ function renderLessonExercises(onlyExerciseId = null) {
     };
     const status = exerciseStatuses[item.id] || item.status || {};
     const history = exerciseAttempts(item.id, status);
+    const submitted = Boolean(request?.submitted || status.submitted || status.completed || history.length);
     const card = document.createElement("article");
     card.className = "lesson-exercise";
     card.id = `lesson-exercise-${item.id}`;
@@ -465,8 +466,8 @@ function renderLessonExercises(onlyExerciseId = null) {
     const number = document.createElement("span");
     number.textContent = `Exercise ${index + 1}`;
     const state = document.createElement("span");
-    state.className = `exercise-state${status.completed ? " completed" : ""}`;
-    state.textContent = status.completed ? "Completed" : history.length ? "In progress" : "Ready";
+    state.className = `exercise-state${submitted ? " completed" : ""}`;
+    state.textContent = submitted ? "Submitted" : request?.pending ? "Checking" : "Ready";
     meta.append(number, state);
     const title = document.createElement("h3");
     title.textContent = text(item.title, `Exercise ${index + 1}`);
@@ -475,7 +476,7 @@ function renderLessonExercises(onlyExerciseId = null) {
     task.className = "markdown exercise-task";
     task.innerHTML = renderExerciseMarkdown((item.task || item.prompt || "").replaceAll("\\n", "\n"));
     const blanks = [...task.querySelectorAll(".exercise-blank")];
-    const previousAnswer = history.at(-1)?.learner_response || "";
+    const previousAnswer = history[0]?.learner_response || "";
     const draft = lessonState().answers[item.id];
     const values = blankAnswers(draft, previousAnswer, blanks.length);
     for (const content of [title, context, task]) content.dataset.selectionSource = "";
@@ -499,7 +500,7 @@ function renderLessonExercises(onlyExerciseId = null) {
     progress.textContent = request?.text || "";
     progress.setAttribute("role", "status");
     card.append(progress);
-    if (status.completed) {
+    if (submitted) {
       const completedValues = blankAnswers(null, previousAnswer, blanks.length);
       blanks.forEach((blank, index) => {
         blank.textContent = completedValues[index] || "____";
@@ -735,7 +736,7 @@ function syncAnswerControls() {
     const request = answerRequests.get(answerKey(activeSession, currentRoute.lessonId, item.id));
     const card = document.getElementById(`lesson-exercise-${item.id}`);
     for (const selector of ["input", "textarea", "button"]) {
-      card?.querySelectorAll(selector).forEach((control) => { control.disabled = busy || Boolean(request?.pending); });
+      card?.querySelectorAll(selector).forEach((control) => { control.disabled = busy || Boolean(request?.pending || request?.submitted); });
     }
   }
 }
@@ -744,7 +745,10 @@ async function submitExerciseAnswer(message, exerciseId) {
   const session = activeSession;
   const lessonId = currentRoute.lessonId;
   const key = answerKey(session, lessonId, exerciseId);
-  if (!exerciseId || answerRequests.get(key)?.pending) return;
+  const previous = answerRequests.get(key);
+  const status = exerciseStatuses[exerciseId] || {};
+  if (!exerciseId || previous?.pending || previous?.submitted || status.submitted || status.completed) return;
+
   const request = { pending: true, text: "Checking your answer…" };
   answerRequests.set(key, request);
   const visible = () => activeSession === session && currentRoute.view === "lesson"
@@ -762,6 +766,7 @@ async function submitExerciseAnswer(message, exerciseId) {
     await streamChat({ session, lesson_id: lessonId, message, action: "answer", exercise_id: exerciseId }, (event) => {
       if (event.type === "stage") progress(event.text);
     });
+    request.submitted = true;
     savedWork.update(session, lessonId, { answers: { [exerciseId]: "" } });
     try {
       const payload = await api(`/api/lessons/${encodeURIComponent(lessonId)}?session=${encodeURIComponent(session)}`);

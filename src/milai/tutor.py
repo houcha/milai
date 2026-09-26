@@ -162,8 +162,11 @@ class Tutor:
                     raise ValueError(
                         "Exercise is unavailable in the originating lesson"
                     )
-                if action == "answer" and status["completed"]:
-                    raise ValueError("This exercise is already complete")
+                if action == "answer" and status["submitted"]:
+                    raise ValueError(
+                        "This exercise has already been submitted. "
+                        "Request fresh practice instead."
+                    )
                 if action == "answer" and lesson_id is None:
                     lesson_id = selected_exercise["lesson_id"]
                     detail = self.store.lesson_detail(scope, session, lesson_id)
@@ -318,6 +321,11 @@ class Tutor:
                         summary = None
                     if not reply.strip():
                         raise ValueError("Model returned no learner-facing response")
+                    if action == "answer" and not ctx.assessments:
+                        raise ValueError(
+                            "The answer could not be assessed. "
+                            "It was not saved; please submit again."
+                        )
                     items = result.to_input_list()[len(history) :]
                     self.store.save_turn(ctx, reply, items)
                     if summary is not None:

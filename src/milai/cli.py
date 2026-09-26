@@ -203,7 +203,7 @@ def print_lesson(detail: dict) -> None:
         for exercise in detail["exercises"]:
             status = exercise.get("status", {})
             if status.get("completed"):
-                label = "complete"
+                label = "submitted"
             elif status.get("assessments"):
                 label = "attempted"
             else:

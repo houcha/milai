@@ -70,8 +70,8 @@ Multi-part tasks are requested as Markdown lists, with one item per line.
 Inline answer drafts are arrays stored under the existing session/lesson/exercise
 key. One `action: answer` request sends all fields as `Blank 1: ...` lines in
 reading order; the existing tutor assessment and attempt storage remain in use.
-After an incomplete assessment, fields restore the submitted values for editing.
-Completed tasks replace their inputs with the saved answer text. The terminal
+Every saved submission replaces its inputs with the saved answer text, regardless
+of correctness. A failed transaction keeps the draft available to submit again. The terminal
 shows numbered static blanks and retains `/answer`. Existing tasks are unchanged;
 this Markdown extension requires no database migration.
 
@@ -95,6 +95,15 @@ Lesson and bootstrap GETs use short-lived read-only SQLite snapshots of committe
 state, outside the model-turn lock. Read transactions close before sending the
 HTTP response, so navigation neither waits for model execution nor exposes its
 uncommitted changes.
+
+## Final submissions
+
+An exercise permits one saved answer. Both the tutor's preflight check and the
+assessment store reject another submission, independently of correctness. Answer
+turns must record an assessment before committing; absent assessments roll back
+instead of consuming the submission. `completed` and `submitted` mean final,
+while `correct` records the assessment outcome. Historical attempts
+remain readable; later corrections do not improve a first-submission result.
 
 ## Tutor loop and context
 

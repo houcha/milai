@@ -1,5 +1,12 @@
 # Validation reports
 
+## 2026-09-26 — Final exercise submissions
+
+All 90 Python tests, browser/renderer Node tests, Ruff lint, and ty passed.
+Regression tests cover repeat submission rejection, final
+incorrect answers, missing-assessment rollback, and refresh-failure duplicate
+prevention. Full scoring and visual validation follow in the next report.
+
 ## 2026-09-26 — Background answer checking
 
 All 89 Python tests, browser/renderer Node tests, Ruff lint, and ty passed.

@@ -1,5 +1,11 @@
 # Decision log
 
+## 2026-09-26 — Final exercise submissions
+
+- Allow one saved answer per exercise, regardless of correctness. Preserve feedback
+  without correction controls; use fresh exercises for later requested practice.
+- Require an assessment before committing an answer. Failed turns remain retryable.
+
 ## 2026-09-26 — Check exercise answers in the background
 
 - Scope pending answer state and disabled controls to the submitted exercise.

@@ -1370,6 +1370,10 @@ class Store:
         self, ctx: Any, exercise_id: str, feedback: str, observations: list[dict]
     ) -> dict:
         exercise = self._owned("exercises", ctx.learner, exercise_id)
+        if self.exercise_submitted(ctx.learner, exercise_id):
+            raise ValueError(
+                "This exercise has already been submitted. Request fresh practice instead."
+            )
         if exercise["created_turn"] == ctx.turn_id:
             raise ValueError(
                 "Cannot assess an exercise before the learner can attempt it"
@@ -1516,6 +1520,17 @@ class Store:
             "source_ids": sources,
         }
 
+    def exercise_submitted(self, learner: str, exercise_id: str) -> bool:
+        """A saved answer is final, even when incorrect or not assessed."""
+        self._owned("exercises", learner, exercise_id)
+        return bool(
+            self.db.execute(
+                "SELECT 1 FROM attempts WHERE exercise_id=? "
+                "UNION ALL SELECT 1 FROM turns WHERE exercise_id=? AND action='answer' LIMIT 1",
+                (exercise_id, exercise_id),
+            ).fetchone()
+        )
+
     def exercise_status(self, learner: str, session: str, exercise_id: str) -> dict:
         self.authorize(learner, session)
         scope = self.learning_scope(learner, session)
@@ -1564,7 +1579,9 @@ class Store:
             "latest_assessment": assessment,
             "assessments": assessments,
             "assisted": assisted,
-            "completed": bool(
+            "submitted": self.exercise_submitted(scope, exercise_id),
+            "completed": self.exercise_submitted(scope, exercise_id),
+            "correct": bool(
                 assessment
                 and target_ids
                 <= {

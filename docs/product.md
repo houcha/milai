@@ -32,9 +32,8 @@ tutor explains the relationship and teaches the earliest eligible skill.
 
 Short-answer exercises can place editable blanks directly in numbered sentences.
 The learner fills them in and submits the exercise once; the tutor assesses all
-answers together. Drafts survive reloads and failed submissions. Answers that
-need correction remain editable, and completed exercises show submitted words
-as text. Open-ended writing keeps a normal answer box. New practice uses separate
+answers together. Drafts survive reloads and failed submissions. Every saved answer is final, including an incorrect one; submitted exercises
+show their words and feedback as text without correction controls. Open-ended writing keeps a normal answer box. New practice uses separate
 numbered lines; saved exercises retain their original format. Submitted answers,
 assessment feedback, and answer clarification replies stay on the exercise cards.
 The discussion chat displays questions and their replies, including questions

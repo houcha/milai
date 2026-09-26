@@ -132,7 +132,11 @@ class SkillObservation(BaseModel):
 
 class AttemptAssessment(BaseModel):
     exercise_id: str
-    feedback: str = Field(min_length=1, max_length=1600)
+    feedback: str = Field(
+        min_length=1,
+        max_length=1600,
+        description="Feedback shown on the final exercise card. Clearly identify what was correct and what was not, with a brief explanation. Do not ask the learner to correct or resubmit this exercise.",
+    )
     observations: list[SkillObservation] = Field(min_length=1, max_length=6)
 
 
@@ -490,6 +494,10 @@ async def present_exercise(ctx: RunContextWrapper[Context], exercise: Exercise) 
     """Persist and queue a lesson-focused exercise card; the application renders it exactly."""
     c = ctx.context
     c.check()
+    if c.action == "answer":
+        raise ValueError(
+            "Assess this answer without generating more exercises. Fresh practice is available on a later learner request."
+        )
     return c.store.present_exercise(c, exercise.model_dump())
 
 

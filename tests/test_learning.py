@@ -349,7 +349,8 @@ def test_mastery_requires_distinct_unassisted_exercises_since_last_difficulty(tm
     skill_id = seed_graph(store, scope, session)["lesson"]["focus_skill_id"]
     task = exercise(store, scope, session, skill_id, "one")
     observe(store, scope, session, task["id"], skill_id, "one-a")
-    observe(store, scope, session, task["id"], skill_id, "one-b")
+    with pytest.raises(ValueError, match="already been submitted"):
+        observe(store, scope, session, task["id"], skill_id, "one-b")
     assert not store.mastered(scope, skill_id)
     task = exercise(store, scope, session, skill_id, "two", scaffolding="cues")
     observe(store, scope, session, task["id"], skill_id, "two-a")
@@ -994,16 +995,17 @@ def test_repeated_difficulty_recommends_review_until_explicit_continuation(tmp_p
         if number == 1:
             assert store.review_due(scope) == []
             assert "review_lesson" not in result
-            retry = observe(
-                store,
-                scope,
-                session,
-                task["id"],
-                first_id,
-                "retry-same-exercise",
-                outcome="needs_work",
-            )
-            assert "review_lesson" not in retry
+            with pytest.raises(ValueError, match="already been submitted"):
+                observe(
+                    store,
+                    scope,
+                    session,
+                    task["id"],
+                    first_id,
+                    "retry-same-exercise",
+                    outcome="needs_work",
+                )
+
     assert "review_lesson" not in result
     assert result["review_recommendations"][0]["skill_id"] == first_id
     active = store.active_lesson(scope)

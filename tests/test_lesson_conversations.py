@@ -392,7 +392,7 @@ def test_references_are_rejected_before_model_and_completed_task_can_be_discusse
     )
     assert reply.text.startswith("It is")
     assert store.db.execute("SELECT count(*) FROM attempts").fetchone()[0] == 1
-    with pytest.raises(ValueError, match="already complete"):
+    with pytest.raises(ValueError, match="already been submitted"):
         asyncio.run(
             tutor.respond(
                 store.owner,
