@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from openai import APITimeoutError, RateLimitError
 
 from milai.config import Settings
+from milai.exercise_format import terminal_exercise_task
 from milai.observability import Telemetry
 from milai.probe import probe
 from milai.store import SCHEMA_VERSION, InvalidReference, SchemaMismatch, Store
@@ -169,7 +170,7 @@ def print_reply(reply: TutorReply) -> None:
         print(f"\n[{activity['kind'].upper()}] {activity['title']}")
         if activity.get("context"):
             print(f"Context: {activity['context']}")
-        print(activity["task"])
+        print(terminal_exercise_task(activity["task"]))
         skills = ", ".join(item["name"] for item in activity.get("skills", []))
         if skills:
             print(f"Skills: {skills}")
@@ -208,7 +209,7 @@ def print_lesson(detail: dict) -> None:
             else:
                 label = "ready"
             print(f"\n[{label}] {exercise['title']} · {exercise['id']}")
-            print(exercise["task"])
+            print(terminal_exercise_task(exercise["task"]))
         print("\nSubmit with /answer <exercise-id> <text>.")
     print("Ask questions here, or use /back for the main conversation.\n")
 

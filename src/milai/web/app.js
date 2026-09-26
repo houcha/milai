@@ -1,5 +1,5 @@
-import { renderMarkdown } from "/markdown.bundle.js";
-import { createLessonState } from "/exercise-controller.js";
+import { renderMarkdown, renderExerciseMarkdown } from "/markdown.bundle.js";
+import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH } from "/exercise-controller.js";
 
 const savedWork = createLessonState();
 const elements = {
@@ -172,7 +172,14 @@ function messageNode(role, content, options = {}) {
     });
     header.append(toggle);
   } else bubble.textContent = content;
-  wrapper.append(header, bubble);
+  wrapper.append(header);
+  if (role === "user" && options.selectedText) {
+    const quote = document.createElement("blockquote");
+    quote.className = "message-selection";
+    quote.textContent = options.selectedText;
+    wrapper.append(quote);
+  }
+  wrapper.append(bubble);
   for (const card of options.lessonCards || []) wrapper.append(lessonCardNode(card));
   const cardIds = new Set((options.lessonCards || []).map((card) => card.id));
   for (const activity of options.activities || []) {
@@ -309,9 +316,16 @@ function setLessonTab(tab) {
 
 function selectedReferenceLabel(selected) {
   if (!selected) return "";
-  const items = selected.kind === "section" ? lessonData?.sections : lessonData?.exercises;
-  const item = items?.find((entry) => entry.id === selected.id);
-  return item ? `${selected.kind === "section" ? "Section" : "Exercise"}: ${item.title}` : "";
+  if (selected.exercise_id) {
+    const item = lessonData?.exercises?.find((entry) => entry.id === selected.exercise_id);
+    return item ? `Exercise: ${item.title}` : "";
+  }
+  if (selected.section_id) {
+    const item = [...(lessonData?.sections || []), ...(lessonData?.worked_examples || [])]
+      .find((entry) => entry.id === selected.section_id);
+    return item ? `Section: ${item.title}` : "";
+  }
+  return "Selected lesson text";
 }
 
 function renderSelectedReference() {
@@ -319,14 +333,31 @@ function renderSelectedReference() {
   const label = selectedReferenceLabel(selected);
   document.querySelector("#selected-reference").hidden = !label;
   document.querySelector("#selected-reference-label").textContent = label;
+  document.querySelector("#selected-reference-quote").textContent = label ? selected.text : "";
+  document.querySelector("#lesson-selection-status").textContent = label
+    ? "Selected text is attached to your next discussion question."
+    : "Select text to focus your next question, or ask about the whole lesson.";
   if (selected && !label) updateLessonState({ selected: null });
 }
 
-function chooseReference(kind, id) {
-  updateLessonState({ selected: { kind, id } });
+function captureLessonSelection() {
+  if (busy || currentRoute.view !== "lesson" || !lessonData) return;
+  const selected = readLessonSelection(window.getSelection(), elements.lessonReading);
+  if (!selected) return;
+  if ([...selected.text].length > MAX_SELECTED_TEXT) {
+    updateLessonState({ selected: null });
+    renderSelectedReference();
+    document.querySelector("#lesson-selection-status").textContent = "Select a shorter passage (up to 4,000 characters).";
+    return;
+  }
+  updateLessonState({ selected });
   renderSelectedReference();
-  setLessonTab("discussion");
-  elements.lessonMessage.focus();
+}
+
+function clearLessonSelection() {
+  updateLessonState({ selected: null });
+  window.getSelection()?.removeAllRanges();
+  renderSelectedReference();
 }
 
 function markdownBlock(content, className = "markdown") {
@@ -351,16 +382,12 @@ function renderLessonDocument() {
     const wrapper = document.createElement("section");
     wrapper.className = "lesson-section";
     wrapper.id = `lesson-section-${section.id}`;
+    wrapper.dataset.sectionId = section.id;
     const heading = document.createElement("div");
     heading.className = "lesson-section-heading";
     const name = document.createElement("h2");
     name.textContent = section.title;
-    const ask = document.createElement("button");
-    ask.type = "button";
-    ask.className = "quiet-button";
-    ask.textContent = "Ask about this section";
-    ask.addEventListener("click", () => chooseReference("section", section.id));
-    heading.append(name, ask);
+    heading.append(name);
     wrapper.append(heading, markdownBlock(section.markdown));
     elements.lessonDocument.append(wrapper);
   }
@@ -376,6 +403,7 @@ function renderLessonDocument() {
       else {
         const card = document.createElement("div");
         card.className = "worked-example";
+        if (example.id) card.dataset.sectionId = example.id;
         if (example.title) {
           const name = document.createElement("h3");
           name.textContent = example.title;
@@ -397,29 +425,56 @@ function renderLessonDocument() {
   }
 }
 
+function exerciseAttempts(exerciseId, status) {
+  const assessments = status.assessments || [];
+  const turns = lessonConversation.filter((turn) => turn.action === "answer" && turn.exercise_id === exerciseId);
+  const answers = turns.filter((turn) => turn.role === "user");
+  const turnIds = new Set(answers.map((turn) => turn.turn_id));
+  const attempts = assessments.filter((attempt) => !attempt.turn_id || !turnIds.has(attempt.turn_id));
+  for (const answer of answers) {
+    const assessed = assessments.filter((attempt) => attempt.turn_id && attempt.turn_id === answer.turn_id);
+    if (assessed.length) attempts.push(...assessed);
+    else attempts.push({
+      learner_response: answer.content,
+      feedback: turns.find((turn) => turn.role === "assistant" && turn.turn_id === answer.turn_id)?.content || "",
+    });
+  }
+  return attempts;
+}
+
 function renderLessonExercises() {
   elements.lessonExercises.replaceChildren();
   for (const [index, item] of (lessonData.exercises || []).entries()) {
     const status = exerciseStatuses[item.id] || item.status || {};
+    const history = exerciseAttempts(item.id, status);
     const card = document.createElement("article");
     card.className = "lesson-exercise";
     card.id = `lesson-exercise-${item.id}`;
+    card.dataset.exerciseId = item.id;
     const meta = document.createElement("div");
     meta.className = "exercise-meta";
     const number = document.createElement("span");
     number.textContent = `Exercise ${index + 1}`;
     const state = document.createElement("span");
     state.className = `exercise-state${status.completed ? " completed" : ""}`;
-    state.textContent = status.completed ? "Completed" : status.assessments?.length ? "In progress" : "Ready";
+    state.textContent = status.completed ? "Completed" : history.length ? "In progress" : "Ready";
     meta.append(number, state);
     const title = document.createElement("h3");
     title.textContent = text(item.title, `Exercise ${index + 1}`);
     const context = markdownBlock(item.context || "", "markdown exercise-context");
-    const task = markdownBlock((item.task || item.prompt || "").replaceAll("\\n", "\n"), "markdown exercise-task");
+    const task = document.createElement("div");
+    task.className = "markdown exercise-task";
+    task.innerHTML = renderExerciseMarkdown((item.task || item.prompt || "").replaceAll("\\n", "\n"));
+    const blanks = [...task.querySelectorAll(".exercise-blank")];
+    const previousAnswer = history.at(-1)?.learner_response || "";
+    const draft = lessonState().answers[item.id];
+    const values = blankAnswers(draft, previousAnswer, blanks.length);
+    for (const content of [title, context, task]) content.dataset.selectionSource = "";
     card.append(meta, title, context, task);
     const attempts = document.createElement("div");
     attempts.className = "exercise-attempts";
-    for (const attempt of status.assessments || []) {
+    attempts.dataset.selectionSource = "";
+    for (const attempt of history) {
       const entry = document.createElement("div");
       entry.className = "exercise-attempt";
       const answer = document.createElement("p");
@@ -429,38 +484,85 @@ function renderLessonExercises() {
       attempts.append(entry);
     }
     card.append(attempts);
+    const progress = document.createElement("p");
+    progress.id = `exercise-progress-${item.id}`;
+    progress.className = "exercise-progress";
+    progress.setAttribute("role", "status");
+    card.append(progress);
+    if (status.completed) {
+      const completedValues = blankAnswers(null, previousAnswer, blanks.length);
+      blanks.forEach((blank, index) => {
+        blank.textContent = completedValues[index] || "____";
+        blank.classList.add("completed");
+      });
+      elements.lessonExercises.append(card);
+      continue;
+    }
     const form = document.createElement("form");
     form.className = "exercise-answer-form";
-    const label = document.createElement("label");
-    label.textContent = "Your answer";
-    label.htmlFor = `answer-${item.id}`;
-    const answer = document.createElement("textarea");
-    answer.id = `answer-${item.id}`;
-    answer.maxLength = 8000;
-    answer.rows = 3;
-    answer.disabled = Boolean(status.completed);
-    answer.value = lessonState().answers[item.id] || "";
-    answer.addEventListener("focus", () => {
-      updateLessonState({ selected: { kind: "exercise", id: item.id } });
-      renderSelectedReference();
-    });
-    answer.addEventListener("input", () => updateLessonState({ answers: { [item.id]: answer.value } }));
+    form.id = `exercise-answer-${item.id}`;
+    let answer = null;
+    const inputs = [];
+    if (blanks.length) {
+      blanks.forEach((blank, index) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.name = `blank-${index + 1}`;
+        input.id = `answer-${item.id}-${index + 1}`;
+        input.setAttribute("form", form.id);
+        input.setAttribute("aria-label", `Blank ${index + 1} of ${blanks.length}`);
+        input.autocomplete = "off";
+        input.autocapitalize = "off";
+        input.spellcheck = false;
+        input.required = true;
+        input.maxLength = MAX_BLANK_ANSWER_LENGTH;
+        input.disabled = busy;
+        input.value = values[index];
+        input.addEventListener("input", () => {
+          updateLessonState({ answers: { [item.id]: inputs.map((field) => field.value) } });
+          error.hidden = true;
+        });
+        blank.replaceChildren(input);
+        inputs.push(input);
+      });
+    } else {
+      const label = document.createElement("label");
+      label.textContent = "Your answer";
+      label.htmlFor = `answer-${item.id}`;
+      answer = document.createElement("textarea");
+      answer.id = `answer-${item.id}`;
+      answer.maxLength = 8000;
+      answer.rows = 3;
+      answer.value = typeof draft === "string" ? draft : "";
+      answer.addEventListener("input", () => updateLessonState({ answers: { [item.id]: answer.value } }));
+      form.append(label, answer);
+    }
     const actions = document.createElement("div");
     actions.className = "exercise-actions";
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.textContent = "Submit answer";
-    submit.disabled = busy || Boolean(status.completed);
-    const ask = document.createElement("button");
-    ask.type = "button";
-    ask.className = "quiet-button";
-    ask.textContent = "Ask about this exercise";
-    ask.addEventListener("click", () => chooseReference("exercise", item.id));
-    actions.append(submit, ask);
-    form.append(label, answer, actions);
+    submit.disabled = busy;
+    actions.append(submit);
+    const error = document.createElement("p");
+    error.className = "exercise-answer-error";
+    error.setAttribute("role", "alert");
+    error.hidden = true;
+    form.append(actions, error);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (answer.value.trim()) return submitLessonTurn(answer.value, "answer", { exercise_id: item.id });
+      if (inputs.length) {
+        let message;
+        try { message = serializeBlankAnswers(inputs.map((input) => input.value)); }
+        catch (problem) {
+          error.textContent = problem.message;
+          error.hidden = false;
+          inputs.find((input) => !input.value.trim())?.focus();
+          return;
+        }
+        return submitLessonTurn(message, "answer", { exercise_id: item.id });
+      }
+      if (answer?.value.trim()) return submitLessonTurn(answer.value, "answer", { exercise_id: item.id });
     });
     card.append(form);
     elements.lessonExercises.append(card);
@@ -473,7 +575,8 @@ function discussionReference(turn) {
     return `${turn.action === "answer" ? "Answer to" : "About"} ${item?.title || "exercise"}`;
   }
   if (turn.section_id) {
-    const item = lessonData?.sections?.find((entry) => entry.id === turn.section_id);
+    const item = [...(lessonData?.sections || []), ...(lessonData?.worked_examples || [])]
+      .find((entry) => entry.id === turn.section_id);
     return `About ${item?.title || "section"}`;
   }
   return "";
@@ -481,15 +584,17 @@ function discussionReference(turn) {
 
 function renderLessonConversation() {
   elements.lessonMessages.replaceChildren();
-  if (!lessonConversation.length) {
+  const discussion = lessonConversation.filter((turn) => turn.action !== "answer");
+  if (!discussion.length) {
     const empty = document.createElement("p");
     empty.className = "discussion-empty";
     empty.textContent = "Ask about the explanation or an exercise whenever you need to.";
     elements.lessonMessages.append(empty);
   }
-  for (const turn of lessonConversation) {
+  for (const turn of discussion) {
     appendMessage(elements.lessonMessages, turn.role, turn.content, {
       turnId: turn.turn_id, reference: discussionReference(turn),
+      selectedText: turn.selected_text,
     });
   }
   elements.lessonMessages.scrollTop = elements.lessonMessages.scrollHeight;
@@ -562,7 +667,7 @@ function setBusy(value) {
   elements.message.disabled = value;
   elements.lessonMessage.disabled = value;
   document.querySelector("#lesson-send").disabled = value;
-  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .lesson-section button, .lesson-toolbar button"]) {
+  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .exercise-blank input, .lesson-section button, .lesson-toolbar button"]) {
     document.querySelectorAll(selector).forEach((button) => { button.disabled = value; });
   }
 }
@@ -616,42 +721,62 @@ async function sendMainMessage(message, originLessonId = null, preserveDraft = f
 async function submitLessonTurn(message, action = "message", reference = {}) {
   if (!message.trim() || busy || !lessonData) return;
   const lessonId = currentRoute.lessonId;
+  const isAnswer = action === "answer";
+  const discussionScroll = elements.lessonMessages.scrollTop;
+  const progress = (text) => {
+    const target = isAnswer ? document.getElementById(`exercise-progress-${reference.exercise_id}`) : elements.lessonProgress;
+    if (target) target.textContent = text;
+  };
   const selected = action === "message" ? lessonState().selected : null;
   const context = { ...reference };
-  if (selected?.kind === "section") context.section_id = selected.id;
-  if (selected?.kind === "exercise") context.exercise_id = selected.id;
+  if (selected) {
+    context.selected_text = selected.text;
+    if (selected.section_id) context.section_id = selected.section_id;
+    if (selected.exercise_id) context.exercise_id = selected.exercise_id;
+  }
   elements.notice.textContent = "";
-  const user = appendMessage(elements.lessonMessages, "user", message, {
+  const user = isAnswer ? null : appendMessage(elements.lessonMessages, "user", message, {
     pending: true, reference: discussionReference({ ...context, action }),
+    selectedText: context.selected_text,
   });
-  const pending = appendMessage(elements.lessonMessages, "assistant", "Working on your lesson…", { pending: true });
-  elements.lessonProgress.textContent = action === "answer" ? "Checking your answer…" : "Thinking about your question…";
+  const pending = isAnswer ? null : appendMessage(elements.lessonMessages, "assistant", "Working on your lesson…", { pending: true });
+  progress(isAnswer ? "Checking your answer…" : "Thinking about your question…");
   setBusy(true);
   try {
     let committedReply = null;
     await streamChat({ session: activeSession, lesson_id: lessonId, message, action, ...context }, (event) => {
-      if (event.type === "stage") pending.querySelector(".bubble").textContent = event.text;
+      if (event.type === "stage") {
+        if (pending) pending.querySelector(".bubble").textContent = event.text;
+        else progress(event.text);
+      }
       if (event.type === "complete") committedReply = event.result.reply;
       // Structured lesson output is shown only after the complete event commits.
     });
-    if (action === "answer") updateLessonState({ answers: { [context.exercise_id]: "" }, selected: { kind: "exercise", id: context.exercise_id } });
-    else updateLessonState({ draft: "" });
+    if (action === "answer") updateLessonState({ answers: { [context.exercise_id]: "" } });
+    else {
+      updateLessonState({ draft: "" });
+      elements.lessonMessage.value = "";
+      clearLessonSelection();
+    }
     try {
       await refreshLesson(lessonId);
-      elements.lessonProgress.textContent = "Saved to this lesson.";
+      if (isAnswer) elements.lessonMessages.scrollTop = discussionScroll;
+      else progress("Saved to this lesson.");
     } catch (error) {
-      user.className = "message user";
-      pending.remove();
-      appendMessage(elements.lessonMessages, "assistant", committedReply?.text || "Your reply was saved.", {
-        reference: discussionReference({ ...context, action }),
-      });
-      elements.lessonProgress.textContent = "Saved. Reopen the lesson to refresh exercise status.";
+      if (user) {
+        user.className = "message user";
+        pending?.remove();
+        appendMessage(elements.lessonMessages, "assistant", committedReply?.text || "Your reply was saved.", {
+          reference: discussionReference({ ...context, action }),
+        });
+      }
+      progress("Saved. Reopen the lesson to refresh exercise status.");
       elements.notice.textContent = error.message;
     }
   } catch (error) {
-    user.remove();
-    pending.remove();
-    elements.lessonProgress.textContent = error.message;
+    user?.remove();
+    pending?.remove();
+    progress(error.message);
     elements.notice.textContent = error.message;
   } finally { setBusy(false); }
 }
@@ -753,7 +878,8 @@ elements.lessonMessage.addEventListener("keydown", (event) => {
 });
 elements.lessonMessage.addEventListener("input", () => updateLessonState({ draft: elements.lessonMessage.value }));
 elements.lessonReading.addEventListener("scroll", saveReadingPosition);
-document.querySelector("#remove-reference").addEventListener("click", () => { updateLessonState({ selected: null }); renderSelectedReference(); });
+document.addEventListener("selectionchange", captureLessonSelection);
+document.querySelector("#remove-reference").addEventListener("click", clearLessonSelection);
 document.querySelector("#lesson-tab").addEventListener("click", () => setLessonTab("lesson"));
 document.querySelector("#discussion-tab").addEventListener("click", () => setLessonTab("discussion"));
 document.querySelector("#back-to-conversation").addEventListener("click", () => navigate("chat"));

@@ -1,5 +1,47 @@
 # Decision log
 
+## 2026-09-26 — Exercise responses stay on their cards
+
+- Do not replay answer submissions or assessment replies in the browser's
+  discussion chat, including temporary bubbles, saved history, and fallback
+  paths after errors. Keep questions about exercises in discussion.
+- Show answer progress, recorded feedback, and unassessed clarification replies
+  on the owning exercise. Retain persisted turns and model history so discussion
+  can still use the learner's exercise evidence. Preserve discussion scroll
+  position while an answer is processed.
+
+## 2026-09-26 — Inline short-answer exercises
+
+- Let the model choose inline blanks for words or short phrases and ordinary
+  free text for open-ended writing. Use Markdown ordered lists with one item
+  per line for multi-part tasks. The general teaching contract applies to new
+  lessons and appended practice; existing saved tasks keep their original format.
+- Extend task Markdown with `{{blank}}`, up to 12 occurrences in reading order.
+  The app owns the actual inputs; model HTML and scripts remain disabled.
+  Preserve the existing task schema and database. Terminal output uses numbered
+  static blanks. Unsupported marker placement falls back to free-text entry.
+- Submit all blanks together to the existing tutor assessment. Each field takes
+  up to 200 characters; drafts survive reload and failure. Preserve submitted
+  answers for correction, and replace completed inputs with plain answer text.
+  Blank widgets alone do not change assistance or mastery rules.
+
+## 2026-09-26 — Selected text focuses lesson questions
+
+- Always provide the complete lesson to lesson discussion. Replace section and
+  exercise question buttons with optional highlighted text, automatically attached
+  as a removable quote without switching tabs or moving focus. Derive a section,
+  worked-example, or exercise reference from its DOM location when unambiguous.
+- Keep one quote for the next discussion question, preserve it with the draft on
+  reload and failure, and clear it after successful commit. Store it with the turn
+  for display, bounded replay, and retrieval. Quotes are learner-provided context,
+  not instructions or verified sources. Highlighting alone records no evidence.
+- Answer submissions retain their explicit exercise ID and never carry a quote.
+  Typing or submitting an answer no longer sets later discussion focus. Completed
+  exercises show prior answers and feedback without answer controls.
+- Schema 6 adds nullable turn quote text. Upgrade schema 5 transactionally while
+  preserving existing data; older incompatible schemas still require archival reset.
+  Retain historical section/exercise references and existing API callers.
+
 ## 2026-09-25 — Sol lesson generation at low reasoning
 
 - Generate complete lessons and reviews with `gpt-6-sol` at low reasoning by

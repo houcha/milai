@@ -15,7 +15,7 @@ from milai.tutor import Tutor
 
 HOST = "127.0.0.1"
 MAX_HEADER_BYTES = 32_768
-MAX_BODY_BYTES = 16_384
+MAX_BODY_BYTES = 65_536
 
 
 def learning_view(snapshot: dict) -> dict:
@@ -103,6 +103,7 @@ class WebApplication:
         for key in (
             "lesson_id",
             "section_id",
+            "selected_text",
             "exercise_id",
             "origin_lesson_id",
             "action",

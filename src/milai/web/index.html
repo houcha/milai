@@ -46,7 +46,8 @@
           </div>
           <div id="lesson-layout" class="lesson-layout" data-tab="lesson">
             <div id="lesson-reading" class="lesson-reading" role="tabpanel" aria-labelledby="lesson-tab">
-              <div id="lesson-document"></div>
+              <p id="lesson-selection-status" class="selection-hint" role="status">Select text to focus your next question, or ask about the whole lesson.</p>
+              <div id="lesson-document" data-selection-source></div>
               <section class="lesson-practice" aria-labelledby="practice-heading">
                 <p class="eyebrow">Apply what you learned</p>
                 <h2 id="practice-heading">Exercises</h2>
@@ -57,7 +58,7 @@
               <div class="discussion-heading"><p class="eyebrow">Your lesson conversation</p><h2>Discussion</h2></div>
               <div id="lesson-messages" class="lesson-messages" aria-live="polite"></div>
               <div id="selected-reference" class="selected-reference" hidden>
-                <span id="selected-reference-label"></span>
+                <div><span id="selected-reference-label"></span><blockquote id="selected-reference-quote"></blockquote></div>
                 <button id="remove-reference" type="button" aria-label="Remove lesson reference">×</button>
               </div>
               <form id="lesson-composer" class="composer">
@@ -65,7 +66,7 @@
                 <textarea id="lesson-message" maxlength="8000" rows="2" placeholder="Ask about this lesson…"></textarea>
                 <button id="lesson-send" type="submit">Send <span aria-hidden="true">↗</span></button>
               </form>
-              <p id="lesson-progress" class="composer-hint" role="status" aria-live="polite">Ask about a section or exercise at any time.</p>
+              <p id="lesson-progress" class="composer-hint" role="status" aria-live="polite">Ask about the whole lesson, or select text to focus your question.</p>
             </section>
           </div>
         </section>

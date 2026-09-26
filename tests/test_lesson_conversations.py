@@ -4,6 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -95,6 +96,161 @@ def _tutor(store: Store) -> Tutor:
         model="interactive-test-model",
         generation_model="generation-test-model",
     )
+
+
+@pytest.mark.parametrize("reference", [None, "section", "worked", "exercise"])
+def test_selected_text_is_saved_replayed_and_keeps_the_complete_lesson(
+    tmp_path, monkeypatch, reference
+):
+    path = tmp_path / "selection.db"
+    store = Store(path)
+    session = store.session(store.owner)
+    lesson = _seed_lesson(store, session, "first", "pronouns", "Subject pronouns")
+    detail = store.lesson_detail(store.owner, session, lesson["id"])
+    options: dict[str, Any] = {"lesson_id": lesson["id"]}
+    if reference in {"section", "worked"}:
+        options["section_id"] = "meaning" if reference == "section" else "worked"
+    elif reference == "exercise":
+        options["exercise_id"] = detail["exercises"][0]["id"]
+    quote = "ich — 主語 😀"
+    calls = []
+
+    async def run(agent, messages, *, context, **kwargs):
+        calls.append((agent, messages, context))
+        current_detail = store.lesson_detail(store.owner, session, lesson["id"])
+        assert json.dumps(current_detail, ensure_ascii=False) in agent.instructions
+        return SimpleNamespace(
+            final_output=LessonTurnOutput(
+                reply="Explanation", summary="Discussed a quote."
+            ),
+            to_input_list=lambda: messages,
+        )
+
+    monkeypatch.setattr("milai.tutor.Runner.run", run)
+    tutor = _tutor(store)
+    asyncio.run(
+        tutor.respond(store.owner, session, "Why?", selected_text=quote, **options)
+    )
+    assert quote in calls[0][1][-1]["content"]
+    assert calls[0][2].selected_text == quote
+    assert (
+        store.conversation(store.owner, session, lesson_id=lesson["id"])[0]["content"]
+        == "Why?"
+    )
+    asyncio.run(
+        tutor.respond(store.owner, session, "What else?", lesson_id=lesson["id"])
+    )
+    assert quote in calls[1][1][0]["content"]
+    assert calls[1][1][-1]["content"] == "What else?"
+    assert calls[1][2].selected_text is None
+    assert calls[1][2].section_id is None
+    assert calls[1][2].selected_exercise_id is None
+    assert store.db.execute("SELECT count(*) FROM attempts").fetchone()[0] == 0
+    assert store.db.execute("SELECT count(*) FROM assistance").fetchone()[0] == 0
+    asyncio.run(tutor.close())
+    store.close()
+
+    reopened = Store(path)
+    local = reopened.conversation(reopened.owner, session, lesson_id=lesson["id"])
+    assert local[0]["selected_text"] == quote
+    assert local[2]["selected_text"] is None
+    assert all(
+        not entry.get("selected_text")
+        for entry in reopened.conversation(reopened.owner, session)
+    )
+    scope = reopened.learning_scope(reopened.owner, session)
+    excerpt = reopened.discussion_excerpt(scope, lesson["id"])
+    assert excerpt["turns"][0]["selected_text"] == quote
+    history = reopened.model_history(reopened.owner, session, lesson_id=lesson["id"])
+    assert quote in history[0]["content"]
+    bounded = reopened.model_history(
+        reopened.owner, session, lesson_id=lesson["id"], max_chars=30
+    )
+    assert sum(len(entry["content"]) for entry in bounded) <= 30
+    other = reopened.session(reopened.owner)
+    with pytest.raises(InvalidReference):
+        reopened.conversation(reopened.owner, other, lesson_id=lesson["id"])
+    reopened.close()
+
+
+def test_invalid_selected_text_is_rejected_before_model_execution(
+    tmp_path, monkeypatch
+):
+    store = Store(tmp_path / "invalid-selection.db")
+    session = store.session(store.owner)
+    lesson = _seed_lesson(store, session, "first", "pronouns", "Subject pronouns")
+    other = store.session(store.owner)
+    other_lesson = _seed_lesson(store, other, "other", "verbs", "Verbs")
+    foreign_exercise = store.lesson_detail(store.owner, other, other_lesson["id"])[
+        "exercises"
+    ][0]["id"]
+
+    async def run(*args, **kwargs):
+        pytest.fail("Invalid selections must be rejected before model execution")
+
+    monkeypatch.setattr("milai.tutor.Runner.run", run)
+    tutor = _tutor(store)
+    for selected_text in ["", "  ", "x" * 4001, 42]:
+        with pytest.raises(ValueError):
+            asyncio.run(
+                tutor.respond(
+                    store.owner,
+                    session,
+                    "Why?",
+                    lesson_id=lesson["id"],
+                    selected_text=cast(Any, selected_text),
+                )
+            )
+    cases: list[dict[str, Any]] = [
+        {},
+        {"lesson_id": lesson["id"], "action": "answer", "exercise_id": "anything"},
+        {"lesson_id": lesson["id"], "section_id": "missing"},
+        {"lesson_id": lesson["id"], "exercise_id": foreign_exercise},
+        {"lesson_id": other_lesson["id"]},
+    ]
+    for references in cases:
+        with pytest.raises(ValueError):
+            asyncio.run(
+                tutor.respond(
+                    store.owner, session, "Why?", selected_text="quote", **references
+                )
+            )
+    assert store.conversation(store.owner, session, lesson_id=lesson["id"]) == []
+    asyncio.run(tutor.close())
+    store.close()
+
+
+def test_failed_selected_question_saves_neither_quote_nor_summary(
+    tmp_path, monkeypatch
+):
+    store = Store(tmp_path / "failed-selection.db")
+    session = store.session(store.owner)
+    lesson = _seed_lesson(store, session, "first", "pronouns", "Subject pronouns")
+
+    async def run(*args, **kwargs):
+        raise RuntimeError("Model failed")
+
+    monkeypatch.setattr("milai.tutor.Runner.run", run)
+    tutor = _tutor(store)
+    with pytest.raises(RuntimeError, match="Model failed"):
+        asyncio.run(
+            tutor.respond(
+                store.owner,
+                session,
+                "Why?",
+                lesson_id=lesson["id"],
+                selected_text="quote",
+            )
+        )
+    assert store.conversation(store.owner, session, lesson_id=lesson["id"]) == []
+    assert (
+        store.discussion_summary(
+            store.learning_scope(store.owner, session), lesson["id"]
+        )
+        is None
+    )
+    asyncio.run(tutor.close())
+    store.close()
 
 
 def test_lesson_scope_summary_and_current_focus_survive_reopen(tmp_path, monkeypatch):
@@ -218,6 +374,12 @@ def test_references_are_rejected_before_model_and_completed_task_can_be_discusse
         )
         store.save_turn(answer_ctx, "Correct", [])
     assert store.exercise_status(store.owner, first, exercise["id"])["completed"]
+    assert (
+        store.exercise_status(store.owner, first, exercise["id"])["latest_assessment"][
+            "turn_id"
+        ]
+        == "answer"
+    )
     reply = asyncio.run(
         tutor.respond(
             store.owner,

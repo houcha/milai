@@ -1,5 +1,58 @@
 // Browser-only state for unfinished work. The server remains the source of truth
 // for lesson content, discussion, attempts, and exercise status.
+export const MAX_SELECTED_TEXT = 4000;
+export const MAX_BLANK_ANSWER_LENGTH = 200;
+
+export function blankAnswers(draft, response, count) {
+  if (Array.isArray(draft)) {
+    return Array.from({length: count}, (_, index) => typeof draft[index] === "string" ? draft[index] : "");
+  }
+  const lines = (response || "").split("\n");
+  return Array.from({length: count}, (_, index) => {
+    const prefix = `Blank ${index + 1}: `;
+    return lines[index]?.startsWith(prefix) ? lines[index].slice(prefix.length) : "";
+  });
+}
+
+export function serializeBlankAnswers(values) {
+  if (!values.length || values.some((value) => !value.trim())) throw new Error("Fill in every blank before submitting.");
+  if (values.some((value) => value.length > MAX_BLANK_ANSWER_LENGTH || /[\r\n]/.test(value))) {
+    throw new Error("Each blank accepts a single line of up to 200 characters.");
+  }
+  return values.map((value, index) => `Blank ${index + 1}: ${value.trim()}`).join("\n");
+}
+
+function savedSelection(value) {
+  if (!value || typeof value.text !== "string" || !value.text.trim()
+      || [...value.text].length > MAX_SELECTED_TEXT) return null;
+  if (value.section_id && value.exercise_id) return null;
+  return {
+    text: value.text,
+    ...(typeof value.section_id === "string" ? { section_id: value.section_id } : {}),
+    ...(typeof value.exercise_id === "string" ? { exercise_id: value.exercise_id } : {}),
+  };
+}
+
+export function readLessonSelection(selection, root) {
+  if (!selection || selection.isCollapsed || selection.rangeCount !== 1) return null;
+  const range = selection.getRangeAt(0);
+  const element = (node) => node.nodeType === 1 ? node : node.parentElement;
+  const start = element(range.startContainer);
+  const end = element(range.endContainer);
+  const allowed = (node) => node && root.contains(node)
+    && node.closest("[data-selection-source]")
+    && !node.closest("button, input, textarea, form, [contenteditable]");
+  if (!allowed(start) || !allowed(end)) return null;
+  const text = selection.toString().trim();
+  if (!text) return null;
+  const reference = {};
+  for (const [attribute, key] of [["data-section-id", "section_id"], ["data-exercise-id", "exercise_id"]]) {
+    const owner = start.closest(`[${attribute}]`);
+    if (owner && owner === end.closest(`[${attribute}]`)) reference[key] = owner.getAttribute(attribute);
+  }
+  return { text, ...reference };
+}
+
 export function createLessonState(storage = globalThis.sessionStorage) {
   const prefix = "milai:session:";
   const memory = new Map();
@@ -26,7 +79,7 @@ export function createLessonState(storage = globalThis.sessionStorage) {
           return {
             draft: typeof saved.draft === "string" ? saved.draft : "",
             answers: saved.answers && typeof saved.answers === "object" ? saved.answers : {},
-            selected: saved.selected || null,
+            selected: savedSelection(saved.selected),
             readingPosition: Number.isFinite(saved.readingPosition) ? saved.readingPosition : 0,
             tab: saved.tab === "discussion" ? "discussion" : "lesson",
           };

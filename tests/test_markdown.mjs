@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { renderMarkdown } from "../src/milai/web/markdown.bundle.js";
+import { renderMarkdown, renderExerciseMarkdown } from "../src/milai/web/markdown.bundle.js";
 
 test("renders the tutor's numbered lesson, nested bullets, and TeX arrow", () => {
   const source = [
@@ -38,4 +38,23 @@ test("renders exercise emphasis and numbered conjugations", () => {
   assert.match(html, /<strong>hören<\/strong>/);
   assert.match(html, /<ol>/);
   assert.match(html, /<li>ich höre<\/li>/);
+});
+
+test("inline blanks retain ordered lists, context and formatting", () => {
+  const html = renderExerciseMarkdown("Replace each subject.\n\n1. {{blank}} [Ben] sings.\n2. **{{blank}}** [Mia] sings.\n3. {{blank}} and {{blank}}.");
+  assert.match(html, /<ol>/);
+  assert.equal((html.match(/class="exercise-blank"/g) || []).length, 4);
+  assert.match(html, /data-blank-number="1">____<\/span> \[Ben\] sings/);
+  assert.match(html, /<strong><span class="exercise-blank" data-blank-number="2"/);
+  assert.match(html, /data-blank-number="4"/);
+  assert.doesNotMatch(html, /<input|<script/);
+  assert.match(renderExerciseMarkdown("{{blank}}"), /data-blank-number="1"/);
+});
+
+test("blank markers are inert outside exercise prose and model HTML stays escaped", () => {
+  assert.doesNotMatch(renderMarkdown("{{blank}}"), /class="exercise-blank"/);
+  const html = renderExerciseMarkdown('`{{blank}}` [{{blank}}](https://example.com)\n\n```text\n{{blank}}\n```\n\n<input value="answer" onfocus="alert(1)">\n\n{{blank}}');
+  assert.doesNotMatch(html, /class="exercise-blank"|\{\{blank\}\}/);
+  assert.doesNotMatch(html, /<input/);
+  assert.match(html, /&lt;input/);
 });

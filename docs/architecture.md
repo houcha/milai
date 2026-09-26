@@ -58,6 +58,32 @@ taught supporting skills. Attempts and help retain exact exercise and skill
 references. Ambiguous requests are clarified before evidence is assigned. Skills
 can be superseded without rewriting historical lessons or observations.
 
+Exercise tasks remain Markdown strings. The lesson planner and `present_exercise`
+can use up to 12 literal `{{blank}}` markers for inline short answers; model
+schemas and storage validate their spelling and count. The exercise-only
+Markdown renderer emits fixed numbered spans, and the app creates accessible
+text inputs with a 200-character limit, associated with one exercise form.
+Model HTML stays disabled. Markers inside code, math, or links fall back to
+static blanks and the normal free-text form so numbering cannot silently shift.
+Multi-part tasks are requested as Markdown lists, with one item per line.
+
+Inline answer drafts are arrays stored under the existing session/lesson/exercise
+key. One `action: answer` request sends all fields as `Blank 1: ...` lines in
+reading order; the existing tutor assessment and attempt storage remain in use.
+After an incomplete assessment, fields restore the submitted values for editing.
+Completed tasks replace their inputs with the saved answer text. The terminal
+shows numbered static blanks and retains `/answer`. Existing tasks are unchanged;
+this Markdown extension requires no database migration.
+
+The browser excludes `action: answer` turns from the visible discussion, both
+while submitting and when replaying saved history. Answer progress and failures
+appear on the exercise card; submitting does not scroll or add messages to the
+discussion. Assessment status includes its `turn_id` so the card can associate
+feedback with a submission without duplication. Answer turns without a recorded
+assessment still show their clarification reply on the card. All turns remain
+persisted and available to tutor history and learning evidence; ordinary
+questions about exercises remain visible in discussion.
+
 ## Tutor loop and context
 
 One `Tutor.respond` call is one learner turn. The application validates the
@@ -72,8 +98,11 @@ Main replay contains only main conversation turns. It includes the session's
 shared profile and evidence, lesson summaries, review recommendations, and
 bounded retrieval of a selected lesson's document or discussion. Lesson replay
 contains only that lesson's bounded local history, its complete document loaded
-outside the shared-state budget, a rolling discussion summary, the selected
-section or exercise, and relevant shared learning state. Lesson turns produce a
+outside the shared-state budget, a rolling discussion summary, optional selected
+text and its section or exercise reference, and relevant shared learning state.
+Quotes are learner-provided context, not instructions or verified source material.
+They accompany their own turn in bounded replay and discussion retrieval rather
+than establishing a persistent focus. Lesson turns produce a
 structured learner-facing reply and an updated summary of at most 2,000
 characters. Both save atomically, with the updating turn recorded. Summaries
 retain unresolved questions and requested next steps. Persistent goals and
@@ -82,21 +111,35 @@ their quote.
 
 ## Storage and navigation
 
-SQLite schema 5 adds fixed lesson documents, scoped turns and references,
-discussion summaries, current teaching focus, and turn-to-lesson presentation
-links. Ownership checks and session deletion cover every record. Older schemas
-fail on open with an explicit `milai reset --yes` instruction; reset archives the
-database and WAL/SHM sidecars before creating fresh schema 5.
+SQLite schema 6 stores selected text alongside each discussion turn, in addition
+to lesson documents, scoped references, discussion summaries, current teaching
+focus, and presentation links. Schema 5 upgrades transactionally on open by
+adding a nullable `turns.selected_text` column, preserving all existing data.
+Ownership checks and session deletion cover every record. Schemas older than 5
+still require `milai reset --yes`, which archives the database and WAL/SHM
+sidecars before creating the current schema.
 
 The browser lesson route shows the document beside its discussion. On narrow
 screens, **Lesson** and **Discussion** tabs replace the columns. Exercises appear
-under the explanation, with status, answer fields, and **Ask about this exercise**.
-Sections have stable **Ask about this section** references. The selected reference
-appears beside the composer and can be removed. Cards and sidebar entries open
+under the explanation, with status and answer fields. Completed exercises retain
+past answers and feedback without answer controls. There are no section or
+exercise question buttons: selecting reading text automatically attaches a
+removable plain-text quote beside the composer without changing focus or tabs.
+The browser identifies its section, worked example, or exercise when both ends
+belong to the same item; cross-section selections remain lesson-wide. Quotes
+are limited to 4,000 characters; longer selections show a shortening request.
+Chat requests accept optional `selected_text` only for lesson discussion messages,
+alongside existing optional `section_id` or `exercise_id`. The HTTP body limit is
+64 KiB. The full lesson remains available whether or not a quote is attached.
+Cards and sidebar entries open
 stored lessons directly. **Back to conversation** navigates without changing
 focus; **Continue learning** sends a main-chat continuation tied to its origin
 lesson. Browser session storage keeps per-session, per-lesson drafts, selected
-exercise, and reading position through reloads and clears them on session delete.
+text, and reading position through reloads and clears them on session delete.
+Legacy browser references without quotes are discarded while preserving other
+draft state. The pending quote clears after a discussion turn commits, remains
+after failure, and is never included in answer submissions. Saved quotes appear
+with learner messages on reload. Answering an exercise does not set discussion focus.
 The terminal mirrors navigation with `/lessons`, `/lesson <id>`, `/back`, and
 `/answer <exercise-id> <text>`.
 

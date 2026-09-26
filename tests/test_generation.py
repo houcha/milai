@@ -96,7 +96,11 @@ def test_planner_request_uses_separate_sol_settings_and_commits_document(tmp_pat
     store = Store(tmp_path / "generation.db")
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
-    mock = MockProvider([say(json.dumps(draft()))])
+    planned = draft()
+    planned["exercises"][0]["task"] = (
+        "Choose pronouns.\n\n1. {{blank}} [Ben] sings.\n2. {{blank}} [Mia] sings."
+    )
+    mock = MockProvider([say(json.dumps(planned))])
     ctx = Context(
         store,
         scope,
@@ -124,6 +128,7 @@ def test_planner_request_uses_separate_sol_settings_and_commits_document(tmp_pat
     detail = store.lesson_detail(store.owner, session, saved["id"])
     assert detail["sections"][0]["id"] == "person"
     assert len(detail["exercises"]) == 3
+    assert detail["exercises"][0]["task"] == planned["exercises"][0]["task"]
     assert len(mock.requests) == 1
     request = mock.requests[0]
     assert request["model"] == "gpt-6-sol"
@@ -171,6 +176,8 @@ def test_interactive_request_keeps_chat_model_and_low_effort(tmp_path):
         ),
         lambda value: value["exercises"][0].update({"source_ids": ["invented"]}),
         lambda value: value["document"]["sections"][1].update({"id": "person"}),
+        lambda value: value["exercises"][0].update({"task": "{{blank}} " * 13}),
+        lambda value: value["exercises"][0].update({"task": "Use {{blank:1}} here."}),
     ],
 )
 def test_incomplete_or_invalid_draft_is_rejected(change):

@@ -12,8 +12,12 @@ It contains an objective, ordered explanation sections, worked examples, a recap
 and three to six exercises, including at least two without scaffolding. The
 lesson's own conversation stays available beside the document. Learners can ask
 about a section or exercise, submit an answer, and return later to the same
-discussion. Further explanations appear in that discussion; additional practice
-is appended to the lesson. The generated-lesson list records history, not a future
+discussion. Each question considers the complete lesson. Highlighting lesson or
+exercise text optionally attaches a removable quote to the next question, without
+switching tabs or moving the cursor. The quote clears after a successful send
+and stays with that message in conversation history. There are no repeated
+section or exercise question buttons. Further explanations appear in discussion;
+additional practice is appended to the lesson. The generated-lesson list records history, not a future
 roadmap. Reopening a past lesson does not change the current teaching focus.
 
 Prerequisite edges form a directed acyclic graph. Every prerequisite must be
@@ -25,6 +29,16 @@ slip recorded for a later check. Prepared exercises remain available after such 
 slip; newly generated remedial drills wait for the delayed review unless the
 learner asks for them. An advanced request never bypasses a prerequisite; the
 tutor explains the relationship and teaches the earliest eligible skill.
+
+Short-answer exercises can place editable blanks directly in numbered sentences.
+The learner fills them in and submits the exercise once; the tutor assesses all
+answers together. Drafts survive reloads and failed submissions. Answers that
+need correction remain editable, and completed exercises show submitted words
+as text. Open-ended writing keeps a normal answer box. New practice uses separate
+numbered lines; saved exercises retain their original format. Submitted answers,
+assessment feedback, and answer clarification replies stay on the exercise cards.
+The discussion chat displays questions and their replies, including questions
+about exercises, without replaying answer submissions.
 
 Each exercise belongs to one lesson and targets that lesson's focus skill.
 Previously taught skills may support it. Questions and clarification do not count
@@ -48,8 +62,9 @@ and keeps one learner-facing tutor. Chat and assessment use the configured
 `OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
 lesson model and generation settings; the application validates its draft before
 saving the document, exercises, lesson card, and main reply together. A failed
-generation leaves the turn unchanged. Existing databases require an explicit
-`milai reset --yes` archival reset for schema 5.
+generation leaves the turn unchanged. Schema 5 databases upgrade to schema 6
+without losing saved lessons or conversations. Earlier schemas require an explicit
+`milai reset --yes` archival reset.
 
 ## Open product questions
 

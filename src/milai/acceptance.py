@@ -133,6 +133,7 @@ async def run(settings: Settings, pause: float = 0, report: Path | None = None):
                 "Can you explain this section with another short example?",
                 lesson_id=lesson_id,
                 section_id=section_id,
+                selected_text=sections[0]["title"],
             )
             attempts_before_question = attempt_count(store, session)
             await turn(
@@ -140,6 +141,7 @@ async def run(settings: Settings, pause: float = 0, report: Path | None = None):
                 "What is this exercise asking me to do? Please do not assess me yet.",
                 lesson_id=lesson_id,
                 exercise_id=exercise_id,
+                selected_text=selected_exercise["title"],
             )
             question_added_no_attempt = (
                 attempt_count(store, session) == attempts_before_question
@@ -206,11 +208,14 @@ async def run(settings: Settings, pause: float = 0, report: Path | None = None):
                 "exercise_contract": 3 <= len(exercises) <= 6
                 and sum(e.get("scaffolding") == "none" for e in exercises) >= 2,
                 "section_question_scoped": any(
-                    item.get("section_id") == section_id for item in local_users
+                    item.get("section_id") == section_id
+                    and item.get("selected_text") == sections[0]["title"]
+                    for item in local_users
                 ),
                 "exercise_question_scoped": any(
                     item.get("exercise_id") == exercise_id
                     and item.get("action") == "message"
+                    and item.get("selected_text") == selected_exercise["title"]
                     for item in local_users
                 ),
                 "question_without_attempt": question_added_no_attempt,

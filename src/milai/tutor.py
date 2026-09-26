@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from milai.config import Settings, providers
 from milai.observability import Telemetry
-from milai.store import Store, identifier
+from milai.store import MAX_SELECTED_TEXT, Store, identifier, message_with_selection
 from milai.tools import TOOLS, Context
 
 
@@ -85,6 +85,7 @@ class Tutor:
         *,
         lesson_id: str | None = None,
         section_id: str | None = None,
+        selected_text: str | None = None,
         exercise_id: str | None = None,
         action: str = "message",
         origin_lesson_id: str | None = None,
@@ -112,6 +113,15 @@ class Tutor:
             exercise_id, action = selected_exercise_id, "answer"
         if action not in {"message", "answer"}:
             raise ValueError("Unknown conversation action")
+        if selected_text is not None:
+            if not isinstance(selected_text, str):
+                raise ValueError("selected_text must be text")
+            if not selected_text.strip() or len(selected_text) > MAX_SELECTED_TEXT:
+                raise ValueError("Select between 1 and 4000 characters of lesson text")
+            if not lesson_id or action != "message":
+                raise ValueError(
+                    "Selected text belongs to a lesson discussion question"
+                )
         if action == "answer" and not exercise_id:
             raise ValueError("Choose an exercise to answer")
         if section_id and exercise_id:
@@ -175,6 +185,7 @@ class Tutor:
                 max_tools=self.settings.max_tools,
                 lesson_id=lesson_id,
                 section_id=section_id,
+                selected_text=selected_text,
                 origin_lesson_id=origin_lesson_id,
                 action=action,
                 selected_exercise_id=exercise_id,
@@ -249,7 +260,15 @@ class Tutor:
                     async with asyncio.timeout(self.settings.timeout):
                         run_input = cast(
                             list[TResponseInputItem],
-                            history + [{"role": "user", "content": message}],
+                            history
+                            + [
+                                {
+                                    "role": "user",
+                                    "content": message_with_selection(
+                                        message, selected_text, section_id, exercise_id
+                                    ),
+                                }
+                            ],
                         )
                         run_config = RunConfig(
                             workflow_name="language-tutor",

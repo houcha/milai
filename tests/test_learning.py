@@ -221,6 +221,51 @@ def test_schema_mismatch_requires_explicit_archiving_reset(tmp_path):
     store.close()
 
 
+def test_inline_exercise_tasks_persist_and_reject_invalid_markers(tmp_path):
+    from milai.tools import Exercise
+
+    path = tmp_path / "inline-exercises.db"
+    store = Store(path)
+    session = store.session(store.owner)
+    scope = store.learning_scope(store.owner, session)
+    lesson = seed_graph(store, scope, session)["lesson"]
+    payload = {
+        "title": "Choose pronouns",
+        "task": (
+            "Replace the subject.\n\n"
+            "1. {{blank}} [Ben] sings.\n2. {{blank}} [Mia] sings."
+        ),
+        "context": "Two people",
+        "scaffolding": "none",
+        "source_ids": [],
+        "skills": [
+            {
+                "skill_id": lesson["focus_skill_id"],
+                "role": "target",
+                "success_criterion": "Choose correctly",
+            }
+        ],
+    }
+    ctx = context(store, scope, session, "inline", "More practice")
+    with store.transaction():
+        saved = store.present_exercise(
+            ctx, Exercise.model_validate(payload).model_dump()
+        )
+        store.save_turn(ctx, "Try this", [])
+    assert saved["task"] == payload["task"]
+    count = store.db.execute("SELECT count(*) FROM exercises").fetchone()[0]
+    for task in ["{{blank}} " * 13, "Use {{blank:1}} here."]:
+        with pytest.raises(ValueError):
+            Exercise.model_validate({**payload, "task": task})
+        with pytest.raises(ValueError), store.transaction():
+            store.present_exercise(ctx, {**payload, "task": task})
+        assert store.db.execute("SELECT count(*) FROM exercises").fetchone()[0] == count
+    store.close()
+    reopened = Store(path)
+    assert reopened.exercise(scope, saved["id"])["task"] == payload["task"]
+    reopened.close()
+
+
 def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
     store = Store(tmp_path / "lesson.db")
     session = store.session(store.owner)
@@ -504,6 +549,71 @@ def test_schema_four_requires_explicit_archival_reset(tmp_path):
         == SCHEMA_VERSION
     )
     fresh.close()
+
+
+def test_schema_five_upgrade_preserves_learning_and_history(tmp_path):
+    from tests.test_lesson_conversations import _seed_lesson
+
+    path = tmp_path / "schema-five.db"
+    original = Store(path)
+    owner = original.owner
+    session = original.session(owner)
+    lesson = _seed_lesson(original, session, "first", "pronouns", "Subject pronouns")
+    before = original.lesson_detail(owner, session, lesson["id"])
+    conversation = original.conversation(owner, session)
+    original.db.execute("ALTER TABLE turns DROP COLUMN selected_text")
+    original.db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
+    original.close()
+
+    upgraded = Store(path)
+    assert upgraded.owner == owner
+    assert upgraded.lesson_detail(owner, session, lesson["id"]) == before
+    assert upgraded.conversation(owner, session) == conversation
+    assert (
+        upgraded.db.execute(
+            "SELECT value FROM metadata WHERE key='schema_version'"
+        ).fetchone()[0]
+        == SCHEMA_VERSION
+    )
+    assert upgraded.db.execute("SELECT selected_text FROM turns").fetchone()[0] is None
+    assert not list(tmp_path.glob("*.bak"))
+    upgraded.close()
+    reopened = Store(path)
+    assert reopened.conversation(owner, session) == conversation
+    reopened.close()
+
+
+def test_schema_five_migration_rolls_back_on_failure(tmp_path, monkeypatch):
+    path = tmp_path / "migration-failure.db"
+    original = Store(path)
+    original.db.execute("ALTER TABLE turns DROP COLUMN selected_text")
+    original.db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
+    original.close()
+    connect = sqlite3.connect
+
+    class FailingConnection(sqlite3.Connection):
+        def execute(self, sql, parameters=()):
+            if sql.startswith("UPDATE metadata SET value=?"):
+                raise sqlite3.OperationalError("Simulated write failure")
+            return super().execute(sql, parameters)
+
+    monkeypatch.setattr(
+        sqlite3,
+        "connect",
+        lambda *args, **kwargs: connect(*args, **kwargs, factory=FailingConnection),
+    )
+    with pytest.raises(sqlite3.OperationalError, match="Simulated write failure"):
+        Store(path)
+    with connect(path) as db:
+        assert (
+            db.execute(
+                "SELECT value FROM metadata WHERE key='schema_version'"
+            ).fetchone()[0]
+            == "5"
+        )
+        assert "selected_text" not in {
+            row[1] for row in db.execute("PRAGMA table_info(turns)")
+        }
 
 
 def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):

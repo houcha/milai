@@ -7,7 +7,7 @@ from openai import RateLimitError
 
 from milai import cli
 from milai.config import Settings
-from milai.store import Store
+from milai.store import SCHEMA_VERSION, Store
 from milai.tutor import TutorReply
 
 
@@ -55,7 +55,7 @@ def test_reset_requires_acknowledgement_and_archives_database(
     monkeypatch.setattr("sys.argv", ["milai", "reset", "--yes"])
     cli.main()
     output = capsys.readouterr().out
-    assert "Archived:" in output and "Created schema 5" in output
+    assert "Archived:" in output and f"Created schema {SCHEMA_VERSION}" in output
     assert list(tmp_path.glob("learning.db.legacy-*.bak"))
     reopened = Store(path)
     reopened.close()
@@ -70,7 +70,7 @@ def test_cli_renders_free_text_explanation_and_persisted_exercise(capsys):
                     "kind": "exercise",
                     "title": "Yesterday",
                     "context": "A trip",
-                    "task": "Complete: I ___ to the station (walk).",
+                    "task": "Complete: I {{blank}} to the station (walk).",
                     "skills": [{"name": "Regular past formation"}],
                 },
             ],
@@ -79,7 +79,8 @@ def test_cli_renders_free_text_explanation_and_persisted_exercise(capsys):
     output = capsys.readouterr().out
     assert "First the rule, then practice." in output
     assert "[EXERCISE] Yesterday" in output
-    assert "Complete: I ___ to the station" in output
+    assert "Complete: I ___ [blank 1] to the station" in output
+    assert "{{blank}}" not in output
 
 
 def test_cli_renders_open_lesson_card(capsys):

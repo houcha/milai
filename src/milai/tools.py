@@ -21,8 +21,9 @@ from agents import (
 )
 from agents.exceptions import ModelBehaviorError
 from openai.types.shared import Reasoning
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from milai.exercise_format import EXERCISE_TASK_DESCRIPTION, validate_exercise_task
 from milai.retrieval import retrieve
 from milai.store import InvalidReference, Store
 
@@ -102,11 +103,21 @@ class ExerciseSkill(BaseModel):
     success_criterion: str = Field(min_length=1, max_length=500)
 
 
-class Exercise(BaseModel):
+class ExerciseContent(BaseModel):
     title: str = Field(min_length=1, max_length=200)
-    task: str = Field(min_length=1, max_length=2400)
+    task: str = Field(
+        min_length=1, max_length=2400, description=EXERCISE_TASK_DESCRIPTION
+    )
     context: str = Field(min_length=1, max_length=800)
     scaffolding: Literal["none", "cues", "worked_example"]
+
+    @field_validator("task")
+    @classmethod
+    def valid_task(cls, value: str) -> str:
+        return validate_exercise_task(value)
+
+
+class Exercise(ExerciseContent):
     skills: list[ExerciseSkill] = Field(min_length=1, max_length=6)
     source_ids: list[str] = Field(default_factory=list, max_length=5)
     early_revisit_request: str | None = Field(default=None, max_length=800)
@@ -149,6 +160,7 @@ class Context:
     lesson_ids: list[str] = field(default_factory=list)
     lesson_id: str | None = None
     section_id: str | None = None
+    selected_text: str | None = None
     origin_lesson_id: str | None = None
     action: Literal["message", "answer"] = "message"
     selected_exercise_id: str | None = None
@@ -217,11 +229,7 @@ class PlannedExerciseSkill(BaseModel):
     success_criterion: str = Field(min_length=1, max_length=500)
 
 
-class PlannedExercise(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    task: str = Field(min_length=1, max_length=2400)
-    context: str = Field(min_length=1, max_length=800)
-    scaffolding: Literal["none", "cues", "worked_example"]
+class PlannedExercise(ExerciseContent):
     skills: list[PlannedExerciseSkill] = Field(min_length=1, max_length=6)
     source_ids: list[str] = Field(max_length=5)
 

@@ -1,5 +1,55 @@
 # Validation reports
 
+## 2026-09-26 — Exercise responses stay on their cards
+
+Offline checks passed all 88 Python tests, browser/renderer Node tests, Ruff
+lint, and ty. Regression coverage verifies that pending, saved, and reloaded
+answer turns stay out of discussion; assessment feedback is not duplicated;
+unassessed clarification replies remain visible on the exercise; and submission
+or refresh failures do not insert chat messages. Stored answers remain available
+to the tutor.
+
+Real Chromium checks with synthetic lesson/API data verified failed submissions,
+corrections, completion, and reload without answer bubbles in discussion.
+Explicit exercise questions still appear with their replies. Reviewed screenshot:
+[exercise feedback beside discussion](screenshots/exercise-feedback-only.png).
+
+## 2026-09-26 — Inline exercise blanks
+
+Offline checks passed all 88 Python tests, browser/renderer Node tests, Ruff
+format/lint, and ty. The Markdown bundle was regenerated with `npm run build:web`.
+Coverage includes planner output and persistence of blank markers, count and
+syntax validation, HTML escaping, unsupported-marker fallback, answer ordering,
+required fields, draft isolation, failed submissions, retries, and completion.
+
+Real Chromium checks with synthetic lesson/API data verified native required
+fields, keyboard Tab order, drafts after reload, retained answers after failures
+and incomplete assessments, completed answers as static text, and no horizontal
+overflow at 390 × 844. Reviewed screenshots:
+[desktop inline exercise](screenshots/inline-exercise-desktop.png) and
+[mobile inline exercise](screenshots/inline-exercise-mobile.png).
+No live model quality claim is made; the prompts and tool schemas now request
+inline blanks when appropriate and separate numbered task lines.
+
+## 2026-09-26 — Selected text in lesson discussion
+
+Offline validation passed all 85 Python tests, the browser/renderer Node tests,
+Ruff formatting/lint checks, and ty. Coverage includes full lesson context with
+optional quotes, question/answer separation, persistence and replay, session
+isolation, Unicode request bounds, schema-5 data preservation, and migration
+rollback on failure. The synthetic acceptance runner now supplies quotes with
+section and exercise questions; it was not run against a live model for this change.
+
+Real headless Chromium checks with synthetic lesson/API data verified selections
+across rendered formatting, sections, worked examples, and exercise feedback;
+quote replacement/removal; failure retention and successful-send clearing;
+saved quotes in history; and mobile tab switching and draft restoration on reload.
+The 390 × 844 mobile viewport had no horizontal overflow. Reviewed screenshots:
+[desktop selection](screenshots/lesson-selection-desktop.png) and
+[mobile discussion](screenshots/lesson-selection-mobile.png).
+
+The Markdown renderer was unchanged, so its bundle did not need rebuilding.
+
 ## 2026-09-25 — Lesson model default changed
 
 Complete lesson and review generation now defaults to `gpt-6-sol` with low

@@ -173,7 +173,6 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .lesson-section { padding:26px 0; border-top:1px solid var(--line); font-size:15px; line-height:1.8; }
 .lesson-section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .lesson-section h2,.lesson-practice h2 { font:28px/1.2 Georgia,serif; margin:0 0 18px; }
-.lesson-section .quiet-button { flex:none; }
 .worked-example { padding:17px 20px; margin:12px 0; border:1px solid var(--line); border-radius:8px; background:var(--surface); }
 .worked-example h3 { margin:0 0 10px; font-size:17px; }
 .lesson-recap { padding-bottom:40px; }
@@ -185,14 +184,21 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .lesson-exercise h3 { font:23px/1.3 Georgia,serif; margin:15px 0; }
 .exercise-context { color:var(--muted); line-height:1.7; }
 .exercise-task { line-height:1.8; font-size:15px; }
+.exercise-task li { margin:8px 0; }
+.exercise-blank { display:inline-block; max-width:100%; margin:0 3px; vertical-align:baseline; }
+.exercise-blank input { width:12ch; max-width:100%; padding:4px 7px; border:1px solid #cdd2c2; border-bottom:2px solid #81916f; border-radius:4px; background:white; color:var(--ink); font:inherit; }
+.exercise-blank.completed { padding:0 5px; border-bottom:1px solid #a6b598; color:var(--green); }
+.exercise-answer-error { color:var(--coral); font-size:12px; line-height:1.5; }
+.exercise-progress { color:var(--muted); font-size:12px; line-height:1.5; }
+.exercise-progress:empty { display:none; }
 .exercise-attempts { display:grid; gap:8px; margin:18px 0; }
 .exercise-attempt { padding:12px 15px; border-left:2px solid #a6b598; background:#f2f4ed; line-height:1.6; }
 .exercise-attempt p { margin:0 0 8px; overflow-wrap:anywhere; }
+.exercise-attempt > p { white-space:pre-wrap; }
 .exercise-answer-form label { display:block; font-size:12px; font-weight:600; margin:22px 0 8px; }
 .exercise-answer-form textarea { width:100%; min-height:90px; resize:vertical; padding:12px; border:1px solid #cdd2c2; border-radius:7px; background:white; line-height:1.5; }
 .exercise-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:11px; }
 .exercise-actions button { border:0; border-radius:7px; padding:10px 13px; background:var(--green); color:white; font-size:12px; }
-.exercise-actions .quiet-button { border:1px solid var(--line); background:transparent; color:var(--green); }
 
 .lesson-discussion { min-height:0; min-width:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto auto auto; border-left:1px solid var(--line); background:#fbfbf7; }
 .discussion-heading { padding:22px 24px 8px; border-bottom:1px solid var(--line); }
@@ -203,6 +209,10 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .discussion-empty { color:var(--muted); line-height:1.7; }
 .selected-reference { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 24px 8px; padding:8px 10px; border-radius:6px; background:var(--green-soft); color:var(--green); font-size:11px; }
 .selected-reference button { border:0; background:transparent; color:var(--green); font-size:20px; line-height:1; }
+.selected-reference > div { min-width:0; }
+.selected-reference blockquote { margin:6px 0 0; max-height:120px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; }
+.message-selection { margin:0 0 10px; padding:8px 12px; border-left:2px solid #a6b598; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--green); }
+.selection-hint { max-width:780px; margin:0 auto 24px; color:var(--muted); font-size:12px; line-height:1.6; }
 .lesson-discussion .composer { margin:0 24px; }
 .lesson-discussion .composer-hint { margin:8px 24px 14px; text-align:left; }
 
@@ -230,7 +240,6 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
   .lesson-reading h1,.lesson-section h2,.lesson-exercise h3 { overflow-wrap:anywhere; }
   .lesson-reading .markdown { overflow-wrap:anywhere; }
   .lesson-section-heading { flex-direction:column; gap:0; }
-  .lesson-section-heading .quiet-button { margin-bottom:12px; }
   .lesson-exercise { padding:19px; }
   .lesson-messages { padding:20px; }
   .lesson-discussion .composer { margin-inline:16px; }

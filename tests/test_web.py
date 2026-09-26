@@ -3,6 +3,8 @@ import asyncio
 import json
 from typing import Any, cast
 
+import pytest
+
 from milai.store import Store
 from milai.tutor import TutorReply
 from milai.web import WebApplication, learning_view
@@ -65,6 +67,71 @@ def test_chat_api_serializes_structured_reply(tmp_path):
     payload = json.loads(body)
     assert payload["reply"]["text"] == "Try this."
     assert payload["reply"]["activities"][0]["kind"] == "exercise"
+    store.close()
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_chat_routes_accept_unicode_message_with_selected_text(tmp_path, stream):
+    calls = []
+
+    class FakeTutor:
+        async def respond(self, learner, session, message, **kwargs):
+            calls.append((message, kwargs))
+            return TutorReply(text="Explanation", activities=[])
+
+    class Writer:
+        def __init__(self):
+            self.data = bytearray()
+
+        def write(self, value):
+            self.data.extend(value)
+
+        async def drain(self):
+            pass
+
+        def close(self):
+            pass
+
+        async def wait_closed(self):
+            pass
+
+    store = Store(tmp_path / "quote-route.db")
+    session = store.session(store.owner)
+    app = WebApplication(store, cast(Any, FakeTutor()), session, 8765)
+    payload = {
+        "session": session,
+        "lesson_id": "lesson",
+        "section_id": "forms",
+        "action": "message",
+        "message": "語" * 8000,
+        "selected_text": "😀" * 4000,
+    }
+    body = json.dumps(payload, ensure_ascii=False).encode()
+    assert len(body) > 16_384
+    writer = Writer()
+
+    async def request():
+        reader = asyncio.StreamReader()
+        endpoint = "/api/chat/stream" if stream else "/api/chat"
+        reader.feed_data(
+            (
+                f"POST {endpoint} HTTP/1.1\r\n"
+                "Host: 127.0.0.1:8765\r\nOrigin: http://127.0.0.1:8765\r\n"
+                f"Content-Type: application/json\r\nContent-Length: {len(body)}\r\n\r\n"
+            ).encode()
+            + body
+        )
+        reader.feed_eof()
+        await app.handle(reader, cast(Any, writer))
+
+    asyncio.run(request())
+    assert b"200 OK" in writer.data
+    assert len(calls) == 1
+    assert calls[0][0] == payload["message"]
+    assert calls[0][1]["selected_text"] == payload["selected_text"]
+    assert calls[0][1]["section_id"] == "forms"
+    with pytest.raises(ValueError, match="selected_text must be text"):
+        app._turn_options({"selected_text": ["not text"]})
     store.close()
 
 
