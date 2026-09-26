@@ -26,6 +26,7 @@ let activeSession = null;
 let sessionItems = [];
 let currentRoute = { view: "chat", lessonId: null };
 let lessonData = null;
+let learningData = {};
 let lessonConversation = [];
 let exerciseStatuses = {};
 let busy = false;
@@ -234,6 +235,7 @@ function renderConversation(conversation) {
 }
 
 function renderLearning(learning = {}) {
+  learningData = learning;
   const lessons = learning.lessons || [];
   const focusId = learning.current_focus_lesson_id || learning.current_focus?.id || learning.active_lesson?.id;
   elements.path.replaceChildren();
@@ -243,7 +245,8 @@ function renderLearning(learning = {}) {
     const link = document.createElement("button");
     link.type = "button";
     link.className = "lesson-link";
-    link.textContent = lesson.title;
+    const result = lesson.practice_results?.at(-1);
+    link.textContent = `${lesson.title}${result?.percentage != null ? ` · ${result.percentage}%` : ""}`;
     link.disabled = busy;
     if (lesson.id === focusId) {
       link.setAttribute("aria-current", "step");
@@ -612,9 +615,50 @@ function renderLessonConversation() {
   elements.lessonMessages.scrollTop = elements.lessonMessages.scrollHeight;
 }
 
+function updateLessonResultInPath(lesson) {
+  renderLearning({...learningData, lessons: (learningData.lessons || []).map((item) => item.id === lesson.id ? {...item, practice_results: lesson.practice_results} : item)});
+}
+
+function renderLessonResults() {
+  const panel = document.querySelector("#lesson-results");
+  panel.replaceChildren();
+  const results = lessonData?.practice_results || [];
+  const finished = results.filter((result) => result.finished);
+  panel.hidden = !finished.length;
+  for (const result of finished) {
+    const entry = document.createElement("article");
+    entry.className = "lesson-result";
+    const title = document.createElement("h3");
+    title.textContent = result.number === 1 ? "Lesson result" : `Practice ${result.number} result`;
+    const score = document.createElement("p");
+    score.className = "lesson-score";
+    score.textContent = result.percentage == null ? "Submitted" : `${result.percentage}% correct`;
+    const detail = document.createElement("p");
+    detail.textContent = result.percentage == null
+      ? "Some earlier submissions have no saved assessment, so an accuracy rate is unavailable."
+      : `${result.correct} of ${result.total} ${result.scoring === "parts" ? "answer parts" : "exercises"} correct on the first submission.`;
+    entry.append(title, score, detail);
+    if (result.scoring === "exercises" && result.percentage != null) {
+      const legacy = document.createElement("p");
+      legacy.textContent = "Earlier assessments did not record partial credit; this result counts fully correct exercises.";
+      entry.append(legacy);
+    }
+    if (result === results.at(-1)) {
+      const review = document.createElement("p");
+      const date = result.review_at ? new Date(result.review_at) : null;
+      review.textContent = date && date > new Date()
+        ? `Suggested review: ${date.toLocaleString([], {dateStyle: "medium", timeStyle: "short"})}. You can ask for fresh exercises sooner if you prefer.`
+        : "Ready to review? Ask for fresh exercises in the discussion.";
+      entry.append(review);
+    }
+    panel.append(entry);
+  }
+}
+
 function renderLesson() {
   renderLessonDocument();
   renderLessonExercises();
+  renderLessonResults();
   renderLessonConversation();
   const state = lessonState();
   elements.lessonMessage.value = state.draft;
@@ -632,6 +676,7 @@ async function refreshLesson(lessonId, sequence = routeSequence) {
   lessonConversation = payload.conversation || [];
   exerciseStatuses = payload.exercise_status || {};
   renderLesson();
+  updateLessonResultInPath(payload.lesson);
 }
 
 async function renderView() {
@@ -748,7 +793,6 @@ async function submitExerciseAnswer(message, exerciseId) {
   const previous = answerRequests.get(key);
   const status = exerciseStatuses[exerciseId] || {};
   if (!exerciseId || previous?.pending || previous?.submitted || status.submitted || status.completed) return;
-
   const request = { pending: true, text: "Checking your answer…" };
   answerRequests.set(key, request);
   const visible = () => activeSession === session && currentRoute.view === "lesson"
@@ -777,7 +821,9 @@ async function submitExerciseAnswer(message, exerciseId) {
         exerciseStatuses = payload.exercise_status || {};
         // Replace only this card: other fields, selection, focus and scroll stay intact.
         renderLessonExercises(exerciseId);
+        renderLessonResults();
       }
+      if (activeSession === session) updateLessonResultInPath(payload.lesson);
     } catch (error) {
       progress("Saved. Reopen the lesson to refresh exercise status.");
     }

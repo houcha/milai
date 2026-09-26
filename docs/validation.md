@@ -1,11 +1,22 @@
 # Validation reports
 
-## 2026-09-26 — Final exercise submissions
+## 2026-09-26 — Final submissions and lesson accuracy
 
-All 90 Python tests, browser/renderer Node tests, Ruff lint, and ty passed.
-Regression tests cover repeat submission rejection, final
-incorrect answers, missing-assessment rollback, and refresh-failure duplicate
-prevention. Full scoring and visual validation follow in the next report.
+All 97 Python tests, browser/renderer Node tests, Ruff format/lint, and ty passed.
+Coverage includes partial-credit aggregation after the last submission, separate
+fresh-practice results, advisory next-day review, invalid-score rollback, repeat
+submission rejection before model execution, missing-assessment rollback, and
+schema-5/6 upgrades preserving old attempts. Legacy corrections do not replace
+the first result; missing historical assessments do not produce invented scores.
+Existing mastery and session-isolation checks remain passing.
+
+Real Chromium checks with synthetic API data verified final incorrect answers,
+background checking, preserved drafts/focus, score visibility after the final
+exercise, sidebar scores, reload persistence, and no mobile horizontal overflow.
+Reviewed screenshots: [desktop result](screenshots/lesson-result-desktop.png) and
+[mobile result](screenshots/lesson-result-mobile.png). New model scoring guidance
+has not been evaluated against a live model; grading scenarios are listed in
+`evaluation.md`.
 
 ## 2026-09-26 — Background answer checking
 

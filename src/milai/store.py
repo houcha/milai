@@ -8,14 +8,14 @@ import os
 import sqlite3
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from milai.exercise_format import validate_exercise_task
 
-SCHEMA_VERSION = "6"
+SCHEMA_VERSION = "7"
 MAX_SELECTED_TEXT = 4000
 
 
@@ -178,7 +178,7 @@ CREATE TABLE assistance_skills (
 CREATE TABLE attempts (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, exercise_id TEXT NOT NULL REFERENCES exercises(id),
     turn_id TEXT NOT NULL, learner_response TEXT NOT NULL, feedback TEXT NOT NULL,
-    created TEXT NOT NULL, UNIQUE(exercise_id, turn_id)
+    created TEXT NOT NULL, score TEXT, UNIQUE(exercise_id, turn_id)
 );
 CREATE TABLE skill_observations (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, attempt_id TEXT NOT NULL REFERENCES attempts(id),
@@ -249,7 +249,7 @@ class Store:
                     "SELECT value FROM metadata WHERE key='schema_version'"
                 ).fetchone()
                 version = row[0] if row else None
-            if version == "5":
+            if version in {"5", "6"}:
                 try:
                     self.db.execute("BEGIN IMMEDIATE")
                     # Another process may have upgraded while this one waited.
@@ -260,6 +260,8 @@ class Store:
                         self.db.execute(
                             "ALTER TABLE turns ADD COLUMN selected_text TEXT"
                         )
+                    if locked_version in {"5", "6"}:
+                        self.db.execute("ALTER TABLE attempts ADD COLUMN score TEXT")
                         self.db.execute(
                             "UPDATE metadata SET value=? WHERE key='schema_version'",
                             (SCHEMA_VERSION,),
@@ -275,7 +277,7 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
-        # Schema 5 upgrades without losing learning state. Earlier schemas still
+        # Schemas 5 and 6 upgrade without losing learning state. Earlier schemas still
         # require an explicit archival reset.
 
     @contextmanager
@@ -1034,7 +1036,106 @@ class Store:
             "objective": document["objective"] if document else "",
             "review": review,
             "created": row["created"],
+            "practice_results": self.lesson_results(learner, lesson_id),
         }
+
+    def lesson_results(self, learner: str, lesson_id: str) -> list[dict]:
+        """First-submission accuracy, separately for each generated practice set."""
+        rounds: dict[str, dict] = {}
+        for exercise in self.db.execute(
+            "SELECT id, created_turn FROM exercises WHERE lesson_id=? AND learner=? ORDER BY rowid",
+            (lesson_id, learner),
+        ).fetchall():
+            result = rounds.setdefault(
+                exercise["created_turn"],
+                {
+                    "number": len(rounds) + 1,
+                    "exercise_ids": [],
+                    "submitted": 0,
+                    "scores": [],
+                    "correct_exercises": 0,
+                    "assessed": 0,
+                    "last_submitted_at": None,
+                },
+            )
+            result["exercise_ids"].append(exercise["id"])
+            attempt = self.db.execute(
+                "SELECT id, turn_id, score, created FROM attempts WHERE exercise_id=? ORDER BY rowid LIMIT 1",
+                (exercise["id"],),
+            ).fetchone()
+            turn = self.db.execute(
+                "SELECT id, created FROM turns WHERE exercise_id=? AND action='answer' ORDER BY rowid LIMIT 1",
+                (exercise["id"],),
+            ).fetchone()
+            if (
+                attempt
+                and turn
+                and turn["id"] != attempt["turn_id"]
+                and turn["created"] < attempt["created"]
+            ):
+                # A legacy clarification was the first submission; a later correction cannot supply its score.
+                attempt = None
+            if attempt or turn:
+                result["submitted"] += 1
+                submitted_at = attempt["created"] if attempt else turn["created"]
+                result["last_submitted_at"] = max(
+                    result["last_submitted_at"] or submitted_at, submitted_at
+                )
+            if attempt:
+                result["assessed"] += 1
+                score = json.loads(attempt["score"]) if attempt["score"] else None
+                observations = self.db.execute(
+                    "SELECT skill_id, outcome, issue_severity FROM skill_observations WHERE attempt_id=?",
+                    (attempt["id"],),
+                ).fetchall()
+                targets = {
+                    row[0]
+                    for row in self.db.execute(
+                        "SELECT skill_id FROM exercise_skills WHERE exercise_id=? AND role='target'",
+                        (exercise["id"],),
+                    )
+                }
+                correct = (
+                    score["correct"] == score["total"]
+                    if score
+                    else bool(
+                        observations
+                        and targets <= {row["skill_id"] for row in observations}
+                        and all(
+                            row["outcome"] == "success"
+                            and row["issue_severity"] == "none"
+                            for row in observations
+                        )
+                    )
+                )
+                result["correct_exercises"] += int(correct)
+                result["scores"].append(score)
+        for result in rounds.values():
+            count = len(result["exercise_ids"])
+            scores = result.pop("scores")
+            result["finished"] = result["submitted"] == count
+            result["scoring"] = "parts" if scores and all(scores) else "exercises"
+            result["correct"] = result["total"] = result["percentage"] = None
+            result["review_at"] = None
+            if result["finished"]:
+                result["review_at"] = (
+                    datetime.fromisoformat(result["last_submitted_at"])
+                    + timedelta(days=1)
+                ).isoformat()
+                if result["assessed"] == count:
+                    result["correct"] = (
+                        sum(score["correct"] for score in scores)
+                        if result["scoring"] == "parts"
+                        else result["correct_exercises"]
+                    )
+                    result["total"] = (
+                        sum(score["total"] for score in scores)
+                        if result["scoring"] == "parts"
+                        else count
+                    )
+                    # Do not round an imperfect result up to 100%.
+                    result["percentage"] = result["correct"] * 100 // result["total"]
+        return list(rounds.values())
 
     def lesson_detail(self, learner: str, session: str, lesson_id: str) -> dict:
         """Return a complete, owned lesson with its prepared and added exercises."""
@@ -1367,7 +1468,13 @@ class Store:
         }
 
     def assess_attempt(
-        self, ctx: Any, exercise_id: str, feedback: str, observations: list[dict]
+        self,
+        ctx: Any,
+        exercise_id: str,
+        feedback: str,
+        observations: list[dict],
+        *,
+        score: dict | None = None,
     ) -> dict:
         exercise = self._owned("exercises", ctx.learner, exercise_id)
         if self.exercise_submitted(ctx.learner, exercise_id):
@@ -1409,9 +1516,18 @@ class Store:
                 observation["outcome"], set()
             ):
                 raise ValueError("Observation outcome and issue severity disagree")
+        if score is not None and (
+            type(score.get("correct")) is not int
+            or type(score.get("total")) is not int
+            or not 0 <= score["correct"] <= score["total"] <= 100
+            or score["total"] == 0
+        ):
+            raise ValueError(
+                "Score must count 0 to 100 correct parts out of 1 to 100 total parts"
+            )
         attempt_id, created = identifier(), now()
         self.db.execute(
-            "INSERT INTO attempts VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO attempts (id, learner, exercise_id, turn_id, learner_response, feedback, created, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 attempt_id,
                 ctx.learner,
@@ -1420,6 +1536,7 @@ class Store:
                 ctx.message,
                 feedback,
                 created,
+                _json(score) if score is not None else None,
             ),
         )
         saved = []
@@ -1466,6 +1583,7 @@ class Store:
             "exercise_id": exercise_id,
             "learner_response": ctx.message,
             "feedback": feedback,
+            "score": score,
             "observations": saved,
         }
         assessed_lesson = self.lesson(ctx.learner, exercise["lesson_id"])
@@ -1545,12 +1663,12 @@ class Store:
         ).fetchone():
             raise InvalidReference("Exercise is unavailable in this session")
         rows = self.db.execute(
-            "SELECT a.id, a.turn_id, a.learner_response, a.feedback FROM attempts a "
+            "SELECT a.id, a.turn_id, a.learner_response, a.feedback, a.score FROM attempts a "
             "JOIN turns t ON t.id=a.turn_id WHERE a.exercise_id=? AND t.session=? "
             "ORDER BY a.rowid",
             (exercise_id, session),
         ).fetchall()
-        assessments = []
+        assessments: list[dict] = []
         for row in rows:
             assessments.append(
                 {
@@ -1558,6 +1676,7 @@ class Store:
                     "turn_id": row["turn_id"],
                     "learner_response": row["learner_response"],
                     "feedback": row["feedback"],
+                    "score": json.loads(row["score"]) if row["score"] else None,
                     "observations": [
                         dict(item)
                         for item in self.db.execute(
@@ -1568,7 +1687,8 @@ class Store:
                     ],
                 }
             )
-        assessment = assessments[-1] if assessments else None
+        assessment = assessments[0] if assessments else None
+        submitted = self.exercise_submitted(scope, exercise_id)
         assisted = (
             self.db.execute(
                 "SELECT 1 FROM assistance WHERE exercise_id=? LIMIT 1", (exercise_id,)
@@ -1576,12 +1696,15 @@ class Store:
             is not None
         )
         return {
-            "latest_assessment": assessment,
+            "latest_assessment": assessments[-1] if assessments else None,
+            "first_assessment": assessment,
             "assessments": assessments,
             "assisted": assisted,
-            "submitted": self.exercise_submitted(scope, exercise_id),
-            "completed": self.exercise_submitted(scope, exercise_id),
-            "correct": bool(
+            "submitted": submitted,
+            "completed": submitted,
+            "correct": (assessment["score"]["correct"] == assessment["score"]["total"])
+            if assessment and assessment["score"]
+            else bool(
                 assessment
                 and target_ids
                 <= {
@@ -1590,7 +1713,8 @@ class Store:
                     if item["outcome"] == "success"
                 }
                 and all(
-                    item["outcome"] == "success" for item in assessment["observations"]
+                    item["outcome"] == "success" and item["issue_severity"] == "none"
+                    for item in assessment["observations"]
                 )
             ),
         }

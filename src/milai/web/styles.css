@@ -191,6 +191,10 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .exercise-answer-error { color:var(--coral); font-size:12px; line-height:1.5; }
 .exercise-progress { color:var(--muted); font-size:12px; line-height:1.5; }
 .exercise-progress:empty { display:none; }
+.lesson-result { margin-top:28px; padding:24px; background:var(--green-soft); border:1px solid var(--line); border-radius:12px; }
+.lesson-result h3 { margin:0 0 12px; }
+.lesson-result p { margin:10px 0 0; }
+.lesson-result .lesson-score { font-size:28px; color:var(--green); }
 .exercise-attempts { display:grid; gap:8px; margin:18px 0; }
 .exercise-attempt { padding:12px 15px; border-left:2px solid #a6b598; background:#f2f4ed; line-height:1.6; }
 .exercise-attempt p { margin:0 0 8px; overflow-wrap:anywhere; }

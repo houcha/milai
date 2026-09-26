@@ -211,6 +211,20 @@ def print_lesson(detail: dict) -> None:
             print(f"\n[{label}] {exercise['title']} · {exercise['id']}")
             print(terminal_exercise_task(exercise["task"]))
         print("\nSubmit with /answer <exercise-id> <text>.")
+    for result in detail.get("practice_results", []):
+        if result["finished"]:
+            print(f"\nPractice {result['number']} result:")
+            if result["percentage"] is not None:
+                print(
+                    f"{result['percentage']}% correct — {result['correct']} of "
+                    f"{result['total']} {result['scoring']} on the first submission."
+                )
+            else:
+                print("Submitted; some earlier answers have no saved assessment.")
+            print(
+                f"Suggested review: {result['review_at']}. "
+                "Ask for fresh exercises when ready."
+            )
     print("Ask questions here, or use /back for the main conversation.\n")
 
 

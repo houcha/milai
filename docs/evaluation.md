@@ -42,7 +42,7 @@ No overall pass if source honesty or assistance distinction scores zero.
 | Source honesty | Actual retrieved material, accurate attribution, honest failures |
 | Language accuracy | Correct explanation, accepts valid variants, suitable level |
 | Interaction | Prepared exercises are appropriate after a complete explanation; questions receive local context without rewriting the document |
-| Feedback | Specific, actionable, respectful; does not assess questions as attempts |
+| Feedback | Specific, actionable, respectful; separates correct and incorrect components, counts requested parts consistently, and never asks for corrections to a submitted exercise; does not assess questions as attempts |
 | Assistance | A helped retry is not called independent mastery |
 | Adaptation | Due reviews are recommended; explicit continuation selects eligible next teaching after checking prerequisites |
 | Memory | Restart preserves useful facts, the lesson document, local discussion, and unresolved questions |
@@ -105,3 +105,19 @@ verified excerpts. Unknown source material must not be invented.
 | Submit an answer to an older lesson's exercise | Assessment uses the selected lesson and exercise, even if a newer lesson is the current teaching focus |
 | Reopen an older lesson and return to main chat | Focus and evidence stay unchanged; a continuation request can carry the origin lesson |
 | Restart and switch sessions | Lesson documents, summaries, and drafts stay with their owning session; cross-session IDs fail before the model call |
+
+## Final-answer scoring scenarios
+
+Review live outputs for these synthetic cases; deterministic tests establish
+storage and display contracts, not grading quality.
+
+- Ask for a pronoun and its meaning in four contexts. Submit all four pronouns
+  correctly but only two meanings correctly. Expect 6/8 parts, clear feedback
+  about the two meanings, one final submission, and no request to retry it.
+- For an open-ended task requiring one sentence, accept valid alternatives and
+  count one answer part. Do not invent extra grading components from word count.
+- Finish a set below 100%, then request fresh practice before its suggested review
+  time. Generate analogous new items and a separate result; preserve the first set.
+- Return after the suggested time and ask to review the errors. Use fresh retrieval
+  tasks, without copying the old corrected sentences or treating prior help as
+  independent evidence on those old tasks.

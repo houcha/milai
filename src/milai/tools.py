@@ -130,6 +130,17 @@ class SkillObservation(BaseModel):
     rationale: str = Field(min_length=1, max_length=1000)
 
 
+class AnswerScore(BaseModel):
+    correct: int = Field(
+        ge=0, le=100, description="Number of required answer parts answered correctly."
+    )
+    total: int = Field(
+        ge=1,
+        le=100,
+        description="All required answer parts, including missing or incorrect parts. Count only the task's explicit requirements, consistently regardless of the learner's response; one part for a single open-ended task.",
+    )
+
+
 class AttemptAssessment(BaseModel):
     exercise_id: str
     feedback: str = Field(
@@ -137,6 +148,7 @@ class AttemptAssessment(BaseModel):
         max_length=1600,
         description="Feedback shown on the final exercise card. Clearly identify what was correct and what was not, with a brief explanation. Do not ask the learner to correct or resubmit this exercise.",
     )
+    score: AnswerScore
     observations: list[SkillObservation] = Field(min_length=1, max_length=6)
 
 
@@ -535,6 +547,7 @@ async def assess_attempt(
         assessment.exercise_id,
         assessment.feedback,
         [item.model_dump() for item in assessment.observations],
+        score=assessment.score.model_dump(),
     )
     c.assessments.append(result)
     return result

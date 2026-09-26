@@ -1,10 +1,20 @@
 # Decision log
 
-## 2026-09-26 — Final exercise submissions
+## 2026-09-26 — Final answers and practice-set accuracy
 
-- Allow one saved answer per exercise, regardless of correctness. Preserve feedback
-  without correction controls; use fresh exercises for later requested practice.
-- Require an assessment before committing an answer. Failed turns remain retryable.
+- Replace correction loops with one saved submission per exercise, regardless of
+  correctness. Keep feedback on the card. Failed model transactions remain retryable.
+- Show an accuracy rate only after every exercise in a generated set is submitted.
+  Default to partial credit for explicitly requested components in new assessments;
+  distinguish that rate from mastery. Preserve a labelled whole-exercise rate for
+  legacy sets without component counts, rather than inventing partial scores.
+- Group later fresh practice by its generating turn and preserve each set's result.
+  Show the latest result beside its lesson so learners can identify practice to
+  revisit; do not overwrite original answers or inflate them with corrections.
+- Default review timing to an advisory 24 hours after completing a set. A hard
+  cooldown is not enabled; the learner can read, discuss, and request practice sooner.
+- Upgrade schema 5/6 transactionally to schema 7 with nullable attempt score data.
+  Previous correction-loop decisions below are superseded.
 
 ## 2026-09-26 — Check exercise answers in the background
 

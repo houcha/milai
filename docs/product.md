@@ -32,8 +32,9 @@ tutor explains the relationship and teaches the earliest eligible skill.
 
 Short-answer exercises can place editable blanks directly in numbered sentences.
 The learner fills them in and submits the exercise once; the tutor assesses all
-answers together. Drafts survive reloads and failed submissions. Every saved answer is final, including an incorrect one; submitted exercises
-show their words and feedback as text without correction controls. Open-ended writing keeps a normal answer box. New practice uses separate
+answers together. Drafts survive reloads and failed submissions. Every saved answer is final,
+including an incorrect one; submitted exercises show their words and feedback
+as text, without correction controls. Open-ended writing keeps a normal answer box. New practice uses separate
 numbered lines; saved exercises retain their original format. Submitted answers,
 assessment feedback, and answer clarification replies stay on the exercise cards.
 The discussion chat displays questions and their replies, including questions
@@ -49,8 +50,15 @@ as attempts. Help is attached only to the exercise skills it concerns, including
 help requested in main chat. Assessments record evidence and may recommend a
 review, but do not automatically open a new lesson. The learner can explicitly
 continue from an older or current lesson, and main chat chooses the next eligible
-lesson or review. Progress is derived from recorded attempts rather than a
-numeric score.
+lesson or review. Mastery remains derived from skill evidence. Separately, a
+practice set shows its correct rate once all its exercises have been submitted.
+New assessments count explicitly requested answer parts, with partial credit;
+older sets without part counts show a labelled rate of fully correct exercises.
+The lesson list shows the latest set's result. Learners can revisit lessons below
+100% and ask for fresh exercises: each generated set keeps its own result, so a
+later success does not overwrite the original answers. A review is suggested one
+day after finishing a set. This timing is advisory; reading, discussion, and an
+explicit request for earlier fresh practice remain available.
 
 The shared learning profile records explicit goals, interests, source preferences,
 and quoted teaching preferences within the current session. A lesson discussion
@@ -65,7 +73,7 @@ and keeps one learner-facing tutor. Chat and assessment use the configured
 `OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
 lesson model and generation settings; the application validates its draft before
 saving the document, exercises, lesson card, and main reply together. A failed
-generation leaves the turn unchanged. Schema 5 databases upgrade to schema 6
+generation leaves the turn unchanged. Schema 5 and 6 databases upgrade to schema 7
 without losing saved lessons or conversations. Earlier schemas require an explicit
 `milai reset --yes` archival reset.
 

@@ -611,6 +611,25 @@ test("background answers survive navigation and update only their original lesso
   assert.equal(app.run('savedWork.get(activeSession, "older").answers.one'), "");
 });
 
+test("lesson results appear only after a full set and keep earlier practice results", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const panel = app.node("#lesson-results");
+  assert.equal(panel.hidden, true);
+  app.run(`lessonData.practice_results = [{number: 1, finished: false, submitted: 1, percentage: null}]; renderLessonResults()`);
+  assert.equal(panel.hidden, true);
+  app.run(`lessonData.practice_results = [{number: 1, finished: true, submitted: 2, correct: 6, total: 8, percentage: 75, scoring: "parts", review_at: "2099-01-01T12:00:00+00:00"}]; renderLessonResults(); updateLessonResultInPath(lessonData)`);
+  assert.equal(panel.hidden, false);
+  assert.equal(panel.children[0].querySelector(".lesson-score").textContent, "75% correct");
+  assert.match(panel.children[0].children[2].textContent, /6 of 8 answer parts/);
+  assert.match(panel.children[0].children.at(-1).textContent, /sooner/);
+  assert.match(app.node("#learning-path").children[0].children[0].textContent, /75%/);
+  app.run(`lessonData.practice_results.push({number: 2, finished: true, correct: 2, total: 2, percentage: 100, scoring: "parts"}); renderLessonResults(); updateLessonResultInPath(lessonData)`);
+  assert.deepEqual(panel.children.map((entry) => entry.querySelector(".lesson-score").textContent), ["75% correct", "100% correct"]);
+  assert.match(app.node("#learning-path").children[0].children[0].textContent, /100%/);
+});
+
 test("saved answers cannot be sent twice when refreshing the card fails", async () => {
   let sent = false;
   const app = application("#lesson/older", async (path) => {

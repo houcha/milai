@@ -96,14 +96,32 @@ state, outside the model-turn lock. Read transactions close before sending the
 HTTP response, so navigation neither waits for model execution nor exposes its
 uncommitted changes.
 
-## Final submissions
+## Final submissions and practice results
 
 An exercise permits one saved answer. Both the tutor's preflight check and the
 assessment store reject another submission, independently of correctness. Answer
 turns must record an assessment before committing; absent assessments roll back
 instead of consuming the submission. `completed` and `submitted` mean final,
-while `correct` records the assessment outcome. Historical attempts
+while `correct` reflects the first assessment's accuracy. Historical attempts
 remain readable; later corrections do not improve a first-submission result.
+
+`assess_attempt` requires a score of correct and total requested answer parts
+(0–100 correct out of 1–100 total). Storage validates bounds before writing.
+The model counts the task's explicit components consistently, independent of the
+learner's response. Skill observations and mastery remain separate: a minor slip
+can evidence understanding while losing an accuracy point.
+
+Exercises from the same generating turn form one practice set. `practice_results`
+on each lesson exposes submission counts and, once the set is finished, its
+aggregate accuracy. New sets sum correct/total parts rather than averaging
+exercise percentages. A set containing legacy unscored assessments instead counts
+fully correct exercises, with an explicit UI label; missing legacy assessments
+produce no numeric rate. Integer percentages round down so only perfect work
+shows 100%. Results persist through their source records rather than a cached
+score. Each later requested set has its own result and suggested review time,
+24 hours after its last first submission. Timing is advisory and does not block
+practice. Prompts request fresh analogous tasks on demand and no resubmission;
+`present_exercise` rejects automatic new practice during an answer turn.
 
 ## Tutor loop and context
 
@@ -132,17 +150,19 @@ their quote.
 
 ## Storage and navigation
 
-SQLite schema 6 stores selected text alongside each discussion turn, in addition
+SQLite schema 7 stores optional part-level scores on attempts and selected text
+alongside each discussion turn, in addition
 to lesson documents, scoped references, discussion summaries, current teaching
-focus, and presentation links. Schema 5 upgrades transactionally on open by
-adding a nullable `turns.selected_text` column, preserving all existing data.
+focus, and presentation links. Schemas 5 and 6 upgrade transactionally on open: add nullable `attempts.score`,
+and add `turns.selected_text` when upgrading from schema 5. Existing data is
+preserved; historical attempts keep a null score.
 Ownership checks and session deletion cover every record. Schemas older than 5
 still require `milai reset --yes`, which archives the database and WAL/SHM
 sidecars before creating the current schema.
 
 The browser lesson route shows the document beside its discussion. On narrow
 screens, **Lesson** and **Discussion** tabs replace the columns. Exercises appear
-under the explanation, with status and answer fields. Completed exercises retain
+under the explanation, with status and answer fields. Submitted exercises retain
 past answers and feedback without answer controls. There are no section or
 exercise question buttons: selecting reading text automatically attaches a
 removable plain-text quote beside the composer without changing focus or tabs.
