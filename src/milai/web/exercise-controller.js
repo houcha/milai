@@ -2,16 +2,25 @@
 // for lesson content, discussion, attempts, and exercise status.
 export const MAX_SELECTED_TEXT = 4000;
 export const MAX_BLANK_ANSWER_LENGTH = 200;
+export const MAX_EXERCISE_ANSWER_LENGTH = 8000;
+
+export function parseBlankAnswers(response, count) {
+  const lines = (response || "").split("\n");
+  if (!count || lines.length !== count) return null;
+  const values = [];
+  for (const [index, line] of lines.entries()) {
+    const prefix = `Blank ${index + 1}: `;
+    if (!line.startsWith(prefix)) return null;
+    values.push(line.slice(prefix.length));
+  }
+  return values;
+}
 
 export function blankAnswers(draft, response, count) {
   if (Array.isArray(draft)) {
     return Array.from({length: count}, (_, index) => typeof draft[index] === "string" ? draft[index] : "");
   }
-  const lines = (response || "").split("\n");
-  return Array.from({length: count}, (_, index) => {
-    const prefix = `Blank ${index + 1}: `;
-    return lines[index]?.startsWith(prefix) ? lines[index].slice(prefix.length) : "";
-  });
+  return parseBlankAnswers(response, count) || Array(count).fill("");
 }
 
 export function serializeBlankAnswers(values) {
@@ -20,6 +29,29 @@ export function serializeBlankAnswers(values) {
     throw new Error("Each blank accepts a single line of up to 200 characters.");
   }
   return values.map((value, index) => `Blank ${index + 1}: ${value.trim()}`).join("\n");
+}
+
+// JSON quoting keeps multiline answers (including text like "Item 2:") intact
+// in one labelled submission without inventing boundaries inside learner text.
+export function serializeItemAnswers(values) {
+  if (!values.length || values.some((value) => !value.trim())) throw new Error("Answer every numbered item before submitting.");
+  const response = values.map((value, index) => `Item ${index + 1}: ${JSON.stringify(value.trim())}`).join("\n");
+  if (response.length > MAX_EXERCISE_ANSWER_LENGTH) throw new Error("Keep the combined answers within 8,000 characters.");
+  return response;
+}
+
+export function parseItemAnswers(response, count) {
+  const lines = (response || "").split("\n");
+  if (!count || lines.length !== count) return null;
+  try {
+    return lines.map((line, index) => {
+      const prefix = `Item ${index + 1}: `;
+      if (!line.startsWith(prefix)) throw new Error("Unmapped answer");
+      const value = JSON.parse(line.slice(prefix.length));
+      if (typeof value !== "string") throw new Error("Invalid answer");
+      return value;
+    });
+  } catch { return null; }
 }
 
 function savedSelection(value) {

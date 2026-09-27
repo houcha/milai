@@ -42,14 +42,29 @@ markdown.core.ruler.after("inline", "exercise_blanks", (state) => {
 markdown.renderer.rules.exercise_blank = (tokens, index) =>
   `<span class="exercise-blank" data-blank-number="${tokens[index].meta.number}">____</span>`;
 
+// Numbered tasks without explicit blanks get one app-owned answer area per item.
+// Nested lists stay part of the containing prompt, not separate answer fields.
+markdown.core.ruler.after("inline", "exercise_items", (state) => {
+  if (!state.env.exerciseItems) return;
+  let ordered = false;
+  let number = 0;
+  for (const token of state.tokens) {
+    if (token.level === 0) ordered = token.type === "ordered_list_open";
+    if (ordered && token.type === "list_item_open" && token.level === 1) {
+      token.attrSet("class", "exercise-item");
+      token.attrSet("data-item-number", String(++number));
+    }
+  }
+});
+
 export function renderMarkdown(source) {
   return markdown.render(source);
 }
 
 export function renderExerciseMarkdown(source) {
-  const env = {exerciseBlanks: true, blankCount: 0};
-  const html = markdown.render(source, env);
   const expected = source.split("{{blank}}").length - 1;
+  const env = {exerciseBlanks: true, exerciseItems: expected === 0, blankCount: 0};
+  const html = markdown.render(source, env);
   // A marker in code, math or a link must not silently shift answer numbering.
   // Keep such tasks answerable through the ordinary free-text form instead.
   return env.blankCount === expected ? html : markdown.render(source.replaceAll("{{blank}}", "____"));

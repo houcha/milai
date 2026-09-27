@@ -36,8 +36,17 @@ Short-answer exercises can place editable blanks directly in numbered sentences.
 The learner fills them in and submits the exercise once; the tutor assesses all
 answers together. Drafts survive reloads and failed submissions. Every saved answer is final,
 including an incorrect one; submitted exercises show their words and feedback
-as text, without correction controls. Open-ended writing keeps a normal answer box. New practice uses separate
-numbered lines; saved exercises retain their original format. Submitted answers,
+as text, without correction controls. Submitted fills appear once, in place:
+green with a check for correct answers, red with a cross for incorrect ones.
+Only incorrect fills get a correction and brief explanation below the task;
+all-correct submissions need no feedback paragraph. Older submissions without
+per-blank results keep neutral fills and their original feedback. Numbered tasks
+without inline markers have one wide, expanding answer blank beneath each item,
+with a single submit button for the exercise. Each blank can hold multiple
+components or a longer explanation. Submitted answers stay beneath their items.
+This also applies to existing numbered tasks; older shared drafts and unmapped
+submissions keep their complete text. Unnumbered writing keeps one answer box.
+New practice uses separate numbered lines; saved task text stays unchanged. Submitted answers,
 assessment feedback, and answer clarification replies stay on the exercise cards.
 The discussion chat displays questions and their replies, including questions
 about exercises, without replaying answer submissions.
@@ -75,7 +84,7 @@ and keeps one learner-facing tutor. Chat and assessment use the configured
 `OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
 lesson model and generation settings; the application validates its draft before
 saving the document, exercises, lesson card, and main reply together. A failed
-generation leaves the turn unchanged. Schema 5 and 6 databases upgrade to schema 7
+generation leaves the turn unchanged. Schema 5–7 databases upgrade to schema 8
 without losing saved lessons or conversations. Earlier schemas require an explicit
 `milai reset --yes` archival reset.
 

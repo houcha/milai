@@ -74,13 +74,31 @@ Model HTML stays disabled. Markers inside code, math, or links fall back to
 static blanks and the normal free-text form so numbering cannot silently shift.
 Multi-part tasks are requested as Markdown lists, with one item per line.
 
+For tasks without explicit blank markers, the exercise renderer annotates each
+top-level ordered-list item with a stable number in reading order. The app adds
+a wide, underlined textarea below each item; it expands for multiline answers.
+Nested lists remain part of their parent prompt. A single form submits all items
+together as `Item N: <JSON-quoted text>` lines, preserving embedded newlines and
+label-like learner text. Draft arrays use the same session/lesson/exercise key.
+Saved answers are decoded and rendered as plain text beneath their items without
+a duplicate response block. Existing shared drafts and unmapped historical
+responses retain their full text. Inline-marker tasks keep their existing controls
+and malformed-marker fallback. This presentation change needs no schema migration;
+enumerated answers retain free-text assessment and component scoring.
+
 Inline answer drafts are arrays stored under the existing session/lesson/exercise
 key. One `action: answer` request sends all fields as `Blank 1: ...` lines in
 reading order; the existing tutor assessment and attempt storage remain in use.
 Every saved submission replaces its inputs with the saved answer text, regardless
-of correctness. A failed transaction keeps the draft available to submit again. The terminal
-shows numbered static blanks and retains `/answer`. Existing tasks are unchanged;
-this Markdown extension requires no database migration.
+of correctness. New assessments persist one numbered result per blank, validated
+against the task's marker count and aggregate score. Correct fills have no feedback;
+incorrect or missing fills have a correction and brief explanation. The browser
+colors mapped fills green or red with check/cross marks and accessible labels,
+omits the duplicate answer block, and shows only incorrect-fill feedback. All-correct
+submissions have no feedback block. Legacy assessments retain their feedback and
+neutral fills; terminal or otherwise unmapped answers retain their full response
+below the task. A failed transaction keeps the draft available to submit again.
+The terminal shows numbered static blanks and retains `/answer`.
 
 The browser excludes `action: answer` turns from the visible discussion, both
 while submitting and when replaying saved history. Answer progress and failures
@@ -157,12 +175,13 @@ their quote.
 
 ## Storage and navigation
 
-SQLite schema 7 stores optional part-level scores on attempts and selected text
-alongside each discussion turn, in addition
+SQLite schema 8 stores optional part-level scores and per-blank assessment results
+on attempts and selected text alongside each discussion turn, in addition
 to lesson documents, scoped references, discussion summaries, current teaching
-focus, and presentation links. Schemas 5 and 6 upgrade transactionally on open: add nullable `attempts.score`,
-and add `turns.selected_text` when upgrading from schema 5. Existing data is
-preserved; historical attempts keep a null score.
+focus, and presentation links. Schemas 5–7 upgrade transactionally on open: add
+nullable `attempts.blank_results`, add `attempts.score` for schemas 5/6, and add
+`turns.selected_text` for schema 5. Existing data is preserved; historical attempts
+keep their existing scores and have no inferred blank results.
 Ownership checks and session deletion cover every record. Schemas older than 5
 still require `milai reset --yes`, which archives the database and WAL/SHM
 sidecars before creating the current schema.

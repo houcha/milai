@@ -1,5 +1,30 @@
 # Decision log
 
+## 2026-09-27 — Answer numbered prompts in place
+
+- For numbered tasks without explicit inline markers, add one wide, expanding
+  answer blank beneath each top-level item. Keep one submit button for the entire
+  exercise; nested subparts share their parent item's answer.
+- Apply the presentation to stored tasks too. Preserve existing shared drafts and
+  historical responses that cannot be mapped safely. Store new drafts as arrays
+  and submit labelled, JSON-quoted item answers through the existing answer turn.
+- Show saved answers beneath their prompts, with no duplicate answer summary.
+  Keep normal component scoring: one item's blank may contain multiple requested
+  components. This adds no database schema or item-level grading contract.
+
+## 2026-09-27 — Show blank results in place
+
+- Save one numbered correctness result per blank, with feedback only for incorrect
+  or missing fills. Validate complete, ordered coverage and score agreement before
+  saving an attempt; each blank counts as one answer part.
+- Show submitted fills once, colored green/red with check/cross marks and accessible
+  result labels. Display only incorrect-fill explanations; all-correct cards have
+  no feedback block. Keep free-text answers visible when they cannot be mapped to
+  the task's blanks.
+- Upgrade schemas 5–7 transactionally to schema 8 with nullable blank results.
+  Preserve historical feedback and neutral fills rather than infer individual
+  correctness from an aggregate score or old prose.
+
 ## 2026-09-27 — Recover from duplicate active-skill selection
 
 - Keep one active lesson per current focus: requested extra practice appends to

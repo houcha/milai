@@ -58,3 +58,24 @@ test("blank markers are inert outside exercise prose and model HTML stays escape
   assert.doesNotMatch(html, /<input/);
   assert.match(html, /&lt;input/);
 });
+
+test("numbered exercises get one answer location per top-level item", () => {
+  const source = "Give a form and explain it.\n\n1. First prompt\n   1. Name the form.\n   2. Give its meaning.\n2. **Second** prompt\n\nAnother group:\n\n3. Third prompt";
+  const html = renderExerciseMarkdown(source);
+  assert.equal((html.match(/class="exercise-item"/g) || []).length, 3);
+  assert.match(html, /<li class="exercise-item" data-item-number="1">/);
+  assert.match(html, /<li class="exercise-item" data-item-number="3">/);
+  assert.match(html, /<li>Name the form\.<\/li>/);
+  assert.match(html, /<strong>Second<\/strong>/);
+  assert.doesNotMatch(html, /<textarea|<input/);
+  assert.doesNotMatch(renderMarkdown(source), /class="exercise-item"/);
+});
+
+test("only exercise enumerations gain answer locations, keeping explicit blanks intact", () => {
+  for (const source of [
+    "Write a paragraph.", "- First\n- Second", "> 1. Quoted\n> 2. Example",
+    "```text\n1. Code\n2. Example\n```", "1. {{blank}}\n2. {{blank}}",
+    "1. `{{blank}}`\n2. {{blank}}",
+    '<li class="exercise-item" data-item-number="1">Fake</li>',
+  ]) assert.doesNotMatch(renderExerciseMarkdown(source), /<li class="exercise-item"/);
+});

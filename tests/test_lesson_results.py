@@ -161,7 +161,7 @@ def test_schema_six_upgrade_preserves_legacy_first_result(tmp_path):
     # Preserve an old correction without letting it replace the original score.
     store.db.execute(
         "INSERT INTO attempts SELECT 'legacy-retry', learner, exercise_id, "
-        "'legacy-turn', 'Correction', feedback, created, score "
+        "'legacy-turn', 'Correction', feedback, created, score, blank_results "
         "FROM attempts WHERE exercise_id=?",
         (tasks[0]["id"],),
     )
@@ -177,6 +177,7 @@ def test_schema_six_upgrade_preserves_legacy_first_result(tmp_path):
         [],
     )
     store.db.execute("ALTER TABLE attempts DROP COLUMN score")
+    store.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
     store.db.execute("UPDATE metadata SET value='6' WHERE key='schema_version'")
     store.close()
     upgraded = Store(path)

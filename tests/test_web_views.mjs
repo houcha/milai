@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import vm from "node:vm";
-import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH } from "../src/milai/web/exercise-controller.js";
+import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH, parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH } from "../src/milai/web/exercise-controller.js";
 import { renderExerciseMarkdown } from "../src/milai/web/markdown.bundle.js";
 
 const lesson = {
@@ -60,6 +60,12 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
           blank.textContent = "____";
           this.append(blank);
         }
+        for (const match of value.matchAll(/<li class="exercise-item" data-item-number="(\d+)">/g)) {
+          const entry = element(null, "li");
+          entry.className = "exercise-item";
+          entry.dataset.itemNumber = match[1];
+          this.append(entry);
+        }
       },
       dataset: view ? {view} : {}, children: [], style: {}, attributes: {}, listeners: {},
       nodeType: 1, tagName: tag.toUpperCase(),
@@ -71,6 +77,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
       },
       classList: {
         add(name) { classes.add(name); },
+        contains(name) { return classes.has(name); },
         toggle(name, force) { if (force ?? !classes.has(name)) classes.add(name); else classes.delete(name); },
       },
       append(...children) { for (const child of children) { child.parent = this; this.children.push(child); } },
@@ -119,7 +126,8 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
   node("#lesson-reading").append(node("#lesson-document"), node("#lesson-exercises"));
   const context = vm.createContext({
     createLessonState, MAX_SELECTED_TEXT, readLessonSelection,
-    renderExerciseMarkdown, blankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH,
+    renderExerciseMarkdown, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH,
+    parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH,
     renderMarkdown: (value) => value, sessionStorage: browserStorage,
     TextDecoder, Uint8Array,
     location: new URL(hash, "http://localhost/"),
@@ -398,7 +406,9 @@ test("inline answers require every blank, restore drafts, survive failure and be
   const respond = async (path, options) => {
     if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({
       lesson: inlineLesson, conversation: [],
-      exercise_status: submitted ? {inline: {completed: true, assessments: [{learner_response: submitted, feedback: "Correct."}]}} : {},
+      exercise_status: submitted ? {inline: {completed: true, assessments: [{learner_response: submitted, feedback: "", blank_results: [
+        {blank_number: 1, correct: true, feedback: ""}, {blank_number: 2, correct: true, feedback: ""},
+      ]}]}} : {},
     })};
     if (fail) return streamResponse([{type: "error", error: "Try again"}]);
     submitted = JSON.parse(options.body).message;
@@ -443,6 +453,8 @@ test("inline answers require every blank, restore drafts, survive failure and be
   assert.equal(completed.querySelector("input"), null);
   assert.equal(completed.querySelector("form"), null);
   assert.deepEqual(completed.querySelectorAll(".exercise-blank").map((blank) => blank.textContent), ["er", "sie"]);
+  assert.ok(completed.querySelectorAll(".exercise-blank").every((blank) => blank.classList.contains("correct")));
+  assert.equal(completed.querySelector(".exercise-attempt"), null);
   assert.equal(restored.run('lessonState().answers.inline'), "");
 });
 
@@ -450,7 +462,10 @@ test("incorrect inline answers are final and retain their submitted values", asy
   const response = "Blank 1: du\nBlank 2: sie";
   const app = application("#lesson/older", async () => ({ok: true, json: async () => ({
     lesson: {...lesson, exercises: [{id: "inline", title: "Pronouns", task: "1. {{blank}} [Ben] sings.\n2. {{blank}} [Mia] sings."}]},
-    conversation: [], exercise_status: {inline: {completed: false, assessments: [{learner_response: response, feedback: "Check the first pronoun."}]}},
+    conversation: [], exercise_status: {inline: {completed: false, assessments: [{learner_response: response, feedback: "", blank_results: [
+      {blank_number: 1, correct: false, feedback: "Use **er** for Ben."},
+      {blank_number: 2, correct: true, feedback: ""},
+    ]}]}},
   })}));
   app.run(`applySession(${JSON.stringify(sessionPayload())})`);
   await app.run("renderView()");
@@ -458,6 +473,38 @@ test("incorrect inline answers are final and retain their submitted values", asy
   assert.equal(card.querySelector("input"), null);
   assert.deepEqual(card.querySelectorAll(".exercise-blank").map((blank) => blank.textContent), ["du", "sie"]);
   assert.equal(card.children[0].children[1].textContent, "Submitted");
+  const [wrong, right] = card.querySelectorAll(".exercise-blank");
+  assert.ok(wrong.classList.contains("incorrect"));
+  assert.ok(right.classList.contains("correct"));
+  assert.equal(wrong.getAttribute("aria-label"), "Blank 1: du — Incorrect");
+  assert.equal(right.getAttribute("aria-label"), "Blank 2: sie — Correct");
+  assert.equal(wrong.children[0].textContent, "✗");
+  assert.equal(right.children[0].textContent, "✓");
+  const feedback = card.querySelector(".exercise-attempt");
+  assert.equal(feedback.children.length, 1);
+  assert.equal(feedback.children[0].innerHTML, "**Blank 1:** Use **er** for Ben.");
+  assert.equal(wrong.getAttribute("aria-describedby"), feedback.children[0].id);
+  assert.equal(app.descendants(card).some((node) => node.textContent.startsWith("Your answer:")), false);
+  await app.run('refreshLesson("older")');
+  assert.ok(app.node("#lesson-exercises").children[0].querySelectorAll(".exercise-blank")[0].classList.contains("incorrect"));
+});
+
+test("legacy inline results remain neutral and preserve feedback without duplicating mapped answers", async () => {
+  for (const response of ["Blank 1: du\nBlank 2: sie", "du and sie", "Blank 1: du\nBlank 2: sie\nMore context"]) {
+    const app = application("#lesson/older", async () => ({ok: true, json: async () => ({
+      lesson: {...lesson, exercises: [{id: "inline", title: "Pronouns", task: "1. {{blank}} [Ben]\n2. {{blank}} [Mia]"}]},
+      conversation: [], exercise_status: {inline: {submitted: true, assessments: [{learner_response: response, feedback: "Use er for Ben."}]}},
+    })}));
+    app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+    await app.run("renderView()");
+    const card = app.node("#lesson-exercises").children[0];
+    assert.ok(card.querySelectorAll(".exercise-blank").every((blank) => !blank.classList.contains("correct") && !blank.classList.contains("incorrect")));
+    const feedback = card.querySelector(".exercise-attempt");
+    assert.equal(feedback.children.at(-1).innerHTML, "Use er for Ben.");
+    const mapped = response === "Blank 1: du\nBlank 2: sie";
+    assert.equal(feedback.children.length, mapped ? 1 : 2);
+    if (!mapped) assert.equal(feedback.children[0].textContent, `Your answer: ${response}`);
+  }
 });
 
 test("answer submission leaves discussion alone while pending, after success and on reload", async () => {
@@ -647,4 +694,99 @@ test("saved answers cannot be sent twice when refreshing the card fails", async 
   await app.run('submitLessonTurn("Correction", "answer", {exercise_id: "one"})');
   assert.equal(app.requests.length, count);
   assert.equal(app.node("#lesson-exercises").children[0].querySelector("button").disabled, true);
+});
+
+test("numbered items have expanding answer blanks with one submission and durable drafts", async () => {
+  const browser = storage();
+  let submitted = "";
+  let fail = true;
+  const numberedLesson = {...lesson, exercises: [
+    {id: "numbered", title: "Build new pairs", task: "Give the form and its meaning.\n\n1. Speak to several friends.\n2. Describe one woman.\n3. Describe several listeners.\n4. Address a stranger formally."},
+    ...lesson.exercises,
+  ]};
+  const respond = async (path, options) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({
+      lesson: numberedLesson, conversation: [], exercise_status: submitted ? {numbered: {submitted: true, assessments: [{learner_response: submitted, feedback: "Use sie haben for the listeners."}]}} : {},
+    })};
+    if (fail) return streamResponse([{type: "error", error: "Try again"}]);
+    submitted = JSON.parse(options.body).message;
+    return streamResponse([{type: "complete", result: {reply: {text: "Saved"}}}]);
+  };
+  const first = application("#lesson/older", respond, browser);
+  first.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await first.run("renderView()");
+  let card = first.node("#lesson-exercises").children[0];
+  const fields = card.querySelectorAll("textarea");
+  assert.equal(fields.length, 4);
+  assert.equal(card.querySelectorAll("button").length, 1);
+  assert.equal(card.querySelectorAll("form").length, 1);
+  assert.ok(fields.every((field) => field.parentElement.className === "exercise-item"));
+  assert.ok(fields.every((field) => field.getAttribute("form") === card.querySelector("form").id));
+  assert.equal(fields[3].getAttribute("aria-label"), "Answer 4 of 4");
+  assert.ok(fields.every((field) => field.rows === 1 && field.required));
+  fields[0].value = "ihr habt\nyou have";
+  fields[0].scrollHeight = 70;
+  fields[0].listeners.input();
+  assert.equal(fields[0].style.height, "72px");
+  first.select(fields[0], "ihr habt");
+  assert.equal(first.run("lessonState().selected"), null);
+  await card.querySelector("form").listeners.submit({preventDefault() {}});
+  assert.match(card.querySelector(".exercise-answer-error").textContent, /every numbered item/);
+  assert.equal(first.requests.length, 1);
+
+  const restored = application("#lesson/older", respond, browser);
+  restored.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await restored.run("renderView()");
+  card = restored.node("#lesson-exercises").children[0];
+  const restoredFields = card.querySelectorAll("textarea");
+  assert.equal(restoredFields[0].value, "ihr habt\nyou have");
+  assert.equal(restoredFields[1].value, "");
+  const values = ["ihr habt\nyou have", "sie hat — she has", '<script>bad()</script>\nItem 4: is part of this answer', "Sie haben — you have"];
+  restoredFields.forEach((field, index) => {field.value = values[index]; field.listeners.input();});
+  await card.querySelector("form").listeners.submit({preventDefault() {}});
+  assert.equal(card.querySelector(".exercise-progress").textContent, "Try again");
+  assert.deepEqual(restoredFields.map((field) => field.value), values);
+  assert.ok(restoredFields.every((field) => !field.disabled));
+  const otherField = restored.node("#lesson-exercises").children[1].querySelector("textarea");
+  otherField.value = "Another draft";
+  otherField.listeners.input();
+  fail = false;
+  const pending = card.querySelector("form").listeners.submit({preventDefault() {}});
+  assert.ok(restoredFields.every((field) => field.disabled));
+  assert.equal(otherField.disabled, false);
+  await pending;
+  assert.deepEqual(parseItemAnswers(submitted, 4), values);
+  assert.equal(restored.requests[2].body.action, "answer");
+  assert.equal(restored.requests[2].body.exercise_id, "numbered");
+  card = restored.node("#lesson-exercises").children[0];
+  assert.equal(card.querySelector("textarea"), null);
+  assert.equal(card.querySelector("form"), null);
+  assert.deepEqual(card.querySelectorAll(".exercise-item-answer").map((answer) => answer.textContent), values);
+  assert.equal(card.querySelector("script"), null);
+  assert.equal(card.querySelector(".exercise-attempt").children.length, 1);
+  assert.equal(restored.node("#lesson-exercises").children[1].querySelector("textarea"), otherField);
+  assert.equal(restored.run('lessonState().answers.numbered'), "");
+  assert.equal(otherField.value, "Another draft");
+  await restored.run('refreshLesson("older")');
+  assert.deepEqual(restored.node("#lesson-exercises").children[0].querySelectorAll(".exercise-item-answer").map((answer) => answer.textContent), values);
+});
+
+test("older numbered-task drafts and submissions keep their full shared answer", async () => {
+  const response = "My answer covers both numbered prompts.";
+  const numberedLesson = {...lesson, exercises: [{id: "numbered", title: "Explain", task: "1. First prompt\n2. Second prompt"}]};
+  for (const submitted of [false, true]) {
+    const app = application("#lesson/older", async () => ({ok: true, json: async () => ({
+      lesson: numberedLesson, conversation: [], exercise_status: submitted ? {numbered: {submitted: true, assessments: [{learner_response: response, feedback: "Feedback"}]}} : {},
+    })}));
+    app.run(`applySession(${JSON.stringify(sessionPayload())}); savedWork.update("one", "older", {answers: {numbered: ${JSON.stringify(response)}}})`);
+    await app.run("renderView()");
+    const card = app.node("#lesson-exercises").children[0];
+    if (submitted) {
+      assert.equal(card.querySelector("textarea"), null);
+      assert.equal(card.querySelector(".exercise-attempt").children[0].textContent, `Your answer: ${response}`);
+    } else {
+      assert.equal(card.querySelectorAll("textarea").length, 1);
+      assert.equal(card.querySelector("textarea").value, response);
+    }
+  }
 });

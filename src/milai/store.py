@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from milai.exercise_format import validate_exercise_task
+from milai.exercise_format import BLANK_MARKER, validate_exercise_task
 
-SCHEMA_VERSION = "7"
+SCHEMA_VERSION = "8"
 MAX_SELECTED_TEXT = 4000
 
 
@@ -178,7 +178,7 @@ CREATE TABLE assistance_skills (
 CREATE TABLE attempts (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, exercise_id TEXT NOT NULL REFERENCES exercises(id),
     turn_id TEXT NOT NULL, learner_response TEXT NOT NULL, feedback TEXT NOT NULL,
-    created TEXT NOT NULL, score TEXT, UNIQUE(exercise_id, turn_id)
+    created TEXT NOT NULL, score TEXT, blank_results TEXT, UNIQUE(exercise_id, turn_id)
 );
 CREATE TABLE skill_observations (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, attempt_id TEXT NOT NULL REFERENCES attempts(id),
@@ -249,7 +249,7 @@ class Store:
                     "SELECT value FROM metadata WHERE key='schema_version'"
                 ).fetchone()
                 version = row[0] if row else None
-            if version in {"5", "6"}:
+            if version in {"5", "6", "7"}:
                 try:
                     self.db.execute("BEGIN IMMEDIATE")
                     # Another process may have upgraded while this one waited.
@@ -262,6 +262,10 @@ class Store:
                         )
                     if locked_version in {"5", "6"}:
                         self.db.execute("ALTER TABLE attempts ADD COLUMN score TEXT")
+                    if locked_version in {"5", "6", "7"}:
+                        self.db.execute(
+                            "ALTER TABLE attempts ADD COLUMN blank_results TEXT"
+                        )
                         self.db.execute(
                             "UPDATE metadata SET value=? WHERE key='schema_version'",
                             (SCHEMA_VERSION,),
@@ -277,7 +281,7 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
-        # Schemas 5 and 6 upgrade without losing learning state. Earlier schemas still
+        # Schemas 5–7 upgrade without losing learning state. Earlier schemas still
         # require an explicit archival reset.
 
     @contextmanager
@@ -1464,6 +1468,7 @@ class Store:
         observations: list[dict],
         *,
         score: dict | None = None,
+        blank_results: list[dict] | None = None,
     ) -> dict:
         exercise = self._owned("exercises", ctx.learner, exercise_id)
         if self.exercise_submitted(ctx.learner, exercise_id):
@@ -1514,9 +1519,44 @@ class Store:
             raise ValueError(
                 "Score must count 0 to 100 correct parts out of 1 to 100 total parts"
             )
+        blank_count = exercise["task"].count(BLANK_MARKER)
+        results = blank_results or []
+        if (
+            len(results) != blank_count
+            or any(type(item.get("blank_number")) is not int for item in results)
+            or [item.get("blank_number") for item in results]
+            != list(range(1, blank_count + 1))
+        ):
+            raise ValueError(
+                "Provide blank_results for every {{blank}} exactly once in reading order; use [] for tasks without blanks"
+            )
+        for item in results:
+            explanation = item.get("feedback")
+            if (
+                type(item.get("correct")) is not bool
+                or not isinstance(explanation, str)
+                or len(explanation) > 600
+                or (item["correct"] and explanation != "")
+                or (not item["correct"] and not explanation.strip())
+            ):
+                raise ValueError(
+                    "Each blank result needs a boolean correct flag and feedback only for an incorrect fill (1–600 characters)"
+                )
+        if blank_count:
+            if feedback:
+                raise ValueError(
+                    "Leave overall feedback empty for inline blanks; explain only incorrect fills in blank_results"
+                )
+            if score != {
+                "correct": sum(item["correct"] for item in results),
+                "total": blank_count,
+            }:
+                raise ValueError(
+                    "Score must match blank_results, counting one answer part per blank"
+                )
         attempt_id, created = identifier(), now()
         self.db.execute(
-            "INSERT INTO attempts (id, learner, exercise_id, turn_id, learner_response, feedback, created, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO attempts (id, learner, exercise_id, turn_id, learner_response, feedback, created, score, blank_results) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 attempt_id,
                 ctx.learner,
@@ -1526,6 +1566,7 @@ class Store:
                 feedback,
                 created,
                 _json(score) if score is not None else None,
+                _json(results) if blank_count else None,
             ),
         )
         saved = []
@@ -1573,6 +1614,7 @@ class Store:
             "learner_response": ctx.message,
             "feedback": feedback,
             "score": score,
+            "blank_results": results if blank_count else None,
             "observations": saved,
         }
         assessed_lesson = self.lesson(ctx.learner, exercise["lesson_id"])
@@ -1652,7 +1694,7 @@ class Store:
         ).fetchone():
             raise InvalidReference("Exercise is unavailable in this session")
         rows = self.db.execute(
-            "SELECT a.id, a.turn_id, a.learner_response, a.feedback, a.score FROM attempts a "
+            "SELECT a.id, a.turn_id, a.learner_response, a.feedback, a.score, a.blank_results FROM attempts a "
             "JOIN turns t ON t.id=a.turn_id WHERE a.exercise_id=? AND t.session=? "
             "ORDER BY a.rowid",
             (exercise_id, session),
@@ -1666,6 +1708,9 @@ class Store:
                     "learner_response": row["learner_response"],
                     "feedback": row["feedback"],
                     "score": json.loads(row["score"]) if row["score"] else None,
+                    "blank_results": json.loads(row["blank_results"])
+                    if row["blank_results"]
+                    else None,
                     "observations": [
                         dict(item)
                         for item in self.db.execute(

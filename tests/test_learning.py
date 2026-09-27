@@ -597,6 +597,7 @@ def test_schema_five_upgrade_preserves_learning_and_history(tmp_path):
     conversation = original.conversation(owner, session)
     original.db.execute("ALTER TABLE turns DROP COLUMN selected_text")
     original.db.execute("ALTER TABLE attempts DROP COLUMN score")
+    original.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
     original.db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
     original.close()
 
@@ -623,6 +624,7 @@ def test_schema_five_migration_rolls_back_on_failure(tmp_path, monkeypatch):
     original = Store(path)
     original.db.execute("ALTER TABLE turns DROP COLUMN selected_text")
     original.db.execute("ALTER TABLE attempts DROP COLUMN score")
+    original.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
     original.db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
     original.close()
     connect = sqlite3.connect
@@ -649,6 +651,9 @@ def test_schema_five_migration_rolls_back_on_failure(tmp_path, monkeypatch):
         )
         assert "selected_text" not in {
             row[1] for row in db.execute("PRAGMA table_info(turns)")
+        }
+        assert "blank_results" not in {
+            row[1] for row in db.execute("PRAGMA table_info(attempts)")
         }
 
 

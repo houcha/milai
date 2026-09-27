@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createLessonState, blankAnswers, serializeBlankAnswers } from "../src/milai/web/exercise-controller.js";
+import { createLessonState, blankAnswers, parseBlankAnswers, serializeBlankAnswers, parseItemAnswers, serializeItemAnswers } from "../src/milai/web/exercise-controller.js";
 
 function storage() {
   const values = new Map();
@@ -76,6 +76,28 @@ test("inline drafts survive reload without leaking into another exercise or sess
   assert.deepEqual(restored.get("one", "lesson").answers, {first: ["ich", "sie"], second: ["du"]});
   assert.deepEqual(restored.get("two", "lesson").answers, {});
   assert.deepEqual(restored.get("one", "another-lesson").answers, {});
+});
+
+test("only fully mapped blank answers replace the saved answer text", () => {
+  assert.deepEqual(parseBlankAnswers("Blank 1: ich\nBlank 2: ", 2), ["ich", ""]);
+  for (const answer of [
+    "ich, du", "Blank 1: ich", "Blank 2: du\nBlank 1: ich",
+    "Blank 1: ich\nBlank 2: du\nAn additional explanation",
+  ]) assert.equal(parseBlankAnswers(answer, 2), null);
+  assert.equal(parseBlankAnswers("Blank 1: ich", 0), null);
+});
+
+test("numbered answers round-trip multiline text without confusing learner text with labels", () => {
+  const values = ['ihr habt — “you have”\nAn explanation.', '日本語\nItem 1: "quoted"\n\\literal'];
+  const response = serializeItemAnswers(values);
+  assert.equal(response.split("\n").length, 2);
+  assert.deepEqual(parseItemAnswers(response, 2), values);
+  assert.equal(parseItemAnswers(response, 3), null);
+  for (const invalid of ['An old shared answer', 'Item 1: null', 'Item 2: "wrong order"', 'Item 1: "unfinished']) {
+    assert.equal(parseItemAnswers(invalid, 1), null);
+  }
+  assert.throws(() => serializeItemAnswers(["answer", " "]), /every numbered item/);
+  assert.throws(() => serializeItemAnswers(["a".repeat(4100), "b".repeat(4100)]), /8,000/);
 });
 
 test("legacy references and invalid quotes are discarded without losing drafts", () => {

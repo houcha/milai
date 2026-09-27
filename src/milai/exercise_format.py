@@ -4,6 +4,8 @@ BLANK_MARKER = "{{blank}}"
 MAX_EXERCISE_BLANKS = 12
 EXERCISE_TASK_DESCRIPTION = (
     "Complete task as Markdown, with each numbered item on its own line. "
+    "Each top-level numbered item gets its own answer area; "
+    "use prose or bullets for instructions. "
     "For short fill-in answers, place {{blank}} at each input location (up to 12). "
     "Use plain prose markers, never HTML or markers inside code, math, or links. "
     "Omit markers for open-ended writing; do not include answers."

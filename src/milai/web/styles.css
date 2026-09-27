@@ -187,7 +187,14 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .exercise-task li { margin:8px 0; }
 .exercise-blank { display:inline-block; max-width:100%; margin:0 3px; vertical-align:baseline; }
 .exercise-blank input { width:12ch; max-width:100%; padding:4px 7px; border:1px solid #cdd2c2; border-bottom:2px solid #81916f; border-radius:4px; background:white; color:var(--ink); font:inherit; }
-.exercise-blank.completed { padding:0 5px; border-bottom:1px solid #a6b598; color:var(--green); }
+.exercise-blank.completed { padding:0 5px; border-bottom:1px solid var(--line); }
+.exercise-blank.correct { color:#28643b; border-color:#82ae8d; background:#edf5ee; border-radius:3px; }
+.exercise-blank.incorrect { color:#a12d32; border-color:#d8979a; background:#fcf0ef; border-radius:3px; }
+.blank-result-mark { margin-left:6px; font-size:.8em; }
+.exercise-task .exercise-item { margin-bottom:20px; }
+.exercise-item-input { display:block; width:100%; min-height:2.7em; margin:6px 0 0; padding:5px 7px; resize:none; overflow:hidden; border:0; border-bottom:1px solid #81916f; border-radius:0; background:transparent; color:var(--ink); font:inherit; line-height:1.6; }
+.exercise-item-input:focus { background:#f5f7f0; }
+.exercise-task .exercise-item-answer { margin:6px 0 0; padding:5px 7px; border-bottom:1px solid var(--line); white-space:pre-wrap; overflow-wrap:anywhere; }
 .exercise-answer-error { color:var(--coral); font-size:12px; line-height:1.5; }
 .exercise-progress { color:var(--muted); font-size:12px; line-height:1.5; }
 .exercise-progress:empty { display:none; }
@@ -196,6 +203,7 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .lesson-result p { margin:10px 0 0; }
 .lesson-result .lesson-score { font-size:28px; color:var(--green); }
 .exercise-attempts { display:grid; gap:8px; margin:18px 0; }
+.exercise-attempts:empty { display:none; }
 .exercise-attempt { padding:12px 15px; border-left:2px solid #a6b598; background:#f2f4ed; line-height:1.6; }
 .exercise-attempt p { margin:0 0 8px; overflow-wrap:anywhere; }
 .exercise-attempt > p { white-space:pre-wrap; }

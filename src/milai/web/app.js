@@ -1,5 +1,5 @@
 import { renderMarkdown, renderExerciseMarkdown } from "/markdown.bundle.js";
-import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH } from "/exercise-controller.js";
+import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH, parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH } from "/exercise-controller.js";
 
 const savedWork = createLessonState();
 const elements = {
@@ -316,6 +316,7 @@ function setLessonTab(tab) {
   document.querySelector("#lesson-layout").dataset.tab = tab;
   document.querySelector("#lesson-tab").setAttribute("aria-selected", String(tab === "lesson"));
   document.querySelector("#discussion-tab").setAttribute("aria-selected", String(tab === "discussion"));
+  if (tab === "lesson") resizeItemAnswers();
   updateLessonState({ tab });
 }
 
@@ -479,8 +480,13 @@ function renderLessonExercises(onlyExerciseId = null) {
     task.className = "markdown exercise-task";
     task.innerHTML = renderExerciseMarkdown((item.task || item.prompt || "").replaceAll("\\n", "\n"));
     const blanks = [...task.querySelectorAll(".exercise-blank")];
+    const numberedItems = [...task.querySelectorAll(".exercise-item")];
     const previousAnswer = history[0]?.learner_response || "";
+    const completedValues = parseBlankAnswers(previousAnswer, blanks.length);
+    const completedItems = parseItemAnswers(previousAnswer, numberedItems.length);
     const draft = lessonState().answers[item.id];
+    // Preserve a pre-existing shared draft until it is submitted or cleared.
+    const useItemFields = numberedItems.length && !(typeof draft === "string" && draft.trim());
     const values = blankAnswers(draft, previousAnswer, blanks.length);
     for (const content of [title, context, task]) content.dataset.selectionSource = "";
     card.append(meta, title, context, task);
@@ -490,11 +496,20 @@ function renderLessonExercises(onlyExerciseId = null) {
     for (const attempt of history) {
       const entry = document.createElement("div");
       entry.className = "exercise-attempt";
-      const answer = document.createElement("p");
-      answer.textContent = `Your answer: ${attempt.learner_response || ""}`;
-      const feedback = markdownBlock(attempt.feedback || "");
-      entry.append(answer, feedback);
-      attempts.append(entry);
+      if (attempt !== history[0] || !(completedValues || completedItems)) {
+        const answer = document.createElement("p");
+        answer.textContent = `Your answer: ${attempt.learner_response || ""}`;
+        entry.append(answer);
+      }
+      if (attempt.blank_results?.length) {
+        for (const result of attempt.blank_results) {
+          if (result.correct) continue;
+          const feedback = markdownBlock(`**Blank ${result.blank_number}:** ${result.feedback}`, "markdown blank-feedback");
+          if (attempt === history[0]) feedback.id = `blank-feedback-${item.id}-${result.blank_number}`;
+          entry.append(feedback);
+        }
+      } else if (attempt.feedback) entry.append(markdownBlock(attempt.feedback));
+      if (entry.children.length) attempts.append(entry);
     }
     card.append(attempts);
     const progress = document.createElement("p");
@@ -504,10 +519,27 @@ function renderLessonExercises(onlyExerciseId = null) {
     progress.setAttribute("role", "status");
     card.append(progress);
     if (submitted) {
-      const completedValues = blankAnswers(null, previousAnswer, blanks.length);
       blanks.forEach((blank, index) => {
-        blank.textContent = completedValues[index] || "____";
+        blank.textContent = completedValues?.[index] || "____";
         blank.classList.add("completed");
+        const result = completedValues && history[0]?.blank_results?.find((result) => result.blank_number === index + 1);
+        if (result) {
+          blank.classList.add(result.correct ? "correct" : "incorrect");
+          blank.setAttribute("role", "img");
+          blank.setAttribute("aria-label", `Blank ${index + 1}: ${completedValues[index] || "No answer"} — ${result.correct ? "Correct" : "Incorrect"}`);
+          if (!result.correct) blank.setAttribute("aria-describedby", `blank-feedback-${item.id}-${index + 1}`);
+          const mark = document.createElement("span");
+          mark.className = "blank-result-mark";
+          mark.setAttribute("aria-hidden", "true");
+          mark.textContent = result.correct ? "✓" : "✗";
+          blank.append(mark);
+        }
+      });
+      completedItems?.forEach((value, index) => {
+        const answer = document.createElement("p");
+        answer.className = "exercise-item-answer";
+        answer.textContent = value;
+        numberedItems[index].append(answer);
       });
       mount(card);
       continue;
@@ -539,13 +571,34 @@ function renderLessonExercises(onlyExerciseId = null) {
         blank.replaceChildren(input);
         inputs.push(input);
       });
+    } else if (useItemFields) {
+      numberedItems.forEach((entry, index) => {
+        const input = document.createElement("textarea");
+        input.className = "exercise-item-input";
+        input.name = `item-${index + 1}`;
+        input.id = `answer-${item.id}-${index + 1}`;
+        input.setAttribute("form", form.id);
+        input.setAttribute("aria-label", `Answer ${index + 1} of ${numberedItems.length}`);
+        input.rows = 1;
+        input.required = true;
+        input.maxLength = MAX_EXERCISE_ANSWER_LENGTH;
+        input.disabled = disabled;
+        input.value = Array.isArray(draft) && typeof draft[index] === "string" ? draft[index] : "";
+        input.addEventListener("input", () => {
+          updateLessonState({ answers: { [item.id]: inputs.map((field) => field.value) } });
+          resizeItemAnswer(input);
+          error.hidden = true;
+        });
+        entry.append(input);
+        inputs.push(input);
+      });
     } else {
       const label = document.createElement("label");
       label.textContent = "Your answer";
       label.htmlFor = `answer-${item.id}`;
       answer = document.createElement("textarea");
       answer.id = `answer-${item.id}`;
-      answer.maxLength = 8000;
+      answer.maxLength = MAX_EXERCISE_ANSWER_LENGTH;
       answer.rows = 3;
       answer.disabled = disabled;
       answer.value = typeof draft === "string" ? draft : "";
@@ -568,7 +621,7 @@ function renderLessonExercises(onlyExerciseId = null) {
       event.preventDefault();
       if (inputs.length) {
         let message;
-        try { message = serializeBlankAnswers(inputs.map((input) => input.value)); }
+        try { message = (blanks.length ? serializeBlankAnswers : serializeItemAnswers)(inputs.map((input) => input.value)); }
         catch (problem) {
           error.textContent = problem.message;
           error.hidden = false;
@@ -581,7 +634,17 @@ function renderLessonExercises(onlyExerciseId = null) {
     });
     card.append(form);
     mount(card);
+    if (useItemFields) inputs.forEach(resizeItemAnswer);
   }
+}
+
+function resizeItemAnswer(input) {
+  input.style.height = "auto";
+  if (input.scrollHeight) input.style.height = `${input.scrollHeight + 2}px`;
+}
+
+function resizeItemAnswers() {
+  elements.lessonExercises.querySelectorAll(".exercise-item-input").forEach(resizeItemAnswer);
 }
 
 function discussionReference(turn) {
@@ -988,6 +1051,7 @@ elements.lessonMessage.addEventListener("keydown", (event) => {
 });
 elements.lessonMessage.addEventListener("input", () => updateLessonState({ draft: elements.lessonMessage.value }));
 elements.lessonReading.addEventListener("scroll", saveReadingPosition);
+window.addEventListener("resize", resizeItemAnswers);
 document.addEventListener("selectionchange", captureLessonSelection);
 document.querySelector("#remove-reference").addEventListener("click", clearLessonSelection);
 document.querySelector("#lesson-tab").addEventListener("click", () => setLessonTab("lesson"));

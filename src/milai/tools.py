@@ -141,14 +141,29 @@ class AnswerScore(BaseModel):
     )
 
 
+class BlankResult(BaseModel):
+    blank_number: int = Field(
+        ge=1, le=12, description="One-based marker position in reading order."
+    )
+    correct: bool
+    feedback: str = Field(
+        max_length=600,
+        description="Empty for a correct fill. For an incorrect or missing fill, give the correction and a brief explanation of that error only.",
+    )
+
+
 class AttemptAssessment(BaseModel):
     exercise_id: str
     feedback: str = Field(
-        min_length=1,
         max_length=1600,
-        description="Feedback shown on the final exercise card. Clearly identify what was correct and what was not, with a brief explanation. Do not ask the learner to correct or resubmit this exercise.",
+        description="For inline blanks, leave empty and use blank_results. For free-text tasks, briefly explain the assessment. Do not ask the learner to correct or resubmit this exercise.",
     )
     score: AnswerScore
+    blank_results: list[BlankResult] = Field(
+        default_factory=list,
+        max_length=12,
+        description="For a task with {{blank}} markers, assess every blank exactly once in reading order, including missing answers; count one score part per blank. Use [] for tasks without markers.",
+    )
     observations: list[SkillObservation] = Field(min_length=1, max_length=6)
 
 
@@ -560,6 +575,7 @@ async def assess_attempt(
         assessment.feedback,
         [item.model_dump() for item in assessment.observations],
         score=assessment.score.model_dump(),
+        blank_results=[item.model_dump() for item in assessment.blank_results],
     )
     c.assessments.append(result)
     return result
