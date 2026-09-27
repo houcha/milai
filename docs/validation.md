@@ -1,5 +1,38 @@
 # Validation reports
 
+## 2026-09-27 — Lesson completion handoff
+
+`just qa` passes formatting, lint, ty, and all 152 Python tests.
+`npm run test:web` passes the renderer, exercise-controller, and web-view suites.
+New regressions cover whole-set assessment evidence, optional recap persistence,
+atomic rollback and retry, earlier-lesson continuation context, migration from
+schema 9, historical results, separate practice sets, and session isolation.
+Browser tests cover updating the original lesson card in place, one card per
+lesson with separate practice-set scores, duplicate prevention across reloads,
+background completion during a pending chat reply, continuation retry,
+and fresh practice while preserving drafts and selected quotes.
+The continuation shortcut now lives above the main chat composer and targets
+the current teaching focus after revisiting older lessons. Web regressions cover
+hiding it for empty sessions, one Open/Revisit action per lesson card, and only
+More practice in the completed lesson's result panel.
+
+A synthetic Chromium preview at 1440 × 1050 and 390 × 844 submitted the final
+exercise, displayed its recap, returned to main chat and used its continuation
+shortcut to prepare a new lesson card, revisited the completed lesson, requested
+fresh practice, and reloaded. The discussion draft
+survived; the completion card appeared once; neither layout had horizontal
+overflow. Reviewed screenshots:
+
+| View | Desktop | Mobile |
+| --- | --- | --- |
+| Completion panel | [View](screenshots/completion-result-desktop.png) | [View](screenshots/completion-result-mobile.png) |
+| Chat handoff | [View](screenshots/completion-chat-desktop.png) | [View](screenshots/completion-chat-mobile.png) |
+
+These checks use mocked model responses and synthetic learner data. They establish
+persistence and UI behavior, not live-model recap or next-lesson teaching quality.
+
+## Earlier typed-exercise validation
+
 Choice format has since been removed from new generation. The live reports and
 screenshots below document the earlier five-format implementation; saved choice
 exercises remain supported. Schema and persistence regression tests verify that

@@ -13,7 +13,7 @@ from milai.exercises import (
     parse_answers,
     serialize_answers,
 )
-from milai.store import InvalidReference, Store
+from milai.store import SCHEMA_VERSION, InvalidReference, Store
 from milai.tools import Context, Exercise, _LessonPlan
 from milai.tutor import LessonTurnOutput
 from tests.test_generation import draft
@@ -465,6 +465,7 @@ def test_schema_eight_upgrade_preserves_legacy_content_and_scores(learning):
     before = store.lesson_detail(store.owner, session, lesson["id"])
     store.db.execute("ALTER TABLE exercises DROP COLUMN contract")
     store.db.execute("ALTER TABLE attempts DROP COLUMN item_results")
+    store.db.execute("ALTER TABLE turns DROP COLUMN completion_summary")
     store.db.execute("UPDATE metadata SET value='8' WHERE key='schema_version'")
     reopened = Store(store.path)
     try:
@@ -473,7 +474,7 @@ def test_schema_eight_upgrade_preserves_legacy_content_and_scores(learning):
             reopened.db.execute(
                 "SELECT value FROM metadata WHERE key='schema_version'"
             ).fetchone()[0]
-            == "9"
+            == SCHEMA_VERSION
         )
     finally:
         reopened.close()

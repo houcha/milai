@@ -173,6 +173,11 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
         toggle(name, force) { if (force ?? !classes.has(name)) classes.add(name); else classes.delete(name); },
       },
       append(...children) { for (const child of children) { child.parent = this; this.children.push(child); } },
+      insertBefore(child, next) {
+        child.parent = this;
+        if (next) this.children.splice(this.children.indexOf(next), 0, child);
+        else this.children.push(child);
+      },
       prepend(...children) { for (const child of children) { child.parent = this; this.children.unshift(child); } },
       replaceChildren(...children) { this.children = []; this.append(...children); },
       replaceWith(other) {
@@ -261,6 +266,198 @@ function sessionPayload(session = "one") {
     learning: {lessons: [{id: "older", title: lesson.title}, {id: "newer", title: "German · Verbs"}],
       active_lesson: {id: "newer"}},
   };
+}
+
+function completedLesson() {
+  return {...lesson, practice_results: [{
+    set_id: "set-one", number: 1, finished: true, correct: 4, total: 5,
+    percentage: 80, scoring: "items", completion_turn_id: "last-answer",
+    last_submitted_at: "2026-09-27T12:00:00Z",
+    review_at: "2099-01-01T12:00:00Z",
+    completion_summary: "You chose the forms correctly. Check the subject in longer sentences.",
+  }]};
+}
+
+test("lesson cards change from ready to complete in place and stay in their session", async () => {
+  const completed = completedLesson();
+  const payload = sessionPayload();
+  payload.learning.lessons[0] = completed;
+  payload.conversation = [
+    {role: "user", content: "Teach me", created: "2026-09-27T11:00:00Z"},
+    {role: "assistant", content: "Here is a lesson", created: "2026-09-27T11:00:00Z", lesson_cards: [lesson]},
+    {role: "user", content: "Continue", created: "2026-09-27T13:00:00Z"},
+  ];
+  const app = application("#chat", async () => ({ok: true, json: async () => ({...detail(), lesson: completed})}));
+  const unfinished = {...payload, learning: {...payload.learning, lessons: [lesson]}};
+  app.run(`applySession(${JSON.stringify(unfinished)})`);
+  const ready = app.node("#messages").querySelector(".lesson-card");
+  assert.equal(ready.children[0].textContent, "Lesson ready");
+  const introducingMessage = app.node("#messages").children[1];
+  app.run(`renderLearning(${JSON.stringify(payload.learning)})`);
+  assert.equal(app.node("#messages").children[1], introducingMessage);
+  assert.equal(introducingMessage.querySelector(".lesson-card"), ready);
+  assert.equal(ready.children[0].textContent, "Lesson complete");
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  const messages = app.node("#messages");
+  assert.equal(messages.children.length, 3);
+  const card = messages.children[1].querySelector(".lesson-card");
+  assert.equal(card.className, "lesson-card completed-lesson");
+  assert.equal(card.children[2].textContent, lesson.objective);
+  assert.equal(messages.querySelectorAll(".lesson-card").length, 1);
+  messages.scrollTop = 37;
+  const pending = app.run('appendMessage(elements.messages, "assistant", "Working…", {pending: true})');
+  messages.scrollTop = 37;
+  app.run(`renderLearning(${JSON.stringify(payload.learning)}); syncLessonCards()`);
+  assert.equal(messages.children[1].querySelector(".lesson-card"), card);
+  assert.equal(messages.children.at(-1), pending);
+  assert.equal(messages.scrollTop, 37);
+  assert.equal(card.querySelectorAll("button").length, 1);
+  assert.equal(card.querySelector("button").textContent, "Revisit lesson ↗");
+  await card.querySelector("button").listeners.click();
+  assert.equal(app.run("currentRoute.lessonId"), "older");
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  assert.equal(messages.querySelectorAll(".completed-lesson").length, 1);
+  app.run(`applySession(${JSON.stringify(sessionPayload("two"))})`);
+  assert.equal(messages.querySelectorAll(".completed-lesson").length, 0);
+});
+
+test("one lesson card includes all finished practice sets, including unscored results", () => {
+  const payload = sessionPayload();
+  const completed = completedLesson();
+  completed.practice_results.push(
+    {...completed.practice_results[0], set_id: "set-two", number: 2, percentage: null, completion_summary: null},
+    {set_id: "set-three", number: 3, finished: false},
+  );
+  payload.learning.lessons[0] = completed;
+  const app = application();
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  const cards = app.node("#messages").children;
+  assert.equal(cards.length, 1);
+  assert.equal(cards[0].children[0].textContent, "Practice 2 complete");
+  const scores = cards[0].querySelectorAll(".lesson-card-score");
+  assert.equal(scores.length, 2);
+  assert.equal(scores[0].textContent, "Lesson: 80% correct");
+  assert.equal(scores[1].textContent, "Practice 2: Submitted · Accuracy unavailable");
+});
+
+test("completed lessons only offer more practice and the chat shortcut preserves drafts on retry", async () => {
+  const completed = completedLesson();
+  let fail = true;
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({...detail(), lesson: completed})};
+    return streamResponse(fail ? [{type: "error", error: "Try later"}] : [{type: "complete", result: {reply: {text: "Next lesson"}, learning: sessionPayload().learning}}]);
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const result = app.node("#lesson-results").children[0];
+  assert.equal(result.querySelector(".completion-summary").textContent, completed.practice_results[0].completion_summary);
+  app.node("#message").value = "My unsent question";
+  assert.equal(result.querySelectorAll("button").length, 1);
+  assert.equal(result.querySelector("button").textContent, "More practice");
+  await app.node("#back-to-conversation").listeners.click();
+  const button = app.node("#continue-learning");
+  await Promise.all([button.listeners.click(), button.listeners.click()]);
+  assert.equal(app.requests.filter(request => request.body?.origin_lesson_id).length, 1);
+  assert.equal(app.requests.at(-1).body.origin_lesson_id, "newer");
+  assert.equal(app.run("location.hash"), "#chat");
+  assert.equal(app.node("#message").value, "My unsent question");
+  fail = false;
+  await app.node("#notice").children.at(-1).listeners.click();
+  assert.equal(app.requests.at(-1).body.origin_lesson_id, "newer");
+  assert.equal(app.requests.at(-1).body.lesson_id, undefined);
+  assert.equal(app.node("#message").value, "My unsent question");
+  assert.equal(app.run("continuationPending"), false);
+});
+
+test("chat shortcut continues from current focus and hides when the session has no lessons", async () => {
+  const payload = sessionPayload();
+  payload.learning.lessons[0] = completedLesson();
+  const app = application("#chat", async () => streamResponse([{type: "complete", result: {
+    reply: {text: "Next lesson"}, learning: payload.learning,
+  }}]));
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  assert.equal(app.node("#chat-shortcuts").hidden, false);
+  await app.node("#continue-learning").listeners.click();
+  assert.equal(app.requests.at(-1).body.origin_lesson_id, "newer");
+  app.run('applySession({session: "empty", sessions: [], conversation: [], learning: {lessons: []}})');
+  assert.equal(app.node("#chat-shortcuts").hidden, true);
+  assert.equal(app.node("#continue-learning").disabled, true);
+  assert.equal(app.requests.at(-1).body.lesson_id, undefined);
+});
+
+test("more practice sends an explicit request, keeps the question and quote, and reveals fresh exercises", async () => {
+  const payload = {...detail(), lesson: completedLesson()};
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => payload};
+    payload.lesson = {...payload.lesson, exercises: [...payload.lesson.exercises, {id: "fresh", title: "Fresh exercise", task: "Write a new sentence."}]};
+    return streamResponse([{type: "complete", result: {reply: {text: "Here is fresh practice", activities: [{id: "fresh", lesson_id: "older"}]}}}]);
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  app.node("#lesson-message").value = "Why this form?";
+  app.node("#lesson-message").listeners.input();
+  app.select(app.node("#lesson-document"), "Use ich");
+  const selected = app.run("lessonState().selected");
+  const result = app.node("#lesson-results").children[0];
+  await result.querySelector(".more-practice").listeners.click();
+  const request = app.requests.find(request => request.body?.action === "message").body;
+  assert.equal(request.lesson_id, "older");
+  assert.equal(request.selected_text, undefined);
+  assert.match(request.message, /fresh practice/);
+  assert.equal(app.node("#lesson-message").value, "Why this form?");
+  assert.deepEqual(app.run("lessonState().selected"), selected);
+  assert.equal(app.run("lessonState().tab"), "lesson");
+  assert.equal(app.node("#lesson-exercises").children.at(-1).scrolled, true);
+});
+
+test("more-practice retry returns to its originating lesson after navigation", async () => {
+  let fail = true;
+  const app = application("#lesson/older", async (path) => {
+    if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({...detail(), lesson: {...completedLesson(), id: path.includes("newer") ? "newer" : "older"}})};
+    return streamResponse(fail ? [{type: "error", error: "Try later"}] : [{type: "complete", result: {reply: {text: "Fresh practice"}}}]);
+  });
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  app.node("#lesson-message").value = "Original question";
+  app.node("#lesson-message").listeners.input();
+  await app.run("morePractice()");
+  const retry = app.node("#notice").children.at(-1);
+  await app.run('navigate("lesson", "newer")');
+  fail = false;
+  await retry.listeners.click();
+  const requests = app.requests.filter(request => request.body?.action === "message");
+  assert.equal(requests.length, 2);
+  assert.equal(requests[1].body.lesson_id, "older");
+  assert.equal(app.run("currentRoute.lessonId"), "older");
+  assert.equal(app.node("#lesson-message").value, "Original question");
+});
+
+for (const changedSession of [false, true]) {
+  test(`background completion ${changedSession ? "cannot enter another session" : "preserves a pending chat reply and scroll"}`, async () => {
+    let finish;
+    const completed = completedLesson();
+    const completedLearning = {...sessionPayload().learning, lessons: [completed]};
+    const app = application("#lesson/older", async (path) => {
+      if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => ({...detail(), lesson: completed})};
+      return new Promise(resolve => { finish = () => resolve(streamResponse([{type: "complete", result: {reply: {text: "Saved"}, learning: completedLearning}}])); });
+    });
+    app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+    await app.run("renderView()");
+    // Begin with unfinished practice, then receive completion while elsewhere.
+    app.run('renderLearning({lessons: []}); renderConversation([])');
+    const pendingAnswer = app.run('submitExerciseAnswer("An answer", "one")');
+    await app.run('navigate("chat")');
+    if (changedSession) app.run(`applySession(${JSON.stringify(sessionPayload("two"))})`);
+    const pendingMessage = app.run('appendMessage(elements.messages, "assistant", "Preparing…", {pending: true})');
+    app.node("#message").value = "Unsent draft";
+    app.node("#messages").scrollTop = 29;
+    finish();
+    await pendingAnswer;
+    assert.equal(app.node("#messages").children.at(-1), pendingMessage);
+    assert.equal(app.node("#messages").scrollTop, 29);
+    assert.equal(app.node("#message").value, "Unsent draft");
+    assert.equal(app.node("#messages").querySelectorAll(".completed-lesson").length, changedSession ? 0 : 1);
+  });
 }
 
 test("lesson sidebar and main card open stored content directly", async () => {
@@ -366,7 +563,7 @@ test("exercise submission ignores an attached quote and completed exercise text 
   assert.equal(app.requests[3].body.exercise_id, "one");
 });
 
-test("back navigation and continue learning preserve the originating lesson", async () => {
+test("viewing an older lesson does not change the chat shortcut's teaching focus", async () => {
   const app = application("#lesson/older", async (path) => {
     if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => detail()};
     return streamResponse([{type: "complete", result: {reply: {text: "Next step", lesson_cards: []}, learning: {lessons: []}, sessions: []}}]);
@@ -378,8 +575,9 @@ test("back navigation and continue learning preserve the originating lesson", as
   assert.equal(app.requests.length, 1);
   app.node("#message").value = "Unsent main question";
   await app.run('navigate("lesson", "older")');
+  await app.node("#back-to-conversation").listeners.click();
   await app.node("#continue-learning").listeners.click();
-  assert.equal(app.requests.at(-1).body.origin_lesson_id, "older");
+  assert.equal(app.requests.at(-1).body.origin_lesson_id, "newer");
   assert.equal(app.requests.at(-1).body.lesson_id, undefined);
   assert.equal(app.run("location.hash"), "#chat");
   assert.equal(app.node("#message").value, "Unsent main question");

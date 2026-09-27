@@ -1,5 +1,40 @@
 # Decision log
 
+## 2026-09-27 — Keep continuation in main chat
+
+- Put New lesson only in a shortcut row above the main chat composer.
+  Use the current teaching focus as its origin; revisiting an older lesson does
+  not change it. Hide the shortcut before the session has a lesson.
+- Lesson cards have one navigation action: Open lesson or Revisit lesson after
+  completion. The completed lesson's only final action is More practice.
+  Remove continuation from both lesson toolbars and result panels.
+- This supersedes the earlier placement of continuation on lesson cards and
+  completion panels; scoring, recap persistence, and draft preservation stay intact.
+
+## 2026-09-27 — Merge ready and completed lesson cards
+
+- Update the original chat lesson card in place when a practice set finishes.
+  Keep its title and objective, add the result and continuation actions, and show
+  later practice-set scores inside the same card. One lesson has one chat card.
+- Use a single standalone card only if its introducing card is unavailable.
+  This replaces the separate per-set completion cards described below.
+
+## 2026-09-27 — Connect lesson completion to the next learning step
+
+- Show completion feedback and Continue learning / More practice actions beside
+  the score. Continue passes the originating lesson to main chat; the tutor
+  acknowledges the result and prepares the next lesson without another prompt.
+  More practice appends fresh exercises and preserves the question draft and quote.
+- Derive a chronological main-chat completion card for each finished practice
+  set, including historical sets. Keep cards separate from conversation turns
+  and retain exercise submissions and feedback on their cards.
+- Obtain an optional short recap during the final assessment turn, using the
+  whole set's assessment evidence. Persist it atomically on that turn; preserve
+  scores if it is absent. Completion creates no separate model request.
+- Upgrade schemas 5–9 to schema 10 with nullable `turns.completion_summary`.
+  Historical recaps remain absent. Typed and legacy scoring, mastery, optional
+  reviews, and terminal navigation retain their existing behavior.
+
 ## 2026-09-27 — Typed exercises with application-owned instructions
 
 - All new lesson and extra-practice generation uses four typed contracts:

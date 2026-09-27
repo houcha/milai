@@ -30,6 +30,7 @@ let learningData = {};
 let lessonConversation = [];
 let exerciseStatuses = {};
 let busy = false;
+let continuationPending = false;
 const answerRequests = new Map();
 const answerKey = (session, lesson, exercise) => JSON.stringify([session, lesson, exercise]);
 let routeSequence = 0;
@@ -99,22 +100,44 @@ function text(value, fallback = "") {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function lessonCardNode(card) {
+function lessonCardNode(lesson) {
   const wrapper = document.createElement("article");
-  wrapper.className = "lesson-card";
+  wrapper.dataset.lessonId = lesson.id;
+  renderLessonCard(wrapper, lesson);
+  return wrapper;
+}
+
+function renderLessonCard(wrapper, lesson) {
+  const finished = (lesson.practice_results || []).filter(result => result.finished);
+  const latest = finished.at(-1);
+  const signature = JSON.stringify([lesson.title, lesson.objective, finished]);
+  if (wrapper.dataset.lessonSignature === signature) return;
+  wrapper.dataset.lessonSignature = signature;
+  wrapper.className = latest ? "lesson-card completed-lesson" : "lesson-card";
   const eyebrow = document.createElement("p");
   eyebrow.className = "eyebrow";
-  eyebrow.textContent = "Lesson ready";
+  eyebrow.textContent = latest ? (latest.number === 1 ? "Lesson complete" : `Practice ${latest.number} complete`) : "Lesson ready";
   const title = document.createElement("h3");
-  title.textContent = text(card.title, "Your lesson");
+  title.textContent = text(lesson.title, "Your lesson");
   const objective = document.createElement("p");
-  objective.textContent = text(card.objective);
+  objective.textContent = text(lesson.objective);
   objective.hidden = !objective.textContent;
+  wrapper.replaceChildren(eyebrow, title, objective);
+  for (const result of finished) {
+    const score = document.createElement("p");
+    score.className = "lesson-card-score";
+    const label = finished.length > 1 ? (result.number === 1 ? "Lesson: " : `Practice ${result.number}: `) : "";
+    score.textContent = label + (result.percentage == null ? "Submitted · Accuracy unavailable" : `${result.percentage}% correct`);
+    wrapper.append(score);
+  }
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = "Open lesson ↗";
-  button.addEventListener("click", () => navigate("lesson", card.id));
-  wrapper.append(eyebrow, title, objective, button);
+  button.disabled = busy;
+  button.textContent = latest ? "Revisit lesson ↗" : "Open lesson ↗";
+  button.addEventListener("click", () => {
+    if (!busy) return navigate("lesson", lesson.id);
+  });
+  wrapper.append(button);
   return wrapper;
 }
 
@@ -137,6 +160,7 @@ function activityNode(activity) {
 function messageNode(role, content, options = {}) {
   const wrapper = document.createElement("article");
   wrapper.className = `message ${role}${options.pending ? " pending" : ""}`;
+  wrapper.dataset.created = options.created || new Date().toISOString();
   if (options.turnId) {
     wrapper.id = `turn-${options.turnId}`;
     wrapper.tabIndex = -1;
@@ -229,13 +253,38 @@ function renderConversation(conversation) {
   }
   for (const item of conversation) {
     appendMessage(elements.messages, item.role, item.content, {
-      turnId: item.turn_id, lessonCards: item.lesson_cards || [], activities: item.activities || [],
+      turnId: item.turn_id, created: item.created, lessonCards: item.lesson_cards || [], activities: item.activities || [],
     });
   }
 }
 
+function syncLessonCards() {
+  // Update the original lesson card without replacing its message or streaming replies.
+  const scroll = elements.messages.scrollTop;
+  for (const lesson of learningData.lessons || []) {
+    const cards = [...elements.messages.querySelectorAll(".lesson-card")]
+      .filter(card => card.dataset.lessonId === lesson.id);
+    if (cards.length) {
+      renderLessonCard(cards[0], lesson);
+      for (const duplicate of cards.slice(1)) duplicate.remove();
+      continue;
+    }
+    // Historical results may lack an introducing message in the loaded history.
+    const first = (lesson.practice_results || []).find(result => result.finished);
+    if (!first) continue;
+    elements.messages.querySelector(".welcome")?.remove();
+    const card = lessonCardNode(lesson);
+    card.dataset.created = first.last_submitted_at;
+    const next = [...elements.messages.children].find(node => node.dataset.created > first.last_submitted_at);
+    elements.messages.insertBefore(card, next || null);
+  }
+  elements.messages.scrollTop = scroll;
+}
+
 function renderLearning(learning = {}) {
   learningData = learning;
+  syncContinuationControls();
+  syncLessonCards();
   const lessons = learning.lessons || [];
   const focusId = learning.current_focus_lesson_id || learning.current_focus?.id || learning.active_lesson?.id;
   elements.path.replaceChildren();
@@ -842,8 +891,9 @@ function renderLessonResults() {
   for (const result of finished) {
     const entry = document.createElement("article");
     entry.className = "lesson-result";
+    entry.id = `practice-result-${result.set_id}`;
     const title = document.createElement("h3");
-    title.textContent = result.number === 1 ? "Lesson result" : `Practice ${result.number} result`;
+    title.textContent = result.number === 1 ? "Lesson complete" : `Practice ${result.number} complete`;
     const score = document.createElement("p");
     score.className = "lesson-score";
     score.textContent = result.percentage == null ? "Submitted" : `${result.percentage}% correct`;
@@ -852,17 +902,35 @@ function renderLessonResults() {
       ? "Some earlier submissions have no saved assessment, so an accuracy rate is unavailable."
       : `${result.correct} of ${result.total} ${result.scoring === "items" ? "answers" : result.scoring === "parts" ? "answer parts" : "exercises"} correct on the first submission.`;
     entry.append(title, score, detail);
+    if (result.completion_summary) {
+      const recap = document.createElement("p");
+      recap.className = "completion-summary";
+      recap.textContent = result.completion_summary;
+      entry.append(recap);
+    }
     if (result.scoring === "exercises" && result.percentage != null) {
       const legacy = document.createElement("p");
       legacy.textContent = "Earlier assessments did not record partial credit; this result counts fully correct exercises.";
       entry.append(legacy);
     }
-    if (result === results.at(-1)) {
+    if (result === finished.at(-1)) {
+      const actions = document.createElement("div");
+      actions.className = "completion-actions";
+      const practice = document.createElement("button");
+      practice.type = "button";
+      practice.className = "new-session more-practice";
+      practice.textContent = "More practice";
+      practice.disabled = busy;
+      const lessonId = lessonData.id;
+      practice.addEventListener("click", () => morePractice(lessonId));
+      actions.append(practice);
+      entry.append(actions);
       const review = document.createElement("p");
+      review.className = "completion-review";
       const date = result.review_at ? new Date(result.review_at) : null;
       review.textContent = date && date > new Date()
-        ? `Suggested review: ${date.toLocaleString([], {dateStyle: "medium", timeStyle: "short"})}. You can ask for fresh exercises sooner if you prefer.`
-        : "Ready to review? Ask for fresh exercises in the discussion.";
+        ? `Suggested review: ${date.toLocaleString([], {dateStyle: "medium", timeStyle: "short"})}. You can practice sooner if you prefer.`
+        : "You can try fresh practice whenever you’re ready.";
       entry.append(review);
     }
     panel.append(entry);
@@ -938,10 +1006,63 @@ function setBusy(value) {
   elements.message.disabled = value;
   elements.lessonMessage.disabled = value;
   document.querySelector("#lesson-send").disabled = value;
-  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .exercise-blank input, .lesson-section button, .lesson-toolbar button"]) {
+  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .exercise-blank input, .lesson-section button, .lesson-toolbar button, .completion-actions button, .action-retry"]) {
     document.querySelectorAll(selector).forEach((button) => { button.disabled = value; });
   }
+  syncContinuationControls();
   syncAnswerControls();
+}
+
+function continuationLessonId() {
+  return learningData.current_focus_lesson_id || learningData.current_focus?.id
+    || learningData.active_lesson?.id || learningData.lessons?.at(-1)?.id || null;
+}
+
+function syncContinuationControls() {
+  const lessonId = continuationLessonId();
+  document.querySelector("#chat-shortcuts").hidden = !lessonId;
+  document.querySelector("#continue-learning").disabled = !lessonId || busy || continuationPending;
+}
+
+function actionRetry(retry) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "quiet-button action-retry";
+  button.textContent = "Retry";
+  button.addEventListener("click", retry);
+  elements.notice.append(button);
+}
+
+async function continueLearning(lessonId) {
+  if (!lessonId || busy || continuationPending) return;
+  const session = activeSession;
+  continuationPending = true;
+  syncContinuationControls();
+  try {
+    await navigate("chat");
+    if (activeSession !== session) return;
+    const saved = await sendMainMessage("Continue learning from this lesson.", lessonId, true);
+    if (!saved) actionRetry(() => continueLearning(lessonId));
+  } finally {
+    continuationPending = false;
+    syncContinuationControls();
+  }
+}
+
+async function morePractice(lessonId = currentRoute.lessonId) {
+  if (busy || !lessonId) return;
+  if (currentRoute.lessonId !== lessonId) await navigate("lesson", lessonId);
+  if (busy || lessonData?.id !== lessonId) return;
+  const oldIds = new Set(lessonData.exercises.map(item => item.id));
+  setLessonTab("discussion");
+  const reply = await submitLessonTurn("Give me fresh practice on this lesson’s skill, even if its suggested review time is later.", "message", {}, {preserveDraft: true});
+  if (reply && currentRoute.lessonId === lessonId) {
+    const first = lessonData.exercises.find(item => !oldIds.has(item.id));
+    if (first) {
+      setLessonTab("lesson");
+      document.getElementById(`lesson-exercise-${first.id}`)?.scrollIntoView({block: "start"});
+    }
+  } else if (!reply) actionRetry(() => morePractice(lessonId));
 }
 
 async function sendMainMessage(message, originLessonId = null, preserveDraft = false) {
@@ -966,20 +1087,25 @@ async function sendMainMessage(message, originLessonId = null, preserveDraft = f
       if (event.type === "complete") {
         const payload = event.result;
         pending.remove();
-        appendMessage(elements.messages, "assistant", payload.reply.text, {
-          turnId: payload.reply.turn_id, lessonCards: payload.reply.lesson_cards || [], activities: payload.reply.activities || [],
-        });
+        if (payload.conversation) renderConversation(payload.conversation);
+        else {
+          appendMessage(elements.messages, "assistant", payload.reply.text, {
+            turnId: payload.reply.turn_id, lessonCards: payload.reply.lesson_cards || [], activities: payload.reply.activities || [],
+          });
+        }
         renderLearning(payload.learning);
         renderSessions(payload.sessions);
       }
       elements.messages.scrollTop = elements.messages.scrollHeight;
     });
+    return true;
   } catch (error) {
     user.remove();
     pending.remove();
     elements.message.value = preserveDraft ? previousDraft : message;
     savedWork.setMainDraft(activeSession, elements.message.value);
     elements.notice.textContent = error.message;
+    return false;
   } finally {
     if (preserveDraft && !elements.notice.textContent) {
       elements.message.value = previousDraft;
@@ -1023,6 +1149,9 @@ async function submitExerciseAnswer(message, exerciseId) {
   try {
     await streamChat({ session, lesson_id: lessonId, message, action: "answer", exercise_id: exerciseId }, (event) => {
       if (event.type === "stage") progress(event.text);
+      if (event.type === "complete" && activeSession === session && event.result.learning) {
+        renderLearning(event.result.learning);
+      }
     });
     request.submitted = true;
     savedWork.update(session, lessonId, { answers: { [exerciseId]: "" } });
@@ -1049,14 +1178,14 @@ async function submitExerciseAnswer(message, exerciseId) {
   }
 }
 
-async function submitLessonTurn(message, action = "message", reference = {}) {
+async function submitLessonTurn(message, action = "message", reference = {}, {preserveDraft = false} = {}) {
   if (!message.trim() || busy || !lessonData) return;
   if (action === "answer") return submitExerciseAnswer(message, reference.exercise_id);
   const lessonId = currentRoute.lessonId;
   const progress = (text) => {
     elements.lessonProgress.textContent = text;
   };
-  const selected = action === "message" ? lessonState().selected : null;
+  const selected = action === "message" && !preserveDraft ? lessonState().selected : null;
   const context = { ...reference };
   if (selected) {
     context.selected_text = selected.text;
@@ -1080,9 +1209,11 @@ async function submitLessonTurn(message, action = "message", reference = {}) {
       if (event.type === "complete") committedReply = event.result.reply;
       // Structured lesson output is shown only after the complete event commits.
     });
-    updateLessonState({ draft: "" });
-    elements.lessonMessage.value = "";
-    clearLessonSelection();
+    if (!preserveDraft) {
+      updateLessonState({ draft: "" });
+      elements.lessonMessage.value = "";
+      clearLessonSelection();
+    }
     try {
       await refreshLesson(lessonId);
       progress("Saved to this lesson.");
@@ -1097,6 +1228,7 @@ async function submitLessonTurn(message, action = "message", reference = {}) {
       progress("Saved. Reopen the lesson to refresh exercise status.");
       elements.notice.textContent = error.message;
     }
+    return committedReply;
   } catch (error) {
     user?.remove();
     pending?.remove();
@@ -1155,8 +1287,8 @@ function applySession(payload) {
   elements.message.value = savedWork.mainDraft(activeSession);
   renderSessions(payload.sessions);
   renderConversation(payload.conversation);
-  elements.messages.scrollTop = chatScroll.get(activeSession) ?? elements.messages.scrollHeight;
   renderLearning(payload.learning);
+  elements.messages.scrollTop = chatScroll.get(activeSession) ?? elements.messages.scrollHeight;
 }
 
 async function manageSession(action, extra = {}) {
@@ -1208,11 +1340,7 @@ document.querySelector("#remove-reference").addEventListener("click", clearLesso
 document.querySelector("#lesson-tab").addEventListener("click", () => setLessonTab("lesson"));
 document.querySelector("#discussion-tab").addEventListener("click", () => setLessonTab("discussion"));
 document.querySelector("#back-to-conversation").addEventListener("click", () => navigate("chat"));
-document.querySelector("#continue-learning").addEventListener("click", async () => {
-  const origin = currentRoute.lessonId;
-  await navigate("chat");
-  await sendMainMessage("Continue learning from this lesson.", origin, true);
-});
+document.querySelector("#continue-learning").addEventListener("click", () => continueLearning(continuationLessonId()));
 elements.newSession.addEventListener("click", () => manageSession("create"));
 
 const dialog = document.querySelector("#session-dialog");

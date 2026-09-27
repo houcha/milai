@@ -28,6 +28,9 @@
       <main class="workspace">
         <section class="chat-panel" data-view="chat" aria-label="Tutor conversation">
           <div id="messages" class="messages" aria-live="polite"></div>
+          <div id="chat-shortcuts" class="chat-shortcuts" aria-label="Conversation shortcuts" hidden>
+            <button id="continue-learning" class="quiet-button" type="button">New lesson ↗</button>
+          </div>
           <form id="composer" class="composer">
             <label for="message" class="sr-only">Message Milai</label>
             <textarea id="message" maxlength="8000" rows="2" placeholder="Follow your curiosity…"></textarea>
@@ -38,7 +41,6 @@
         <section id="lesson-view" class="lesson-view" data-view="lesson" aria-label="Lesson" hidden>
           <div class="lesson-toolbar">
             <button id="back-to-conversation" class="quiet-button" type="button">← Back to conversation</button>
-            <button id="continue-learning" class="new-session" type="button">Continue learning ↗</button>
           </div>
           <div class="lesson-tabs" role="tablist" aria-label="Lesson areas">
             <button id="lesson-tab" type="button" role="tab" aria-controls="lesson-reading" aria-selected="true">Lesson</button>

@@ -194,6 +194,36 @@ score. Each later requested set has its own result and suggested review time,
 practice. Prompts request fresh analogous tasks on demand and no resubmission;
 `present_exercise` rejects automatic new practice during an answer turn.
 
+Each practice result also exposes `set_id` (its generating turn), the completing
+first-submission `completion_turn_id`, and nullable `completion_summary`. The
+assessment tool returns the selected set's computed status and, when finished,
+its first-assessment evidence, including the current uncommitted assessment.
+Structured lesson output may provide a recap of at most 600 characters. It is
+saved on the completing answer turn in the same transaction; non-completing
+turns cannot save a recap, and absent recaps do not invalidate assessments.
+Later discussion summaries cannot overwrite a set's recap. Existing results
+retain their scoring and have no inferred completion prose.
+
+The browser updates the original main-chat lesson card in its introducing
+message when results arrive. One card per lesson retains its title and objective,
+shows every completed set's score, and offers a single Open lesson or Revisit
+lesson navigation action. A standalone card is inserted at the first completion's timestamp only
+when no introducing card exists in the loaded history. Cards derive from the
+existing learning payload; they are not synthetic conversation turns or
+model-history entries. Live updates preserve the card and its containing message,
+pending messages, and chat scroll. Unchanged cards retain their controls. Both initial loads
+and committed answer responses supply results, with session checks for background
+responses. No new endpoint or model call is needed.
+
+New lesson appears only in a shortcut row above the main chat composer,
+hidden when the session has no lesson. It sends explicit main-chat continuation
+with the current teaching focus as `origin_lesson_id`; opening an older lesson
+does not change that target. The tutor acknowledges results and prepares
+the next lesson in that turn. The completion panel's only action is More practice,
+which uses an ordinary lesson discussion
+request, preserves the unsent draft and quote, and reveals fresh exercises after
+they save. Failed actions offer a retry tied to the originating lesson.
+
 ## Tutor loop and context
 
 One `Tutor.respond` call is one learner turn. The application validates the
@@ -221,14 +251,15 @@ their quote.
 
 ## Storage and navigation
 
-SQLite schema 9 additionally stores nullable `exercises.contract` and
+SQLite schema 10 stores nullable `turns.completion_summary`, alongside `exercises.contract` and
 `attempts.item_results` JSON. Null contracts identify preserved legacy exercises.
 It also stores optional part-level scores and per-blank assessment results
 on attempts and selected text alongside each discussion turn, in addition
 to lesson documents, scoped references, discussion summaries, current teaching
-focus, and presentation links. Schemas 5–8 upgrade transactionally on open,
+focus, and presentation links. Schemas 5–9 upgrade transactionally on open,
 adding the typed fields after applying earlier steps: add nullable `attempts.blank_results`, add `attempts.score` for schemas 5/6, and add
-`turns.selected_text` for schema 5. Existing data is preserved; historical attempts
+`turns.selected_text` for schema 5, followed by the nullable completion recap.
+Existing data is preserved; historical attempts
 keep their existing scores and have no inferred blank results.
 Ownership checks and session deletion cover every record. Schemas older than 5
 still require `milai reset --yes`, which archives the database and WAL/SHM
@@ -248,8 +279,8 @@ alongside existing optional `section_id` or `exercise_id`. The HTTP body limit i
 64 KiB. The full lesson remains available whether or not a quote is attached.
 Cards and sidebar entries open
 stored lessons directly. **Back to conversation** navigates without changing
-focus; **Continue learning** sends a main-chat continuation tied to its origin
-lesson. Browser session storage keeps per-session, per-lesson drafts, selected
+focus; the main chat's **New lesson** shortcut advances from the current
+teaching focus. Browser session storage keeps per-session, per-lesson drafts, selected
 text, and reading position through reloads and clears them on session delete.
 Legacy browser references without quotes are discarded while preserving other
 draft state. The pending quote clears after a discussion turn commits, remains

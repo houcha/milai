@@ -21,7 +21,9 @@ a { color:inherit; }
 .quiet-button { border:1px solid var(--line); border-radius:7px; padding:8px 12px; background:transparent; color:var(--muted); font-size:12px; }
 .quiet-button:hover { background:white; color:var(--ink); }
 .workspace { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); min-height:0; }
-.chat-panel { display:grid; grid-template-rows:minmax(0,1fr) auto auto; min-width:0; min-height:0; }
+.chat-panel { display:grid; grid-template-rows:minmax(0,1fr) auto auto auto; min-width:0; min-height:0; }
+.chat-shortcuts { display:flex; flex-wrap:wrap; gap:9px; margin:0 max(24px,calc((100% - 850px)/2)) 10px; }
+.chat-shortcuts button { min-height:40px; color:var(--green); }
 .messages { overflow-y:auto; padding:35px max(24px,calc((100% - 850px)/2)) 25px; scroll-behavior:smooth; }
 .welcome { max-width:610px; margin:clamp(25px,9vh,110px) auto 40px; }
 .welcome .eyebrow { color:var(--coral); }
@@ -145,6 +147,7 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
   .notice { order:3; margin:6px 20px; }
   .messages { padding:25px 20px; }
   .composer { margin-inline:16px; }
+  .chat-shortcuts { margin-inline:16px; }
   .detail-view { padding:25px 20px; }
   .session-row { align-items:stretch; flex-direction:column; gap:4px; }
   .session-actions { padding:0 12px 10px; }
@@ -163,7 +166,6 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 
 .lesson-view { min-width:0; min-height:0; display:grid; grid-template-rows:auto auto minmax(0,1fr); }
 .lesson-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px clamp(20px,3vw,40px); border-bottom:1px solid var(--line); }
-.lesson-toolbar .new-session { padding:9px 13px; font-size:12px; }
 .lesson-tabs { display:none; }
 .lesson-layout { min-height:0; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr); }
 .lesson-reading { min-width:0; overflow-y:auto; padding:clamp(24px,4vw,60px) clamp(20px,4vw,70px) 80px; scroll-behavior:smooth; }
@@ -202,6 +204,13 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .lesson-result h3 { margin:0 0 12px; }
 .lesson-result p { margin:10px 0 0; }
 .lesson-result .lesson-score { font-size:28px; color:var(--green); }
+.completion-summary { line-height:1.65; }
+.completion-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:20px; }
+.completion-actions button { min-height:42px; }
+.completion-review { color:var(--muted); font-size:12px; line-height:1.6; }
+.lesson-card.completed-lesson { background:var(--green-soft); }
+.lesson-card .lesson-card-score { color:var(--green); }
+.action-retry { margin-left:10px; }
 .exercise-attempts { display:grid; gap:8px; margin:18px 0; }
 .exercise-attempts:empty { display:none; }
 .exercise-attempt { padding:12px 15px; border-left:2px solid #a6b598; background:#f2f4ed; line-height:1.6; }
@@ -261,7 +270,6 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
   .lesson-view { min-height:0; min-width:0; }
   .lesson-toolbar { padding:10px 16px; flex-wrap:wrap; }
   .lesson-toolbar button { font-size:11px; }
-  .lesson-toolbar .new-session { white-space:normal; }
   .lesson-reading { padding:25px 20px 70px; overflow-x:hidden; }
   .lesson-reading h1,.lesson-section h2,.lesson-exercise h3 { overflow-wrap:anywhere; }
   .lesson-reading .markdown { overflow-wrap:anywhere; }

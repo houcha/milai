@@ -181,6 +181,7 @@ def test_schema_six_upgrade_preserves_legacy_first_result(tmp_path):
     store.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
     store.db.execute("ALTER TABLE exercises DROP COLUMN contract")
     store.db.execute("ALTER TABLE attempts DROP COLUMN item_results")
+    store.db.execute("ALTER TABLE turns DROP COLUMN completion_summary")
     store.db.execute("UPDATE metadata SET value='6' WHERE key='schema_version'")
     store.close()
     upgraded = Store(path)

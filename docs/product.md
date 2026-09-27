@@ -78,6 +78,30 @@ later success does not overwrite the original answers. A review is suggested one
 day after finishing a set. This timing is advisory; reading, discussion, and an
 explicit request for earlier fresh practice remain available.
 
+Finishing a practice set leaves the learner on the lesson with a completion
+panel: its score, a short tutor recap when available, and **More practice** as its
+only action. More practice requests fresh exercises in the same lesson and reveals them when
+ready, preserving any unsent question and selected quote. The review date is
+advisory. Accuracy and mastery remain distinct.
+
+Main chat shows one card per lesson in its introducing message. On completion,
+that card keeps the title and objective and changes from **Lesson ready** to
+**Lesson complete**, with its score and **Revisit lesson**. Unfinished lesson
+cards offer **Open lesson**. Each card has only this navigation action.
+Later practice-set results appear in the same card, each with its own label.
+Cards survive reloads and also work for historical results; a single standalone
+card is used if the introducing message is unavailable. Cards use saved
+results; new recaps come from the final assessment turn, without a separate model
+request. Older results without recaps retain their scores without an invented
+interpretation. Answer submissions and detailed feedback stay on exercise cards.
+
+**New lesson** is a shortcut immediately above the main chat composer,
+available once the session has a lesson. It advances from the current teaching
+focus, including when the learner has revisited an older lesson. The tutor
+acknowledges available results and prepares the next appropriate lesson without
+another confirmation. The shortcut preserves an unsent message and is disabled
+while a request is pending. Lesson pages have no New lesson action.
+
 The shared learning profile records explicit goals, interests, source preferences,
 and quoted teaching preferences within the current session. A lesson discussion
 keeps a short summary of unresolved questions and requested next steps so it
@@ -91,7 +115,7 @@ and keeps one learner-facing tutor. Chat and assessment use the configured
 `OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
 lesson model and generation settings; the application validates its draft before
 saving the document, exercises, lesson card, and main reply together. A failed
-generation leaves the turn unchanged. Schema 5–8 databases upgrade to schema 9
+generation leaves the turn unchanged. Schema 5–9 databases upgrade to schema 10
 without losing saved lessons or conversations. Earlier schemas require an explicit
 `milai reset --yes` archival reset.
 

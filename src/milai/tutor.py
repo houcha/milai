@@ -41,6 +41,7 @@ class LessonTurnOutput(BaseModel):
 
     reply: str = Field(min_length=1, max_length=8000)
     summary: str = Field(min_length=1, max_length=2000)
+    completion_summary: str | None = Field(default=None, max_length=600)
 
 
 def prompts() -> tuple[str, str, str]:
@@ -329,9 +330,11 @@ class Tutor:
                             raise RuntimeError("Lesson discussion output is incomplete")
                         reply = result.final_output.reply
                         summary = result.final_output.summary
+                        completion_summary = result.final_output.completion_summary
                     else:
                         reply = str(result.final_output)
                         summary = None
+                        completion_summary = None
                     if not reply.strip():
                         raise ValueError("Model returned no learner-facing response")
                     if action == "answer" and not ctx.assessments:
@@ -340,7 +343,9 @@ class Tutor:
                             "It was not saved; please submit again."
                         )
                     items = result.to_input_list()[len(history) :]
-                    self.store.save_turn(ctx, reply, items)
+                    self.store.save_turn(
+                        ctx, reply, items, completion_summary=completion_summary
+                    )
                     if summary is not None:
                         self.store.save_discussion_summary(ctx, summary)
                     if action == "answer" and exercise_id:

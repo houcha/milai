@@ -592,6 +592,30 @@ async def assess_attempt(
         item_results=[item.model_dump() for item in assessment.item_results],
     )
     c.assessments.append(result)
+    practice = c.store.exercise_practice_result(c.learner, assessment.exercise_id)
+    result["practice_result"] = practice
+    if practice["finished"]:
+        result["practice_assessments"] = [
+            {
+                "exercise_id": exercise_id,
+                "assessment": {
+                    key: result[key]
+                    for key in (
+                        "learner_response",
+                        "feedback",
+                        "score",
+                        "blank_results",
+                        "item_results",
+                        "observations",
+                    )
+                }
+                if exercise_id == assessment.exercise_id
+                else c.store.exercise_status(c.learner, c.session, exercise_id)[
+                    "first_assessment"
+                ],
+            }
+            for exercise_id in practice["exercise_ids"]
+        ]
     return result
 
 

@@ -21,7 +21,7 @@ from milai.exercises import (
     parse_answers,
 )
 
-SCHEMA_VERSION = "9"
+SCHEMA_VERSION = "10"
 MAX_SELECTED_TEXT = 4000
 
 
@@ -85,7 +85,8 @@ CREATE TABLE turns (
     reply TEXT NOT NULL, items TEXT NOT NULL, prompt_version TEXT NOT NULL,
     lesson_id TEXT REFERENCES lessons(id), section_id TEXT, exercise_id TEXT,
     action TEXT NOT NULL CHECK(action IN ('message', 'answer')),
-    origin_lesson_id TEXT REFERENCES lessons(id), selected_text TEXT
+    origin_lesson_id TEXT REFERENCES lessons(id), selected_text TEXT,
+    completion_summary TEXT
 );
 CREATE INDEX turns_session ON turns(session, created);
 CREATE INDEX turns_lesson ON turns(session, lesson_id, created);
@@ -255,7 +256,7 @@ class Store:
                     "SELECT value FROM metadata WHERE key='schema_version'"
                 ).fetchone()
                 version = row[0] if row else None
-            if version in {"5", "6", "7", "8"}:
+            if version in {"5", "6", "7", "8", "9"}:
                 try:
                     self.db.execute("BEGIN IMMEDIATE")
                     # Another process may have upgraded while this one waited.
@@ -279,6 +280,10 @@ class Store:
                         self.db.execute(
                             "ALTER TABLE attempts ADD COLUMN item_results TEXT"
                         )
+                    if locked_version in {"5", "6", "7", "8", "9"}:
+                        self.db.execute(
+                            "ALTER TABLE turns ADD COLUMN completion_summary TEXT"
+                        )
                         self.db.execute(
                             "UPDATE metadata SET value=? WHERE key='schema_version'",
                             (SCHEMA_VERSION,),
@@ -294,7 +299,7 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
-        # Schemas 5–8 upgrade without losing learning state. Earlier schemas still
+        # Schemas 5–9 upgrade without losing learning state. Earlier schemas still
         # require an explicit archival reset.
 
     @contextmanager
@@ -1051,6 +1056,7 @@ class Store:
 
     def lesson_results(self, learner: str, lesson_id: str) -> list[dict]:
         """First-submission accuracy, separately for each generated practice set."""
+        self._owned("lessons", learner, lesson_id)
         rounds: dict[str, dict] = {}
         for exercise in self.db.execute(
             "SELECT id, created_turn, contract FROM exercises WHERE lesson_id=? AND learner=? ORDER BY rowid",
@@ -1059,6 +1065,7 @@ class Store:
             result = rounds.setdefault(
                 exercise["created_turn"],
                 {
+                    "set_id": exercise["created_turn"],
                     "number": len(rounds) + 1,
                     "exercise_ids": [],
                     "submitted": 0,
@@ -1067,6 +1074,8 @@ class Store:
                     "correct_exercises": 0,
                     "assessed": 0,
                     "last_submitted_at": None,
+                    "completion_turn_id": None,
+                    "completion_summary": None,
                 },
             )
             result["exercise_ids"].append(exercise["id"])
@@ -1090,9 +1099,11 @@ class Store:
             if attempt or turn:
                 result["submitted"] += 1
                 submitted_at = attempt["created"] if attempt else turn["created"]
-                result["last_submitted_at"] = max(
-                    result["last_submitted_at"] or submitted_at, submitted_at
-                )
+                if submitted_at >= (result["last_submitted_at"] or ""):
+                    result["last_submitted_at"] = submitted_at
+                    result["completion_turn_id"] = (
+                        attempt["turn_id"] if attempt else turn["id"]
+                    )
             if attempt:
                 result["assessed"] += 1
                 score = json.loads(attempt["score"]) if attempt["score"] else None
@@ -1132,6 +1143,11 @@ class Store:
             result["correct"] = result["total"] = result["percentage"] = None
             result["review_at"] = None
             if result["finished"]:
+                completion = self.db.execute(
+                    "SELECT completion_summary FROM turns WHERE id=? AND learner=?",
+                    (result["completion_turn_id"], learner),
+                ).fetchone()
+                result["completion_summary"] = completion[0] if completion else None
                 result["review_at"] = (
                     datetime.fromisoformat(result["last_submitted_at"])
                     + timedelta(days=1)
@@ -1149,7 +1165,18 @@ class Store:
                     )
                     # Do not round an imperfect result up to 100%.
                     result["percentage"] = result["correct"] * 100 // result["total"]
+            else:
+                result["completion_turn_id"] = None
         return list(rounds.values())
+
+    def exercise_practice_result(self, learner: str, exercise_id: str) -> dict:
+        """Resolve the practice set containing this owned exercise."""
+        exercise = self._owned("exercises", learner, exercise_id)
+        return next(
+            result
+            for result in self.lesson_results(learner, exercise["lesson_id"])
+            if result["set_id"] == exercise["created_turn"]
+        )
 
     def lesson_detail(self, learner: str, session: str, lesson_id: str) -> dict:
         """Return a complete, owned lesson with its prepared and added exercises."""
@@ -1874,7 +1901,14 @@ class Store:
             )
         ]
 
-    def save_turn(self, ctx: Any, reply: str, items: list) -> None:
+    def save_turn(
+        self,
+        ctx: Any,
+        reply: str,
+        items: list,
+        *,
+        completion_summary: str | None = None,
+    ) -> None:
         lesson_id = getattr(ctx, "lesson_id", None)
         section_id = getattr(ctx, "section_id", None)
         exercise_id = getattr(ctx, "selected_exercise_id", None)
@@ -1887,10 +1921,23 @@ class Store:
             self.lesson(ctx.learner, lesson_id)
         if origin_lesson_id:
             self.lesson(ctx.learner, origin_lesson_id)
+        if completion_summary is not None:
+            if not isinstance(completion_summary, str) or len(completion_summary) > 600:
+                raise ValueError("Completion summary exceeds 600 characters")
+            result = (
+                self.exercise_practice_result(ctx.learner, exercise_id)
+                if action == "answer" and exercise_id
+                else None
+            )
+            completion_summary = (
+                completion_summary.strip() or None
+                if result and result["completion_turn_id"] == ctx.turn_id
+                else None
+            )
         self.db.execute(
             "INSERT INTO turns (id, session, learner, created, message, reply, items, "
-            "prompt_version, lesson_id, section_id, exercise_id, action, origin_lesson_id, selected_text) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "prompt_version, lesson_id, section_id, exercise_id, action, origin_lesson_id, selected_text, completion_summary) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 ctx.turn_id,
                 ctx.session,
@@ -1906,6 +1953,7 @@ class Store:
                 action,
                 origin_lesson_id,
                 selected_text,
+                completion_summary,
             ),
         )
         for position, exercise_id in enumerate(ctx.exercise_ids):
