@@ -65,6 +65,52 @@ taught supporting skills. Attempts and help retain exact exercise and skill
 references. Ambiguous requests are clarified before evidence is assigned. Skills
 can be superseded without rewriting historical lessons or observations.
 
+### Typed exercises
+
+All new planner and `present_exercise` outputs require a version-1 exercise
+contract with one of four content variants: `complete_sentence`,
+`translate`, `transform`, or `short_response`. Each has 1–12 items. Shared Python
+models validate gap counts and content bounds. The application
+compiles a fixed English instruction, title, and readable task; labels such as the
+answer language and target form are bounded parameters. Item text and context are
+plain content, never a place for additional instructions. Lesson generation still
+requires two unscaffolded exercises. A separate stored-contract schema retains
+choice support for historical exercises; new writes reject choice contracts.
+
+SQLite retains the private contract alongside the compiled task. Public exercises
+add `format` with type, instruction, parameters, and items; an explicit projection
+excludes reference answers and choice keys. Only answer turns load the selected
+exercise's private `assessment_contract`. Ordinary discussion, public lesson data,
+activities, snapshots, and replay do not load private keys.
+
+The browser renders structured items directly, without parsing Markdown lists.
+It submits JSON-quoted `Item N:` strings through the existing answer endpoint.
+The tutor validates exact item mapping before model execution and normalizes
+single-item plain text into that format. Choices submit option numbers. Typed
+multi-item terminal answers use `/answer <id>` to collect one answer at a time;
+legacy and single-item answers retain `/answer <id> <text>`. Bad mappings are
+rejected without consuming a submission.
+
+Typed `assess_attempt` calls return `item_results` with one numbered correctness
+flag and feedback per item; aggregate score must be null and legacy feedback fields
+empty. Storage validates complete coverage, checks choice flags against the saved
+key, and rejects correct marks for empty answers. It calculates one point per
+correct item. Production assessment accepts alternative correct answers; short
+responses are assessed holistically against their visible focus. References cannot
+add hidden criteria. The model still records skill observations separately.
+Choice accuracy cannot contribute independent mastery evidence.
+
+Typed practice sets expose `scoring: "items"` and show correct answers out of total
+answers. Existing component and legacy whole-exercise results retain their labels
+and aggregation. Per-item results persist and render next to the saved answer;
+only incorrect items get explanatory feedback. Existing draft keys, per-exercise
+pending state, final submissions, and transaction rollback remain in use.
+
+### Saved legacy exercise rendering
+
+The following Markdown and scoring behavior applies to existing exercises without
+a typed contract; they are neither converted nor rescored automatically.
+
 Exercise tasks remain Markdown strings. The lesson planner and `present_exercise`
 can use up to 12 literal `{{blank}}` markers for inline short answers; model
 schemas and storage validate their spelling and count. The exercise-only
@@ -130,7 +176,7 @@ instead of consuming the submission. `completed` and `submitted` mean final,
 while `correct` reflects the first assessment's accuracy. Historical attempts
 remain readable; later corrections do not improve a first-submission result.
 
-`assess_attempt` requires a score of correct and total requested answer parts
+For legacy exercises, `assess_attempt` requires a score of correct and total requested answer parts
 (0–100 correct out of 1–100 total). Storage validates bounds before writing.
 The model counts the task's explicit components consistently, independent of the
 learner's response. Skill observations and mastery remain separate: a minor slip
@@ -138,7 +184,7 @@ can evidence understanding while losing an accuracy point.
 
 Exercises from the same generating turn form one practice set. `practice_results`
 on each lesson exposes submission counts and, once the set is finished, its
-aggregate accuracy. New sets sum correct/total parts rather than averaging
+aggregate accuracy. New sets sum correct/total counts rather than averaging
 exercise percentages. A set containing legacy unscored assessments instead counts
 fully correct exercises, with an explicit UI label; missing legacy assessments
 produce no numeric rate. Integer percentages round down so only perfect work
@@ -175,11 +221,13 @@ their quote.
 
 ## Storage and navigation
 
-SQLite schema 8 stores optional part-level scores and per-blank assessment results
+SQLite schema 9 additionally stores nullable `exercises.contract` and
+`attempts.item_results` JSON. Null contracts identify preserved legacy exercises.
+It also stores optional part-level scores and per-blank assessment results
 on attempts and selected text alongside each discussion turn, in addition
 to lesson documents, scoped references, discussion summaries, current teaching
-focus, and presentation links. Schemas 5–7 upgrade transactionally on open: add
-nullable `attempts.blank_results`, add `attempts.score` for schemas 5/6, and add
+focus, and presentation links. Schemas 5–8 upgrade transactionally on open,
+adding the typed fields after applying earlier steps: add nullable `attempts.blank_results`, add `attempts.score` for schemas 5/6, and add
 `turns.selected_text` for schema 5. Existing data is preserved; historical attempts
 keep their existing scores and have no inferred blank results.
 Ownership checks and session deletion cover every record. Schemas older than 5

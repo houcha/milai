@@ -61,9 +61,20 @@ def draft():
         },
         "exercises": [
             {
-                "title": f"Choose a subject pronoun {index}",
-                "task": f"Write a matching pronoun for the stated subject in situation {index}.",
-                "context": "A short sentence",
+                "contract": {
+                    "version": 1,
+                    "content": {
+                        "type": "translate",
+                        "language": None,
+                        "items": [
+                            {
+                                "text": "I",
+                                "context": "The speaker",
+                                "references": ["ich"],
+                            }
+                        ],
+                    },
+                },
                 "scaffolding": "cues" if index == 1 else "none",
                 "skills": [
                     {
@@ -97,9 +108,6 @@ def test_planner_request_uses_separate_sol_settings_and_commits_document(tmp_pat
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
     planned = draft()
-    planned["exercises"][0]["task"] = (
-        "Choose pronouns.\n\n1. {{blank}} [Ben] sings.\n2. {{blank}} [Mia] sings."
-    )
     mock = MockProvider([say(json.dumps(planned))])
     ctx = Context(
         store,
@@ -128,7 +136,8 @@ def test_planner_request_uses_separate_sol_settings_and_commits_document(tmp_pat
     detail = store.lesson_detail(store.owner, session, saved["id"])
     assert detail["sections"][0]["id"] == "person"
     assert len(detail["exercises"]) == 3
-    assert detail["exercises"][0]["task"] == planned["exercises"][0]["task"]
+    assert detail["exercises"][0]["format"]["instruction"] == "Translate into German."
+    assert "references" not in json.dumps(detail)
     assert len(mock.requests) == 1
     request = mock.requests[0]
     assert request["model"] == "gpt-6-sol"
@@ -380,6 +389,9 @@ def test_active_skill_selection_is_recoverable_and_practice_stays_in_lesson(
     assert len(calls) == 1
 
     exercise = _exercises(criterion)[0]
+    for field in ("title", "task", "context"):
+        exercise.pop(field)
+    exercise["contract"] = draft()["exercises"][0]["contract"]
     exercise["skills"][0]["skill_id"] = lesson["focus_skill_id"]
     exercise["early_revisit_request"] = None
     arguments = json.dumps({"exercise": exercise})

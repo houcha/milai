@@ -112,11 +112,16 @@ verified excerpts. Unknown source material must not be invented.
 Review live outputs for these synthetic cases; deterministic tests establish
 storage and display contracts, not grading quality.
 
-- Ask for a pronoun and its meaning in four contexts. Submit all four pronouns
-  correctly but only two meanings correctly. Expect 6/8 parts, clear feedback
-  about the two meanings, one final submission, and no request to retry it.
+- For typed translation, provide “You have” with informal plural context. Submit
+  “ihr habt” alone and expect 1/1, without repeating the source meaning.
+- Generate samples of all four current types. Check plain factual cues,
+  references that satisfy the visible task, and absence of extra instructions in
+  content. For translation and writing, try a correct answer absent from references.
+- For saved legacy tasks only, preserve multi-component grading: four forms and
+  four requested meanings still total eight parts. Never rewrite or rescore history.
 - For an open-ended task requiring one sentence, accept valid alternatives and
-  count one answer part. Do not invent extra grading components from word count.
+  count one answer. Assess the visible focus holistically, and do not invent extra
+  grading components from word count or the reference example.
 - Finish a set below 100%, then request fresh practice before its suggested review
   time. Generate analogous new items and a separate result; preserve the first set.
 - Return after the suggested time and ask to review the errors. Use fresh retrieval

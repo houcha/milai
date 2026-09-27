@@ -1,0 +1,520 @@
+{
+  "kind": "live-synthetic-typed-exercises",
+  "prompt_version": "dc16cdb4ab3f2807",
+  "turns": [
+    {
+      "type": "translate",
+      "exercise": {
+        "id": "1f6c528acecc4b2b9f48ea6896eafd2c",
+        "kind": "exercise",
+        "lesson_id": "8ba2ef3820c845d2bd426a1429cb0b1f",
+        "title": "Translate",
+        "task": "Translate into German.\n\n1. You have\n   Context: Addressing several people informally",
+        "context": "",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "c55f920b4e374c289da9453e7ee0fe2a",
+            "name": "Present-tense forms of haben",
+            "role": "target",
+            "success_criterion": "Use the form"
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "translate",
+          "language": "German",
+          "instruction": "Translate into German.",
+          "items": [
+            {
+              "text": "You have",
+              "context": "Addressing several people informally"
+            }
+          ]
+        }
+      },
+      "answer": "ihr habt",
+      "reply": {
+        "text": "Correct! **Ihr habt** means “you have” when speaking informally to several people.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [
+          {
+            "id": "d0327574cfc4439ea70a8bc567a24641",
+            "exercise_id": "1f6c528acecc4b2b9f48ea6896eafd2c",
+            "learner_response": "Item 1: \"ihr habt\"",
+            "feedback": "",
+            "score": {
+              "correct": 1,
+              "total": 1
+            },
+            "blank_results": null,
+            "item_results": [
+              {
+                "item_number": 1,
+                "correct": true,
+                "feedback": ""
+              }
+            ],
+            "observations": [
+              {
+                "skill_id": "c55f920b4e374c289da9453e7ee0fe2a",
+                "outcome": "success",
+                "issue_severity": "none",
+                "rationale": "Correctly used ihr habt for informal plural you have, without scaffolding.",
+                "id": "1fbdb2fbf6e4493787fff228ee2cf255",
+                "independent_success": true
+              }
+            ],
+            "lesson_id": "8ba2ef3820c845d2bd426a1429cb0b1f",
+            "focus_mastered": false,
+            "review_recommendations": []
+          }
+        ],
+        "turn_id": "e8823c8263bb4fccb40bd7325455921b"
+      }
+    },
+    {
+      "type": "short_response",
+      "exercise": {
+        "id": "157613a6b80849d395c307d0e37a3068",
+        "kind": "exercise",
+        "lesson_id": "8ba2ef3820c845d2bd426a1429cb0b1f",
+        "title": "Write a short response",
+        "task": "Write one sentence in German using a present-tense form of haben.\n\n1. A possession you and a friend share.",
+        "context": "",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "c55f920b4e374c289da9453e7ee0fe2a",
+            "name": "Present-tense forms of haben",
+            "role": "target",
+            "success_criterion": "Use the form"
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "short_response",
+          "language": "German",
+          "response_scope": "one sentence",
+          "focus": "a present-tense form of haben",
+          "instruction": "Write one sentence in German using a present-tense form of haben.",
+          "items": [
+            {
+              "text": "A possession you and a friend share.",
+              "context": ""
+            }
+          ]
+        }
+      },
+      "answer": "Wir haben ein Fahrrad.",
+      "reply": {
+        "text": "Correct! **Wir haben ein Fahrrad** uses the right form of *haben* with **wir**. You’ve now used *haben* correctly in two different exercises.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [
+          {
+            "id": "2fb0c962f70f4713978ed3b3e063a0ce",
+            "exercise_id": "157613a6b80849d395c307d0e37a3068",
+            "learner_response": "Item 1: \"Wir haben ein Fahrrad.\"",
+            "feedback": "",
+            "score": {
+              "correct": 1,
+              "total": 1
+            },
+            "blank_results": null,
+            "item_results": [
+              {
+                "item_number": 1,
+                "correct": true,
+                "feedback": ""
+              }
+            ],
+            "observations": [
+              {
+                "skill_id": "c55f920b4e374c289da9453e7ee0fe2a",
+                "outcome": "success",
+                "issue_severity": "none",
+                "rationale": "Independently produced Wir haben ein Fahrrad, correctly using haben with wir for a shared possession.",
+                "id": "e5048ec9033346f0960e12c898c09909",
+                "independent_success": true
+              }
+            ],
+            "lesson_id": "8ba2ef3820c845d2bd426a1429cb0b1f",
+            "focus_mastered": true,
+            "review_recommendations": []
+          }
+        ],
+        "turn_id": "23ffe2165d434d80a14f3200f26fd118"
+      }
+    }
+  ],
+  "models": {
+    "chat": "gpt-6-sol",
+    "lesson": "gpt-6-sol"
+  },
+  "generation": {
+    "request": "I speak English and am a beginner learning German. Please create a complete lesson on present-tense forms of haben now. Include exactly five exercises: one choose-a-form exercise, one sentence-completion exercise, one translation exercise, one sentence-transformation exercise, and one short-response exercise. Use everyday situations.",
+    "reply": {
+      "text": "Your beginner lesson on **German present-tense forms of *haben*** is ready. It covers the forms from *ich habe* to *sie/Sie haben*, with everyday examples, and includes exactly the five exercise types you requested.\n\nOpen the lesson card to read it and work through the exercises.",
+      "activities": [],
+      "lesson_cards": [
+        {
+          "id": "a27c8a168cd345d7819252768136ddb5",
+          "language": "German",
+          "title": "German · Present-tense forms of haben",
+          "focus_skill_id": "cba2eac2c1ab4209ab0966931647b913",
+          "skill": {
+            "id": "cba2eac2c1ab4209ab0966931647b913",
+            "language": "German",
+            "key": "german-present-haben",
+            "name": "Present-tense forms of haben",
+            "definition": "Choose and use the present-tense form of haben that agrees with a subject in everyday German sentences.",
+            "success_criteria": [
+              "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+            ],
+            "status": "active",
+            "version": 1
+          },
+          "reason": "The learner explicitly requested a complete beginner lesson on present-tense haben. No active lesson or matching catalog skill is available, so this lesson introduces that skill and includes the five requested exercise types.",
+          "objective": "Use the present-tense form of haben that matches the subject to describe everyday possessions, plans, and needs.",
+          "review": false,
+          "created": "2026-09-27T14:57:25.620308+00:00",
+          "practice_results": [
+            {
+              "number": 1,
+              "exercise_ids": [
+                "4dab7b5bd09a49909ddd59f2a5a79487",
+                "e1ab9cb19efb43f58ef6c997c241b89c",
+                "c81e3c853dd6475c87c69498cf765ec6",
+                "8c9b00b147e74bcb948ab7ebeb0981f5",
+                "b243b2e467a343778d18c0981f914562"
+              ],
+              "submitted": 0,
+              "correct_exercises": 0,
+              "assessed": 0,
+              "last_submitted_at": null,
+              "finished": false,
+              "scoring": "exercises",
+              "correct": null,
+              "total": null,
+              "percentage": null,
+              "review_at": null
+            }
+          ]
+        }
+      ],
+      "assessments": [],
+      "turn_id": "0c8e67fca0094fa18313556c03b4552e"
+    },
+    "lesson": {
+      "id": "a27c8a168cd345d7819252768136ddb5",
+      "language": "German",
+      "title": "German · Present-tense forms of haben",
+      "focus_skill_id": "cba2eac2c1ab4209ab0966931647b913",
+      "skill": {
+        "id": "cba2eac2c1ab4209ab0966931647b913",
+        "language": "German",
+        "key": "german-present-haben",
+        "name": "Present-tense forms of haben",
+        "definition": "Choose and use the present-tense form of haben that agrees with a subject in everyday German sentences.",
+        "success_criteria": [
+          "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+        ],
+        "status": "active",
+        "version": 1
+      },
+      "reason": "The learner explicitly requested a complete beginner lesson on present-tense haben. No active lesson or matching catalog skill is available, so this lesson introduces that skill and includes the five requested exercise types.",
+      "objective": "Use the present-tense form of haben that matches the subject to describe everyday possessions, plans, and needs.",
+      "review": false,
+      "created": "2026-09-27T14:57:25.620308+00:00",
+      "practice_results": [
+        {
+          "number": 1,
+          "exercise_ids": [
+            "4dab7b5bd09a49909ddd59f2a5a79487",
+            "e1ab9cb19efb43f58ef6c997c241b89c",
+            "c81e3c853dd6475c87c69498cf765ec6",
+            "8c9b00b147e74bcb948ab7ebeb0981f5",
+            "b243b2e467a343778d18c0981f914562"
+          ],
+          "submitted": 0,
+          "correct_exercises": 0,
+          "assessed": 0,
+          "last_submitted_at": null,
+          "finished": false,
+          "scoring": "exercises",
+          "correct": null,
+          "total": null,
+          "percentage": null,
+          "review_at": null
+        }
+      ],
+      "sections": [
+        {
+          "id": "meaning-and-use",
+          "title": "What haben means",
+          "markdown": "**Haben** usually means **to have**. Use it to say what someone has: *Ich habe einen Schlüssel* (“I have a key”). It also appears in everyday expressions such as *Zeit haben* (“to have time”), *Hunger haben* (“to be hungry,” literally “to have hunger”), and *einen Termin haben* (“to have an appointment”).\n\nIn a present-tense statement, the form of *haben* changes to match the subject: *ich habe*, but *du hast*. This lesson uses *haben* as the main verb, not as a helping verb for the past tense."
+        },
+        {
+          "id": "present-tense-forms",
+          "title": "The complete present-tense pattern",
+          "markdown": "| Subject | Meaning | Present form |\n|---|---|---|\n| ich | I | **habe** |\n| du | you (one person, informal) | **hast** |\n| er / sie / es | he / she / it | **hat** |\n| wir | we | **haben** |\n| ihr | you (several people, informal) | **habt** |\n| sie | they | **haben** |\n| Sie | you (formal, one or more people) | **haben** |\n\nMemorize the contrasts **du hast**, **er/sie/es hat**, and **ihr habt**. The other forms are **ich habe** and **wir/sie/Sie haben**."
+        },
+        {
+          "id": "choosing-the-subject",
+          "title": "Choose the form from the subject",
+          "markdown": "First identify who has something. **Du** takes *hast* when speaking informally to one person; **ihr** takes *habt* when speaking informally to several. **Sie** with a capital S is formal “you” and takes *haben*. Lowercase **sie** can mean “she” (*hat*) or “they” (*haben*); the person or people meant determine the form.\n\nA name for one person takes the same form as *er* or *sie*: *Mia hat Zeit.* Two named people take the plural form: *Mia und Ben haben Zeit.*"
+        },
+        {
+          "id": "sentence-patterns",
+          "title": "Use haben in everyday sentences",
+          "markdown": "In a simple statement, the subject commonly comes first and the conjugated verb second: *Wir haben heute Zeit.* An object or expression follows: *Ihr habt einen Schlüssel.* The words after *haben* depend on what you want to say, but they do not change the verb form—the **subject** does.\n\nDo not use the English pattern “I am hungry” word for word with *haben*: German says *Ich habe Hunger.* Likewise, *Ich habe heute einen Termin* means “I have an appointment today.”"
+        },
+        {
+          "id": "common-errors",
+          "title": "Check the endings",
+          "markdown": "Avoid using the dictionary form *haben* for every subject: say *ich habe*, *du hast*, and *er hat*, not *ich haben*, *du haben*, or *er haben*. Also distinguish *du hast* from *ihr habt*: both mean “you have” in English, but German marks whether you are addressing one person or several. For formal “you,” use capitalized *Sie haben*."
+        }
+      ],
+      "worked_examples": [
+        {
+          "id": "example-ich",
+          "title": "I have a key",
+          "markdown": "**Ich habe einen Schlüssel.** — “I have a key.” *Ich* takes *habe*."
+        },
+        {
+          "id": "example-du",
+          "title": "One friend has time",
+          "markdown": "**Du hast heute Zeit.** — “You have time today.” Addressing one person informally calls for *du hast*."
+        },
+        {
+          "id": "example-third-person",
+          "title": "A neighbor has an appointment",
+          "markdown": "**Mein Nachbar hat morgen einen Termin.** — “My neighbor has an appointment tomorrow.” One person takes *hat*, like *er* or *sie*."
+        },
+        {
+          "id": "example-wir-ihr",
+          "title": "We and you all",
+          "markdown": "**Wir haben Brot. Ihr habt Käse.** — “We have bread. You all have cheese.” *Wir* takes *haben*; informal plural *ihr* takes *habt*."
+        },
+        {
+          "id": "example-sie-sie",
+          "title": "They and formal you",
+          "markdown": "**Die Gäste haben Hunger. Haben Sie auch Hunger?** — “The guests are hungry. Are you hungry too?” A plural subject takes *haben*. Formal *Sie* also takes *haben*, including in a question."
+        }
+      ],
+      "recap": "Match *haben* to the subject: **ich habe; du hast; er/sie/es hat; wir haben; ihr habt; sie/Sie haben**. Use these forms for everyday expressions such as *Zeit haben*, *Hunger haben*, and *einen Termin haben*.",
+      "exercises": [
+        {
+          "id": "4dab7b5bd09a49909ddd59f2a5a79487",
+          "kind": "exercise",
+          "lesson_id": "a27c8a168cd345d7819252768136ddb5",
+          "title": "Choose a form",
+          "task": "Choose the correct form.\n\n1. Du {{blank}} heute Zeit.\n   Context: Speaking informally to one person.\n   Option 1: habe\n   Option 2: hast\n   Option 3: hat\n   Option 4: habt\n2. Ihr {{blank}} einen Schlüssel.\n   Context: Speaking informally to several people.\n   Option 1: haben\n   Option 2: hast\n   Option 3: hat\n   Option 4: habt\n3. Frau Weber, Sie {{blank}} morgen einen Termin.\n   Context: Speaking formally to Frau Weber.\n   Option 1: habe\n   Option 2: hast\n   Option 3: hat\n   Option 4: haben",
+          "context": "",
+          "scaffolding": "cues",
+          "skills": [
+            {
+              "id": "cba2eac2c1ab4209ab0966931647b913",
+              "name": "Present-tense forms of haben",
+              "role": "target",
+              "success_criterion": "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "choose_form",
+            "instruction": "Choose the correct form.",
+            "items": [
+              {
+                "text": "Du {{blank}} heute Zeit.",
+                "context": "Speaking informally to one person.",
+                "options": [
+                  "habe",
+                  "hast",
+                  "hat",
+                  "habt"
+                ]
+              },
+              {
+                "text": "Ihr {{blank}} einen Schlüssel.",
+                "context": "Speaking informally to several people.",
+                "options": [
+                  "haben",
+                  "hast",
+                  "hat",
+                  "habt"
+                ]
+              },
+              {
+                "text": "Frau Weber, Sie {{blank}} morgen einen Termin.",
+                "context": "Speaking formally to Frau Weber.",
+                "options": [
+                  "habe",
+                  "hast",
+                  "hat",
+                  "haben"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "e1ab9cb19efb43f58ef6c997c241b89c",
+          "kind": "exercise",
+          "lesson_id": "a27c8a168cd345d7819252768136ddb5",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Ich {{blank}} heute einen Termin.\n   Context: Base verb: haben.\n2. Meine Schwester {{blank}} Hunger.\n   Context: Base verb: haben.\n3. Wir {{blank}} genug Brot.\n   Context: Base verb: haben.",
+          "context": "",
+          "scaffolding": "cues",
+          "skills": [
+            {
+              "id": "cba2eac2c1ab4209ab0966931647b913",
+              "name": "Present-tense forms of haben",
+              "role": "target",
+              "success_criterion": "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Ich {{blank}} heute einen Termin.",
+                "context": "Base verb: haben."
+              },
+              {
+                "text": "Meine Schwester {{blank}} Hunger.",
+                "context": "Base verb: haben."
+              },
+              {
+                "text": "Wir {{blank}} genug Brot.",
+                "context": "Base verb: haben."
+              }
+            ]
+          }
+        },
+        {
+          "id": "c81e3c853dd6475c87c69498cf765ec6",
+          "kind": "exercise",
+          "lesson_id": "a27c8a168cd345d7819252768136ddb5",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. They have time today.\n2. You have a key.\n   Context: Speaking informally to one person.\n3. He is hungry.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "cba2eac2c1ab4209ab0966931647b913",
+              "name": "Present-tense forms of haben",
+              "role": "target",
+              "success_criterion": "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "They have time today.",
+                "context": ""
+              },
+              {
+                "text": "You have a key.",
+                "context": "Speaking informally to one person."
+              },
+              {
+                "text": "He is hungry.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        {
+          "id": "8c9b00b147e74bcb948ab7ebeb0981f5",
+          "kind": "exercise",
+          "lesson_id": "a27c8a168cd345d7819252768136ddb5",
+          "title": "Transform a sentence",
+          "task": "Rewrite using first-person plural.\n\n1. Ich habe heute Zeit.\n2. Ich habe einen Termin.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "cba2eac2c1ab4209ab0966931647b913",
+              "name": "Present-tense forms of haben",
+              "role": "target",
+              "success_criterion": "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "transform",
+            "target_form": "first-person plural",
+            "instruction": "Rewrite using first-person plural.",
+            "items": [
+              {
+                "text": "Ich habe heute Zeit.",
+                "context": ""
+              },
+              {
+                "text": "Ich habe einen Termin.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        {
+          "id": "b243b2e467a343778d18c0981f914562",
+          "kind": "exercise",
+          "lesson_id": "a27c8a168cd345d7819252768136ddb5",
+          "title": "Write a short response",
+          "task": "Write one sentence in German using present-tense haben.\n\n1. You and a friend are getting ready for breakfast. There is bread in your kitchen.\n2. A friend asks about your plans for today. You have an appointment.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "cba2eac2c1ab4209ab0966931647b913",
+              "name": "Present-tense forms of haben",
+              "role": "target",
+              "success_criterion": "Uses the correct present-tense form of haben for ich, du, er/sie/es, wir, ihr, and sie/Sie in everyday statements."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "short_response",
+            "language": "German",
+            "response_scope": "one sentence",
+            "focus": "present-tense haben",
+            "instruction": "Write one sentence in German using present-tense haben.",
+            "items": [
+              {
+                "text": "You and a friend are getting ready for breakfast. There is bread in your kitchen.",
+                "context": ""
+              },
+              {
+                "text": "A friend asks about your plans for today. You have an appointment.",
+                "context": ""
+              }
+            ]
+          }
+        }
+      ],
+      "discussion_summary": null
+    }
+  },
+  "checks": {
+    "translation_without_repeated_meaning": true,
+    "alternative_short_response": true,
+    "all_five_formats_generated": true
+  }
+}

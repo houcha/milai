@@ -20,6 +20,7 @@ from openai.types.shared import Reasoning
 from pydantic import BaseModel, Field
 
 from milai.config import Settings, providers
+from milai.exercises import parse_answers, serialize_answers
 from milai.observability import Telemetry
 from milai.store import MAX_SELECTED_TEXT, Store, identifier, message_with_selection
 from milai.tools import TOOLS, Context
@@ -167,6 +168,14 @@ class Tutor:
                         "This exercise has already been submitted. "
                         "Request fresh practice instead."
                     )
+                if action == "answer" and selected_exercise.get("format"):
+                    message = serialize_answers(
+                        parse_answers(message, selected_exercise["format"])
+                    )
+                    if len(message) > 8000:
+                        raise ValueError(
+                            "Keep the combined answers within 8,000 characters"
+                        )
                 if action == "answer" and lesson_id is None:
                     lesson_id = selected_exercise["lesson_id"]
                     detail = self.store.lesson_detail(scope, session, lesson_id)
@@ -209,6 +218,10 @@ class Tutor:
                     "status": self.store.exercise_status(learner, session, exercise_id),
                     "action": action,
                 }
+                if action == "answer" and selected_exercise.get("format"):
+                    contract = self.store.exercise_contract(scope, exercise_id)
+                    if contract is not None:
+                        state["assessment_contract"] = contract.model_dump()
             instructions = prompt
             if detail and lesson_id is not None:
                 discussion_summary = self.store.discussion_summary(scope, lesson_id)

@@ -32,24 +32,30 @@ necessary background explained inside the new lesson. Explicit requests to move
 forward choose another appropriate skill even after incorrect or incomplete
 practice; remedial lessons are not compulsory.
 
-Short-answer exercises can place editable blanks directly in numbered sentences.
-The learner fills them in and submits the exercise once; the tutor assesses all
-answers together. Drafts survive reloads and failed submissions. Every saved answer is final,
-including an incorrect one; submitted exercises show their words and feedback
-as text, without correction controls. Submitted fills appear once, in place:
-green with a check for correct answers, red with a cross for incorrect ones.
-Only incorrect fills get a correction and brief explanation below the task;
-all-correct submissions need no feedback paragraph. Older submissions without
-per-blank results keep neutral fills and their original feedback. Numbered tasks
-without inline markers have one wide, expanding answer blank beneath each item,
-with a single submit button for the exercise. Each blank can hold multiple
-components or a longer explanation. Submitted answers stay beneath their items.
-This also applies to existing numbered tasks; older shared drafts and unmapped
-submissions keep their complete text. Unnumbered writing keeps one answer box.
-New practice uses separate numbered lines; saved task text stays unchanged. Submitted answers,
-assessment feedback, and answer clarification replies stay on the exercise cards.
-The discussion chat displays questions and their replies, including questions
-about exercises, without replaying answer submissions.
+New exercises use four consistent formats: complete a sentence,
+translate, transform a sentence, and write a short response. The application owns
+the English instructions and answer controls; the tutor supplies plain-text items,
+necessary context, and private grading references. Each numbered item requests one
+answer and earns one point. A translation asks only for the translation, never a
+repetition of its source or an additional explanation. All assessed requirements
+are visible. Short writing earns a holistic point for the displayed language focus;
+valid alternatives are accepted and unrelated mistakes are not penalized.
+
+Sentence completion uses an inline input, and the other
+formats use an expanding answer field per item. Each exercise has one submission.
+Drafts survive reloads and failed submissions. Submitted answers appear in place
+with accessible correct/incorrect indicators; only incorrect answers get a brief
+correction or example and explanation. Previously saved choice exercises remain
+available with radio buttons; no new choice exercises are generated. Their scores cannot
+provide independent mastery evidence. Difficulty also depends on content and
+other clues; it is not fixed by the type.
+
+Saved legacy exercises keep their original tasks, answer controls, component scores,
+and feedback. They are never automatically converted or rescored. Fresh practice
+in an older lesson uses typed exercises and preserves the original set's result.
+Answer submissions and assessments stay on exercise cards; questions remain in the
+lesson discussion. Browser and terminal support the same formats; `/answer <id>`
+collects typed answers item by item in the terminal.
 Checking an answer disables only that exercise's answer controls. Learners can
 keep reading, navigate between lessons, draft questions, and work on or submit
 other exercises while feedback is pending. Feedback updates its own card without
@@ -63,7 +69,8 @@ review, but do not automatically open a new lesson. The learner can explicitly
 continue from an older or current lesson, and main chat chooses the next appropriate
 lesson, or a review when requested. Mastery remains derived from skill evidence. Separately, a
 practice set shows its correct rate once all its exercises have been submitted.
-New assessments count explicitly requested answer parts, with partial credit;
+New typed assessments count correct answers, with one point per item;
+legacy tasks retain their explicitly requested component scores, with partial credit;
 older sets without part counts show a labelled rate of fully correct exercises.
 The lesson list shows the latest set's result. Learners can revisit lessons below
 100% and ask for fresh exercises: each generated set keeps its own result, so a
@@ -84,7 +91,7 @@ and keeps one learner-facing tutor. Chat and assessment use the configured
 `OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
 lesson model and generation settings; the application validates its draft before
 saving the document, exercises, lesson card, and main reply together. A failed
-generation leaves the turn unchanged. Schema 5–7 databases upgrade to schema 8
+generation leaves the turn unchanged. Schema 5–8 databases upgrade to schema 9
 without losing saved lessons or conversations. Earlier schemas require an explicit
 `milai reset --yes` archival reset.
 

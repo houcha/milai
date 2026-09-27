@@ -211,6 +211,20 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .exercise-answer-form textarea { width:100%; min-height:90px; resize:vertical; padding:12px; border:1px solid #cdd2c2; border-radius:7px; background:white; line-height:1.5; }
 .exercise-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:11px; }
 .exercise-actions button { border:0; border-radius:7px; padding:10px 13px; background:var(--green); color:white; font-size:12px; }
+.typed-items { padding-left:1.5em; line-height:1.7; }
+.typed-item { padding-left:.3em; margin:22px 0; overflow-wrap:anywhere; }
+.typed-prompt { margin:0 0 8px; white-space:pre-wrap; }
+.typed-item .exercise-context { margin:4px 0 10px; color:var(--muted); font-size:14px; white-space:pre-wrap; }
+.exercise-options { border:0; padding:0; margin:10px 0; min-width:0; display:grid; gap:8px; }
+.exercise-options label { display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--line); border-radius:7px; cursor:pointer; background:var(--surface); }
+.exercise-options input { flex:none; accent-color:var(--green); }
+.exercise-options label:has(input:checked) { border-color:var(--green); background:var(--green-soft); }
+.typed-blank-input { max-width:100%; width:10ch; min-width:6ch; padding:3px 6px; border:0; border-bottom:2px solid var(--green); background:var(--green-soft); color:inherit; font:inherit; }
+.typed-item .exercise-item-answer { display:block; white-space:pre-wrap; }
+.typed-item .correct { color:#355a32; }
+.typed-item .incorrect,.item-feedback { color:#963e32; }
+.item-feedback { margin:8px 0 0; font-size:14px; white-space:pre-wrap; }
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
 
 .lesson-discussion { min-height:0; min-width:0; display:grid; grid-template-rows:auto minmax(0,1fr) auto auto auto; border-left:1px solid var(--line); background:#fbfbf7; }
 .discussion-heading { padding:22px 24px 8px; border-bottom:1px solid var(--line); }

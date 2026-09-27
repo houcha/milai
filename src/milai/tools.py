@@ -21,9 +21,9 @@ from agents import (
 )
 from agents.exceptions import ModelBehaviorError
 from openai.types.shared import Reasoning
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from milai.exercise_format import EXERCISE_TASK_DESCRIPTION, validate_exercise_task
+from milai.exercises import GeneratedExerciseContract
 from milai.retrieval import retrieve
 from milai.store import InvalidReference, Store
 
@@ -104,17 +104,9 @@ class ExerciseSkill(BaseModel):
 
 
 class ExerciseContent(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
-    task: str = Field(
-        min_length=1, max_length=2400, description=EXERCISE_TASK_DESCRIPTION
-    )
-    context: str = Field(min_length=1, max_length=800)
+    model_config = ConfigDict(extra="forbid")
+    contract: GeneratedExerciseContract
     scaffolding: Literal["none", "cues", "worked_example"]
-
-    @field_validator("task")
-    @classmethod
-    def valid_task(cls, value: str) -> str:
-        return validate_exercise_task(value)
 
 
 class Exercise(ExerciseContent):
@@ -152,17 +144,34 @@ class BlankResult(BaseModel):
     )
 
 
+class ItemResult(BaseModel):
+    item_number: int = Field(ge=1, le=12)
+    correct: bool
+    feedback: str = Field(
+        max_length=600,
+        description="Empty when correct; otherwise a correction or example and a brief explanation of the target error.",
+    )
+
+
 class AttemptAssessment(BaseModel):
     exercise_id: str
     feedback: str = Field(
         max_length=1600,
-        description="For inline blanks, leave empty and use blank_results. For free-text tasks, briefly explain the assessment. Do not ask the learner to correct or resubmit this exercise.",
+        description="Typed exercises: leave empty and use item_results. Legacy inline blanks: leave empty and use blank_results. Legacy free-text tasks: briefly explain the assessment. Never invite resubmission.",
     )
-    score: AnswerScore
+    score: AnswerScore | None = Field(
+        default=None,
+        description="Legacy exercises only. For typed exercises use null; the app calculates the score.",
+    )
+    item_results: list[ItemResult] = Field(
+        default_factory=list,
+        max_length=12,
+        description="Typed exercises: exactly one result per numbered item. Leave feedback and blank_results empty. Legacy exercises: use [].",
+    )
     blank_results: list[BlankResult] = Field(
         default_factory=list,
         max_length=12,
-        description="For a task with {{blank}} markers, assess every blank exactly once in reading order, including missing answers; count one score part per blank. Use [] for tasks without markers.",
+        description="Legacy tasks with {{blank}} markers only: assess every blank exactly once in order, counting one score part per blank. For all typed exercises and other legacy tasks use [].",
     )
     observations: list[SkillObservation] = Field(min_length=1, max_length=6)
 
@@ -360,9 +369,7 @@ def _validated_lesson_draft(
             )
         resolved_exercises.append(
             {
-                "title": exercise.title,
-                "task": exercise.task,
-                "context": exercise.context,
+                "contract": exercise.contract.model_dump(),
                 "scaffolding": exercise.scaffolding,
                 "skills": skills,
                 "source_ids": exercise.source_ids,
@@ -569,13 +576,20 @@ async def assess_attempt(
         raise ValueError("Assess only an explicit exercise answer submission")
     if c.selected_exercise_id and c.selected_exercise_id != assessment.exercise_id:
         raise ValueError("Assessment must match the selected exercise answer")
+    if assessment.score is None and not c.store.exercise_contract(
+        c.learner, assessment.exercise_id
+    ):
+        raise ValueError(
+            "Legacy assessments require a score of the requested answer parts"
+        )
     result = c.store.assess_attempt(
         c,
         assessment.exercise_id,
         assessment.feedback,
         [item.model_dump() for item in assessment.observations],
-        score=assessment.score.model_dump(),
+        score=assessment.score.model_dump() if assessment.score else None,
         blank_results=[item.model_dump() for item in assessment.blank_results],
+        item_results=[item.model_dump() for item in assessment.item_results],
     )
     c.assessments.append(result)
     return result

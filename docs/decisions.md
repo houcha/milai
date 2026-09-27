@@ -1,5 +1,25 @@
 # Decision log
 
+## 2026-09-27 — Typed exercises with application-owned instructions
+
+- All new lesson and extra-practice generation uses four typed contracts:
+  sentence completion, translation, transformation, and short response. The app
+  owns instructions and controls; models generate content and private references.
+- One answer and one point per item. The app derives aggregate scores from
+  validated item results and verifies choice correctness against the saved key.
+  Accept valid production variants and assess short writing against the visible
+  focus; references cannot introduce hidden requirements.
+- Choice generation is removed. Previously saved choices remain answerable and
+  retain their scores, but cannot provide independent mastery evidence. Keep
+  at least two unscaffolded exercises per generated lesson.
+- Schema 9 adds nullable contract and item-result JSON, upgrading schemas 5–8
+  transactionally. Preserve legacy exercises, drafts, assessments, and scores.
+  Fresh practice in existing lessons uses the new formats.
+- Keep grading references out of public payloads and ordinary discussion context.
+  Browser controls and interactive terminal submissions share numbered answers.
+  This supersedes free-form generation and multi-component scoring for new tasks;
+  legacy tasks retain their existing behavior. Completion-flow changes are separate.
+
 ## 2026-09-27 — Answer numbered prompts in place
 
 - For numbered tasks without explicit inline markers, add one wide, expanding

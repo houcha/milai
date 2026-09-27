@@ -176,6 +176,8 @@ def test_schema_seven_upgrade_preserves_scores_and_leaves_old_blanks_ungraded(tm
     )
     before = store.exercise_status(store.owner, session, task["id"])
     store.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
+    store.db.execute("ALTER TABLE exercises DROP COLUMN contract")
+    store.db.execute("ALTER TABLE attempts DROP COLUMN item_results")
     store.db.execute("UPDATE metadata SET value='7' WHERE key='schema_version'")
     store.close()
     upgraded = Store(path)

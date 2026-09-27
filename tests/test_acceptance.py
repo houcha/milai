@@ -5,6 +5,24 @@ import pytest
 from milai.acceptance import choose_trip_exercise, trip_answer_for
 
 
+def test_typed_trip_answer_uses_visible_scope_and_numbered_items():
+    exercise = {
+        "task": "Write one sentence in English using past-tense verbs.",
+        "scaffolding": "none",
+        "format": {
+            "type": "short_response",
+            "response_scope": "one sentence",
+            "focus": "regular past-tense verbs",
+            "items": [{"text": "A trip"}],
+        },
+    }
+    assert choose_trip_exercise([exercise]) == exercise
+    assert (
+        trip_answer_for(exercise)
+        == 'Item 1: "Last Saturday, I visited a town and walked to a museum."'
+    )
+
+
 def test_synthetic_answer_selects_open_trip_writing_task():
     fill_blanks = {
         "id": "fill",

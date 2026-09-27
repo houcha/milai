@@ -16,6 +16,98 @@ const lesson = {
 };
 const detail = () => ({lesson, conversation: [], exercise_status: {}});
 
+function typedDetail(type = "translate") {
+  const instructions = {choose_form: "Choose the correct form.", complete_sentence: "Fill in the blank.", translate: "Translate into German.", transform: "Rewrite using ihr.", short_response: "Write one sentence in German using haben."};
+  const items = [
+    {text: ["choose_form", "complete_sentence"].includes(type) ? "Ihr {{blank}} Zeit." : "You have", context: "Several people, informal", ...(type === "choose_form" ? {options: ["hat", "habt", "haben"]} : {})},
+    {text: ["choose_form", "complete_sentence"].includes(type) ? "Sie {{blank}} Zeit." : "She has", context: "One woman", ...(type === "choose_form" ? {options: ["hat", "habt", "haben"]} : {})},
+  ];
+  return {lesson: {...lesson, exercises: [{id: "typed", title: "Practice", task: "Fallback must not render", format: {version: 1, type, instruction: instructions[type], items}}]}, conversation: [], exercise_status: {}};
+}
+
+for (const type of ["choose_form", "complete_sentence", "translate", "transform", "short_response"]) {
+  test(`typed ${type} renders fixed instructions and saves a mapped submission`, async () => {
+    const payload = typedDetail(type);
+    let submitted;
+    const app = application("#lesson/older", async (path, options) => {
+      if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => payload};
+      submitted = JSON.parse(options.body);
+      payload.exercise_status.typed = {submitted: true, assessments: [{learner_response: submitted.message, item_results: [
+        {item_number: 1, correct: true, feedback: ""},
+        {item_number: 2, correct: false, feedback: "Use hat for one woman."},
+      ]}]};
+      return streamResponse([{type: "complete", result: {reply: {text: "Assessed"}}}]);
+    });
+    app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+    await app.run("renderView()");
+    const card = app.node("#lesson-exercises").children[0];
+    const nodes = app.descendants(card);
+    assert.equal(nodes.find(node => node.className === "exercise-instruction").textContent, payload.lesson.exercises[0].format.instruction);
+    assert.equal(nodes.some(node => node.textContent.includes("Fallback must not render")), false);
+    if (type === "choose_form") {
+      const radios = nodes.filter(node => node.tagName === "INPUT");
+      assert.equal(radios.length, 6);
+      radios[1].listeners.change();
+      radios[4].listeners.change();
+    } else {
+      const fields = nodes.filter(node => node.tagName === (type === "complete_sentence" ? "INPUT" : "TEXTAREA"));
+      assert.equal(fields.length, 2);
+      fields.forEach((field, index) => {field.value = ["ihr habt", "sie haben"][index]; field.listeners.input();});
+    }
+    const saved = app.storage.getItem("milai:session:one:lesson:older");
+    assert.equal(JSON.parse(saved).answers.typed.length, 2);
+    const messages = app.node("#lesson-messages").children;
+    await nodes.find(node => node.tagName === "FORM").listeners.submit({preventDefault() {}});
+    assert.equal(submitted.action, "answer");
+    assert.equal(submitted.exercise_id, "typed");
+    assert.deepEqual(parseItemAnswers(submitted.message, 2), type === "choose_form" ? ["2", "2"] : ["ihr habt", "sie haben"]);
+    const completed = app.descendants(app.node("#lesson-exercises").children[0]);
+    assert.equal(completed.filter(node => ["INPUT", "TEXTAREA", "FORM"].includes(node.tagName)).length, 0);
+    assert.equal(completed.filter(node => node.className === "item-feedback").length, 1);
+    assert.equal(completed.find(node => node.className === "item-feedback").textContent, "Use hat for one woman.");
+    assert.equal(completed.filter(node => node.attributes["aria-label"]?.includes(" — ")).length, 2);
+    assert.equal(app.node("#lesson-messages").children, messages);
+  });
+}
+
+test("typed choice drafts restore on reload and failed answers remain editable", async () => {
+  const payload = typedDetail("choose_form");
+  const browser = storage();
+  const respond = async (path) => path.startsWith("/api/lessons/")
+    ? {ok: true, json: async () => payload}
+    : {ok: false, json: async () => ({error: "Assessment unavailable"})};
+  const first = application("#lesson/older", respond, browser);
+  first.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await first.run("renderView()");
+  let radios = first.descendants(first.node("#lesson-exercises")).filter(node => node.tagName === "INPUT");
+  radios[1].listeners.change();
+  radios[3].listeners.change();
+  const second = application("#lesson/older", respond, browser);
+  second.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await second.run("renderView()");
+  radios = second.descendants(second.node("#lesson-exercises")).filter(node => node.tagName === "INPUT");
+  assert.equal(radios[1].checked, true);
+  assert.equal(radios[3].checked, true);
+  const form = second.descendants(second.node("#lesson-exercises")).find(node => node.tagName === "FORM");
+  await form.listeners.submit({preventDefault() {}});
+  assert.equal(second.node("#lesson-exercises").children[0].querySelector(".exercise-progress").textContent, "Assessment unavailable");
+  assert.equal(radios.every(node => !node.disabled), true);
+  assert.deepEqual(JSON.parse(browser.getItem("milai:session:one:lesson:older")).answers.typed, ["2", "1"]);
+});
+
+test("typed results label answers and reject empty fields locally", async () => {
+  const payload = typedDetail();
+  payload.lesson.practice_results = [{number: 1, finished: true, correct: 1, total: 2, percentage: 50, scoring: "items"}];
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => payload}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  assert.ok(app.descendants(app.node("#lesson-results")).some(node => node.textContent === "1 of 2 answers correct on the first submission."));
+  const nodes = app.descendants(app.node("#lesson-exercises"));
+  await nodes.find(node => node.tagName === "FORM").listeners.submit({preventDefault() {}});
+  assert.equal(app.requests.length, 1);
+  assert.equal(nodes.find(node => node.className === "exercise-answer-error").hidden, false);
+});
+
 function storage() {
   const values = new Map();
   return {
@@ -125,7 +217,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
   node("#lesson-document").dataset.selectionSource = "";
   node("#lesson-reading").append(node("#lesson-document"), node("#lesson-exercises"));
   const context = vm.createContext({
-    createLessonState, MAX_SELECTED_TEXT, readLessonSelection,
+    createLessonState: () => createLessonState(browserStorage), MAX_SELECTED_TEXT, readLessonSelection,
     renderExerciseMarkdown, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH,
     parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH,
     renderMarkdown: (value) => value, sessionStorage: browserStorage,

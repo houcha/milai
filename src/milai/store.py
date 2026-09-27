@@ -14,8 +14,14 @@ from typing import Any
 from uuid import uuid4
 
 from milai.exercise_format import BLANK_MARKER, validate_exercise_task
+from milai.exercises import (
+    ChooseForm,
+    ExerciseContract,
+    compile_exercise,
+    parse_answers,
+)
 
-SCHEMA_VERSION = "8"
+SCHEMA_VERSION = "9"
 MAX_SELECTED_TEXT = 4000
 
 
@@ -155,7 +161,7 @@ CREATE TABLE exercises (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, lesson_id TEXT NOT NULL REFERENCES lessons(id),
     title TEXT NOT NULL, task TEXT NOT NULL, context TEXT NOT NULL,
     scaffolding TEXT NOT NULL CHECK(scaffolding IN ('none', 'cues', 'worked_example')),
-    created_turn TEXT NOT NULL, created TEXT NOT NULL
+    created_turn TEXT NOT NULL, created TEXT NOT NULL, contract TEXT
 );
 CREATE TABLE exercise_skills (
     exercise_id TEXT NOT NULL REFERENCES exercises(id), skill_id TEXT NOT NULL REFERENCES skills(id),
@@ -178,7 +184,7 @@ CREATE TABLE assistance_skills (
 CREATE TABLE attempts (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, exercise_id TEXT NOT NULL REFERENCES exercises(id),
     turn_id TEXT NOT NULL, learner_response TEXT NOT NULL, feedback TEXT NOT NULL,
-    created TEXT NOT NULL, score TEXT, blank_results TEXT, UNIQUE(exercise_id, turn_id)
+    created TEXT NOT NULL, score TEXT, blank_results TEXT, item_results TEXT, UNIQUE(exercise_id, turn_id)
 );
 CREATE TABLE skill_observations (
     id TEXT PRIMARY KEY, learner TEXT NOT NULL, attempt_id TEXT NOT NULL REFERENCES attempts(id),
@@ -249,7 +255,7 @@ class Store:
                     "SELECT value FROM metadata WHERE key='schema_version'"
                 ).fetchone()
                 version = row[0] if row else None
-            if version in {"5", "6", "7"}:
+            if version in {"5", "6", "7", "8"}:
                 try:
                     self.db.execute("BEGIN IMMEDIATE")
                     # Another process may have upgraded while this one waited.
@@ -266,6 +272,13 @@ class Store:
                         self.db.execute(
                             "ALTER TABLE attempts ADD COLUMN blank_results TEXT"
                         )
+                    if locked_version in {"5", "6", "7", "8"}:
+                        self.db.execute(
+                            "ALTER TABLE exercises ADD COLUMN contract TEXT"
+                        )
+                        self.db.execute(
+                            "ALTER TABLE attempts ADD COLUMN item_results TEXT"
+                        )
                         self.db.execute(
                             "UPDATE metadata SET value=? WHERE key='schema_version'",
                             (SCHEMA_VERSION,),
@@ -281,7 +294,7 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
-        # Schemas 5–7 upgrade without losing learning state. Earlier schemas still
+        # Schemas 5–8 upgrade without losing learning state. Earlier schemas still
         # require an explicit archival reset.
 
     @contextmanager
@@ -756,6 +769,10 @@ class Store:
         document: dict,
         exercises: list[dict],
     ) -> dict:
+        exercises = [
+            compile_exercise(item, language) if item.get("contract") else item
+            for item in exercises
+        ]
         self._validate_lesson_document(document, exercises)
         if self.db.execute(
             "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
@@ -1036,7 +1053,7 @@ class Store:
         """First-submission accuracy, separately for each generated practice set."""
         rounds: dict[str, dict] = {}
         for exercise in self.db.execute(
-            "SELECT id, created_turn FROM exercises WHERE lesson_id=? AND learner=? ORDER BY rowid",
+            "SELECT id, created_turn, contract FROM exercises WHERE lesson_id=? AND learner=? ORDER BY rowid",
             (lesson_id, learner),
         ).fetchall():
             result = rounds.setdefault(
@@ -1046,12 +1063,14 @@ class Store:
                     "exercise_ids": [],
                     "submitted": 0,
                     "scores": [],
+                    "all_typed": True,
                     "correct_exercises": 0,
                     "assessed": 0,
                     "last_submitted_at": None,
                 },
             )
             result["exercise_ids"].append(exercise["id"])
+            result["all_typed"] = result["all_typed"] and bool(exercise["contract"])
             attempt = self.db.execute(
                 "SELECT id, turn_id, score, created FROM attempts WHERE exercise_id=? ORDER BY rowid LIMIT 1",
                 (exercise["id"],),
@@ -1108,6 +1127,8 @@ class Store:
             scores = result.pop("scores")
             result["finished"] = result["submitted"] == count
             result["scoring"] = "parts" if scores and all(scores) else "exercises"
+            if result.pop("all_typed") and result["scoring"] == "parts":
+                result["scoring"] = "items"
             result["correct"] = result["total"] = result["percentage"] = None
             result["review_at"] = None
             if result["finished"]:
@@ -1118,12 +1139,12 @@ class Store:
                 if result["assessed"] == count:
                     result["correct"] = (
                         sum(score["correct"] for score in scores)
-                        if result["scoring"] == "parts"
+                        if result["scoring"] in {"parts", "items"}
                         else result["correct_exercises"]
                     )
                     result["total"] = (
                         sum(score["total"] for score in scores)
-                        if result["scoring"] == "parts"
+                        if result["scoring"] in {"parts", "items"}
                         else count
                     )
                     # Do not round an imperfect result up to 100%.
@@ -1337,11 +1358,15 @@ class Store:
         )
         if lesson is None:
             raise ValueError("Start a lesson before presenting an exercise")
+        if exercise.get("contract") is not None:
+            exercise = compile_exercise(exercise, lesson["language"])
         if (
             not isinstance(exercise.get("title"), str)
             or not 1 <= len(exercise["title"].strip()) <= 200
             or not isinstance(exercise.get("task"), str)
-            or not 1 <= len(exercise["task"].strip()) <= 2400
+            or not 1
+            <= len(exercise["task"].strip())
+            <= (12000 if exercise.get("contract") else 2400)
             or not isinstance(exercise.get("context"), str)
             or len(exercise["context"]) > 800
             or exercise.get("scaffolding") not in {"none", "cues", "worked_example"}
@@ -1349,7 +1374,8 @@ class Store:
             or not isinstance(exercise.get("skills"), list)
         ):
             raise ValueError("Exercise content or contract is incomplete")
-        validate_exercise_task(exercise["task"])
+        if not exercise.get("contract"):
+            validate_exercise_task(exercise["task"])
         requirements = exercise["skills"]
         ids = [item["skill_id"] for item in requirements]
         targets = [
@@ -1388,7 +1414,7 @@ class Store:
         self._validate_sources(ctx.learner, exercise["source_ids"])
         exercise_id = identifier()
         self.db.execute(
-            "INSERT INTO exercises (id, learner, lesson_id, title, task, context, scaffolding, created_turn, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO exercises (id, learner, lesson_id, title, task, context, scaffolding, created_turn, created, contract) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 exercise_id,
                 ctx.learner,
@@ -1399,6 +1425,7 @@ class Store:
                 exercise["scaffolding"],
                 ctx.turn_id,
                 now(),
+                _json(exercise["contract"]) if exercise.get("contract") else None,
             ),
         )
         self.db.executemany(
@@ -1469,6 +1496,7 @@ class Store:
         *,
         score: dict | None = None,
         blank_results: list[dict] | None = None,
+        item_results: list[dict] | None = None,
     ) -> dict:
         exercise = self._owned("exercises", ctx.learner, exercise_id)
         if self.exercise_submitted(ctx.learner, exercise_id):
@@ -1519,7 +1547,56 @@ class Store:
             raise ValueError(
                 "Score must count 0 to 100 correct parts out of 1 to 100 total parts"
             )
-        blank_count = exercise["task"].count(BLANK_MARKER)
+        contract = self.exercise_contract(ctx.learner, exercise_id)
+        typed_results = item_results or []
+        if contract:
+            if score is not None or feedback or blank_results:
+                raise ValueError(
+                    "Typed exercises use item_results only; leave score null, feedback empty, and blank_results empty"
+                )
+            answers = parse_answers(ctx.message, contract.public())
+            if (
+                len(typed_results) != len(answers)
+                or any(
+                    type(item.get("item_number")) is not int for item in typed_results
+                )
+                or [item["item_number"] for item in typed_results]
+                != list(range(1, len(answers) + 1))
+            ):
+                raise ValueError(
+                    "Provide item_results for every numbered item exactly once, in order"
+                )
+            for index, (answer, result) in enumerate(
+                zip(answers, typed_results, strict=True)
+            ):
+                if not answer and result.get("correct") is not False:
+                    raise ValueError("A missing answer cannot be correct")
+                if isinstance(contract.content, ChooseForm):
+                    expected = answer == str(
+                        contract.content.items[index].correct_option
+                    )
+                    if result.get("correct") is not expected:
+                        raise ValueError(
+                            "Choice correctness must match the saved option key"
+                        )
+                explanation = result.get("feedback")
+                if (
+                    type(result.get("correct")) is not bool
+                    or not isinstance(explanation, str)
+                    or len(explanation) > 600
+                    or (result["correct"] and explanation != "")
+                    or (not result["correct"] and not explanation.strip())
+                ):
+                    raise ValueError(
+                        "Item results require feedback only for incorrect answers (1–600 characters)"
+                    )
+            score = {
+                "correct": sum(item["correct"] for item in typed_results),
+                "total": len(answers),
+            }
+        elif typed_results:
+            raise ValueError("Legacy exercises do not accept item_results")
+        blank_count = 0 if contract else exercise["task"].count(BLANK_MARKER)
         results = blank_results or []
         if (
             len(results) != blank_count
@@ -1556,7 +1633,7 @@ class Store:
                 )
         attempt_id, created = identifier(), now()
         self.db.execute(
-            "INSERT INTO attempts (id, learner, exercise_id, turn_id, learner_response, feedback, created, score, blank_results) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO attempts (id, learner, exercise_id, turn_id, learner_response, feedback, created, score, blank_results, item_results) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 attempt_id,
                 ctx.learner,
@@ -1567,6 +1644,7 @@ class Store:
                 created,
                 _json(score) if score is not None else None,
                 _json(results) if blank_count else None,
+                _json(typed_results) if contract else None,
             ),
         )
         saved = []
@@ -1581,6 +1659,7 @@ class Store:
                 observation["outcome"] == "success"
                 and exercise["scaffolding"] == "none"
                 and assisted is None
+                and not (contract and isinstance(contract.content, ChooseForm))
             )
             observation_id = identifier()
             self.db.execute(
@@ -1615,6 +1694,7 @@ class Store:
             "feedback": feedback,
             "score": score,
             "blank_results": results if blank_count else None,
+            "item_results": typed_results if contract else None,
             "observations": saved,
         }
         assessed_lesson = self.lesson(ctx.learner, exercise["lesson_id"])
@@ -1632,6 +1712,17 @@ class Store:
             }
         result["review_recommendations"] = self.review_due(ctx.learner)
         return result
+
+    def exercise_contract(
+        self, learner: str, exercise_id: str
+    ) -> ExerciseContract | None:
+        """Private grading contract; never attach it to a public exercise payload."""
+        row = self._owned("exercises", learner, exercise_id)
+        return (
+            ExerciseContract.model_validate_json(row["contract"])
+            if row["contract"]
+            else None
+        )
 
     def exercise(self, learner: str, exercise_id: str) -> dict:
         row = self._owned("exercises", learner, exercise_id)
@@ -1667,6 +1758,15 @@ class Store:
             "scaffolding": row["scaffolding"],
             "skills": skills,
             "source_ids": sources,
+            **(
+                {
+                    "format": ExerciseContract.model_validate_json(
+                        row["contract"]
+                    ).public()
+                }
+                if row["contract"]
+                else {}
+            ),
         }
 
     def exercise_submitted(self, learner: str, exercise_id: str) -> bool:
@@ -1694,7 +1794,7 @@ class Store:
         ).fetchone():
             raise InvalidReference("Exercise is unavailable in this session")
         rows = self.db.execute(
-            "SELECT a.id, a.turn_id, a.learner_response, a.feedback, a.score, a.blank_results FROM attempts a "
+            "SELECT a.id, a.turn_id, a.learner_response, a.feedback, a.score, a.blank_results, a.item_results FROM attempts a "
             "JOIN turns t ON t.id=a.turn_id WHERE a.exercise_id=? AND t.session=? "
             "ORDER BY a.rowid",
             (exercise_id, session),
@@ -1708,6 +1808,9 @@ class Store:
                     "learner_response": row["learner_response"],
                     "feedback": row["feedback"],
                     "score": json.loads(row["score"]) if row["score"] else None,
+                    "item_results": json.loads(row["item_results"])
+                    if row["item_results"]
+                    else None,
                     "blank_results": json.loads(row["blank_results"])
                     if row["blank_results"]
                     else None,

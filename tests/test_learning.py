@@ -248,9 +248,7 @@ def test_inline_exercise_tasks_persist_and_reject_invalid_markers(tmp_path):
     }
     ctx = context(store, scope, session, "inline", "More practice")
     with store.transaction():
-        saved = store.present_exercise(
-            ctx, Exercise.model_validate(payload).model_dump()
-        )
+        saved = store.present_exercise(ctx, payload)
         store.save_turn(ctx, "Try this", [])
     assert saved["task"] == payload["task"]
     count = store.db.execute("SELECT count(*) FROM exercises").fetchone()[0]
@@ -598,6 +596,8 @@ def test_schema_five_upgrade_preserves_learning_and_history(tmp_path):
     original.db.execute("ALTER TABLE turns DROP COLUMN selected_text")
     original.db.execute("ALTER TABLE attempts DROP COLUMN score")
     original.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
+    original.db.execute("ALTER TABLE exercises DROP COLUMN contract")
+    original.db.execute("ALTER TABLE attempts DROP COLUMN item_results")
     original.db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
     original.close()
 
@@ -625,6 +625,8 @@ def test_schema_five_migration_rolls_back_on_failure(tmp_path, monkeypatch):
     original.db.execute("ALTER TABLE turns DROP COLUMN selected_text")
     original.db.execute("ALTER TABLE attempts DROP COLUMN score")
     original.db.execute("ALTER TABLE attempts DROP COLUMN blank_results")
+    original.db.execute("ALTER TABLE exercises DROP COLUMN contract")
+    original.db.execute("ALTER TABLE attempts DROP COLUMN item_results")
     original.db.execute("UPDATE metadata SET value='5' WHERE key='schema_version'")
     original.close()
     connect = sqlite3.connect
@@ -724,9 +726,20 @@ def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):
         },
         "exercises": [
             {
-                "title": f"Practice {index}",
-                "task": f"Write the correct German subject pronoun for case {index}.",
-                "context": "A short sentence",
+                "contract": {
+                    "version": 1,
+                    "content": {
+                        "type": "translate",
+                        "language": None,
+                        "items": [
+                            {
+                                "text": "I",
+                                "context": "The speaker",
+                                "references": ["ich"],
+                            }
+                        ],
+                    },
+                },
                 "scaffolding": "none" if index > 1 else "cues",
                 "skills": [
                     {

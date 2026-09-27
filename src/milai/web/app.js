@@ -475,6 +475,13 @@ function renderLessonExercises(onlyExerciseId = null) {
     meta.append(number, state);
     const title = document.createElement("h3");
     title.textContent = text(item.title, `Exercise ${index + 1}`);
+    if (item.format) {
+      card.append(meta, title);
+      renderTypedExercise(card, item, {disabled, submitted, history, request});
+      mount(card);
+      card.querySelectorAll(".exercise-item-input").forEach(resizeItemAnswer);
+      continue;
+    }
     const context = markdownBlock(item.context || "", "markdown exercise-context");
     const task = document.createElement("div");
     task.className = "markdown exercise-task";
@@ -638,6 +645,150 @@ function renderLessonExercises(onlyExerciseId = null) {
   }
 }
 
+function renderTypedExercise(card, exercise, {disabled, submitted, history, request}) {
+  const format = exercise.format;
+  const makeText = (tag, value, className = "") => {
+    const node = document.createElement(tag);
+    node.textContent = value;
+    node.className = className;
+    return node;
+  };
+  const instruction = makeText("p", format.instruction, "exercise-instruction");
+  instruction.dataset.selectionSource = "";
+  card.append(instruction);
+  const form = document.createElement("form");
+  form.id = `exercise-answer-${exercise.id}`;
+  form.className = "exercise-answer-form";
+  const list = document.createElement("ol");
+  list.className = "typed-items";
+  list.dataset.selectionSource = "";
+  const savedAnswer = history[0]?.learner_response || "";
+  const completed = parseItemAnswers(savedAnswer, format.items.length)
+    || (format.items.length === 1 ? [savedAnswer] : null);
+  const draft = lessonState().answers[exercise.id];
+  const values = format.items.map((_, index) => Array.isArray(draft) ? draft[index] || "" : "");
+  const controls = [];
+  const error = makeText("p", "", "exercise-answer-error");
+  error.hidden = true;
+  error.setAttribute("role", "alert");
+  const save = (index, value) => {
+    values[index] = value;
+    updateLessonState({answers: {[exercise.id]: [...values]}});
+    error.hidden = true;
+  };
+  format.items.forEach((item, index) => {
+    const entry = document.createElement("li");
+    entry.className = "typed-item";
+    const answerId = `answer-${exercise.id}-${index + 1}`;
+    const promptId = `prompt-${exercise.id}-${index + 1}`;
+    const result = history[0]?.item_results?.find((item) => item.item_number === index + 1);
+    const completedValue = completed?.[index] || "";
+    const completion = format.type === "complete_sentence";
+    const choice = format.type === "choose_form";
+    const prompt = makeText("p", completion ? "" : item.text.replace("{{blank}}", "____"), "typed-prompt");
+    prompt.id = promptId;
+    entry.append(prompt);
+    const contextId = `context-${exercise.id}-${index + 1}`;
+    if (item.context) {
+      const context = makeText("p", item.context, "exercise-context");
+      context.id = contextId;
+      entry.append(context);
+    }
+    const descriptionIds = `${promptId}${item.context ? ` ${contextId}` : ""}`;
+    let field;
+    if (submitted) {
+      const selected = choice && completedValue ? item.options[Number(completedValue) - 1] : completedValue;
+      field = makeText("span", selected || "No answer", completion ? "exercise-blank completed" : "exercise-item-answer");
+      if (result) {
+        field.classList.add(result.correct ? "correct" : "incorrect");
+        field.append(makeText("span", result.correct ? " ✓" : " ✗", "answer-result-mark"));
+        field.setAttribute("role", "img");
+        field.setAttribute("aria-label", `Answer ${index + 1}: ${selected || "No answer"} — ${result.correct ? "Correct" : "Incorrect"}`);
+        if (!result.correct) field.setAttribute("aria-describedby", `item-feedback-${exercise.id}-${index + 1}`);
+      }
+    } else if (choice) {
+      field = document.createElement("fieldset");
+      field.className = "exercise-options";
+      field.append(makeText("legend", `Answer ${index + 1}`, "sr-only"));
+      field.setAttribute("aria-describedby", descriptionIds);
+      item.options.forEach((option, optionIndex) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = answerId;
+        input.value = String(optionIndex + 1);
+        input.checked = values[index] === input.value;
+        input.disabled = disabled;
+        input.required = true;
+        input.setAttribute("form", form.id);
+        input.addEventListener("change", () => save(index, input.value));
+        label.append(input, makeText("span", option));
+        field.append(label);
+        controls.push(input);
+      });
+    } else {
+      field = document.createElement(completion ? "input" : "textarea");
+      if (completion) field.type = "text";
+      else field.rows = 1;
+      field.className = completion ? "typed-blank-input" : "exercise-item-input";
+      field.id = answerId;
+      field.name = answerId;
+      field.value = values[index];
+      field.required = true;
+      field.disabled = disabled;
+      field.autocomplete = "off";
+      field.autocapitalize = "off";
+      field.spellcheck = false;
+      field.maxLength = completion ? MAX_BLANK_ANSWER_LENGTH : MAX_EXERCISE_ANSWER_LENGTH;
+      field.setAttribute("form", form.id);
+      field.setAttribute("aria-label", `Answer ${index + 1} of ${format.items.length}${completion ? `: ${item.text.replace("{{blank}}", "blank")}` : ""}`);
+      if (!completion) field.setAttribute("aria-describedby", descriptionIds);
+      else if (item.context) field.setAttribute("aria-describedby", contextId);
+      field.addEventListener("input", () => {
+        save(index, field.value);
+        if (!completion) resizeItemAnswer(field);
+      });
+      controls.push(field);
+    }
+    if (completion) {
+      const [before, after] = item.text.split("{{blank}}");
+      prompt.append(makeText("span", before), field, makeText("span", after));
+    } else entry.append(field);
+    if (result && !result.correct) {
+      const feedback = makeText("p", result.feedback, "item-feedback");
+      feedback.id = `item-feedback-${exercise.id}-${index + 1}`;
+      entry.append(feedback);
+    }
+    list.append(entry);
+  });
+  card.append(list);
+  const progress = makeText("p", request?.text || "", "exercise-progress");
+  progress.id = `exercise-progress-${exercise.id}`;
+  progress.setAttribute("role", "status");
+  card.append(progress);
+  if (submitted) return;
+  const actions = document.createElement("div");
+  actions.className = "exercise-actions";
+  const submit = makeText("button", "Submit answer");
+  submit.type = "submit";
+  submit.disabled = disabled;
+  actions.append(submit);
+  form.append(actions, error);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    let message;
+    try { message = serializeItemAnswers(values); }
+    catch (problem) {
+      error.textContent = problem.message;
+      error.hidden = false;
+      controls.find((input) => !input.value.trim())?.focus();
+      return;
+    }
+    return submitLessonTurn(message, "answer", {exercise_id: exercise.id});
+  });
+  card.append(form);
+}
+
 function resizeItemAnswer(input) {
   input.style.height = "auto";
   if (input.scrollHeight) input.style.height = `${input.scrollHeight + 2}px`;
@@ -699,7 +850,7 @@ function renderLessonResults() {
     const detail = document.createElement("p");
     detail.textContent = result.percentage == null
       ? "Some earlier submissions have no saved assessment, so an accuracy rate is unavailable."
-      : `${result.correct} of ${result.total} ${result.scoring === "parts" ? "answer parts" : "exercises"} correct on the first submission.`;
+      : `${result.correct} of ${result.total} ${result.scoring === "items" ? "answers" : result.scoring === "parts" ? "answer parts" : "exercises"} correct on the first submission.`;
     entry.append(title, score, detail);
     if (result.scoring === "exercises" && result.percentage != null) {
       const legacy = document.createElement("p");

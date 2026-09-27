@@ -1,0 +1,952 @@
+{
+  "kind": "live-synthetic-lesson",
+  "models": {
+    "chat": "gpt-6-sol",
+    "lesson": "gpt-6-sol"
+  },
+  "model_compatibility": {
+    "generation_completed": true,
+    "processing_tier": "See the separate live probe; requested Fast is not a tier guarantee."
+  },
+  "application_contracts": {
+    "lesson_card": true,
+    "complete_document": true,
+    "exercise_contract": true,
+    "section_question_scoped": true,
+    "exercise_question_scoped": true,
+    "question_without_attempt": true,
+    "answer_assessed": true,
+    "main_continuation_scoped": true,
+    "discussion_summary_saved": true,
+    "summary_updated_after_restart": true,
+    "explicit_preference_saved": true,
+    "histories_isolated": true,
+    "viewing_preserved_focus": true,
+    "document_persisted_after_restart": true,
+    "discussions_persisted_after_restart": true,
+    "post_restart_lesson_turn": true
+  },
+  "teaching_quality": {
+    "reviewed": false,
+    "note": "Review the transcript for accuracy, useful feedback, and suitable pacing."
+  },
+  "lesson": {
+    "id": "e73c1b3b100d4649a844c0156c96507d",
+    "language": "English",
+    "title": "English · Past simple affirmative action verbs",
+    "focus_skill_id": "23e91571988c4d5d9574a7fa7ecfeec7",
+    "skill": {
+      "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+      "language": "English",
+      "key": "english-past-simple-affirmative-action-verbs",
+      "name": "Past simple affirmative action verbs",
+      "definition": "Use regular -ed forms and common irregular forms to say what someone did on a completed trip or other past occasion.",
+      "success_criteria": [
+        "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events.",
+        "Write a short trip account with clear past simple action verbs for completed activities."
+      ],
+      "status": "active",
+      "version": 1
+    },
+    "reason": "This is one useful past-tense skill for the learner’s goal of describing simple trips. The lesson gives brief explanations and short examples before supported practice and an independent trip account.",
+    "objective": "Describe completed trip activities using affirmative past simple sentences with regular and common irregular action verbs.",
+    "review": false,
+    "created": "2026-09-27T14:52:51.087233+00:00",
+    "practice_results": [
+      {
+        "number": 1,
+        "exercise_ids": [
+          "2d8233f51616447a9f06c8bc55906e53",
+          "efecafd072204da486cad329a6b16ccb",
+          "32dfbf0c19a94b5d8b3fe2bc2d1686f4",
+          "6a0c5439f5a74326bd35cbc3aa894cb0"
+        ],
+        "submitted": 0,
+        "correct_exercises": 0,
+        "assessed": 0,
+        "last_submitted_at": null,
+        "finished": false,
+        "scoring": "exercises",
+        "correct": null,
+        "total": null,
+        "percentage": null,
+        "review_at": null
+      }
+    ],
+    "sections": [
+      {
+        "id": "when-to-use-it",
+        "title": "Talk about a finished trip",
+        "markdown": "Use the **past simple** for an action that happened and finished in the past. Time words such as *yesterday*, *last weekend*, and *on Saturday* can make the time clear.\n\n*Last weekend, I visited a small town.*"
+      },
+      {
+        "id": "regular-verbs",
+        "title": "Regular verbs: add -ed",
+        "markdown": "Many verbs add **-ed**: *visit → visited*, *walk → walked*. If the verb already ends in **e**, add **-d**: *arrive → arrived*. If it ends in a consonant + **y**, change **y** to **i** and add **-ed**: *carry → carried*.\n\nThe past form is the same with *I, you, he, she, we,* and *they*: *I walked; she walked.*"
+      },
+      {
+        "id": "irregular-verbs",
+        "title": "Irregular verbs: learn the past form",
+        "markdown": "Some common trip verbs do not take **-ed**. Learn their past forms: *go → went*, *see → saw*, *take → took*, *eat → ate*, *buy → bought*, and *come → came*.\n\nUse the past form for a finished action: *We went to the beach and saw a boat.* Do not use the present form *go* for that finished action. English also does not use *goed*: the past form is *went*."
+      },
+      {
+        "id": "put-actions-together",
+        "title": "Tell a simple sequence",
+        "markdown": "Use one past form for each finished action: *We arrived in the morning, walked by the river, and ate lunch.* Words such as *then* and *later* help show the order. A short trip account can say where you went and what you did there."
+      }
+    ],
+    "worked_examples": [
+      {
+        "id": "visit-a-town",
+        "title": "A regular past form",
+        "markdown": "*On Sunday, I visited a small town.* The visit is finished, so *visit* becomes *visited*."
+      },
+      {
+        "id": "go-and-see",
+        "title": "Two irregular past forms",
+        "markdown": "*We went to the lake and saw some birds.* *Went* is the past of *go*; *saw* is the past of *see*. Both actions happened on the trip."
+      },
+      {
+        "id": "a-short-trip-account",
+        "title": "A short account",
+        "markdown": "*Last Saturday, I took a bus to the coast. I walked on the beach and ate lunch there.* The verbs *took*, *walked*, and *ate* tell us what happened. Each verb has its past form."
+      }
+    ],
+    "recap": "For finished trip activities, use the past simple: regular verbs often take **-ed** (*walked*), while common irregular verbs have their own forms (*went, saw, took, ate*). Use a past form for each finished action.",
+    "exercises": [
+      {
+        "id": "2d8233f51616447a9f06c8bc55906e53",
+        "kind": "exercise",
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "title": "Choose a form",
+        "task": "Choose the correct form.\n\n1. Yesterday, we {{blank}} to the coast.\n   Option 1: go\n   Option 2: went\n   Option 3: going\n2. Last Saturday, Maya {{blank}} the old bridge.\n   Option 1: visit\n   Option 2: visits\n   Option 3: visited\n3. On our trip last week, I {{blank}} a photo of the lake.\n   Option 1: take\n   Option 2: took\n   Option 3: taking",
+        "context": "",
+        "scaffolding": "cues",
+        "skills": [
+          {
+            "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "name": "Past simple affirmative action verbs",
+            "role": "target",
+            "success_criterion": "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events."
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "choose_form",
+          "instruction": "Choose the correct form.",
+          "items": [
+            {
+              "text": "Yesterday, we {{blank}} to the coast.",
+              "context": "",
+              "options": [
+                "go",
+                "went",
+                "going"
+              ]
+            },
+            {
+              "text": "Last Saturday, Maya {{blank}} the old bridge.",
+              "context": "",
+              "options": [
+                "visit",
+                "visits",
+                "visited"
+              ]
+            },
+            {
+              "text": "On our trip last week, I {{blank}} a photo of the lake.",
+              "context": "",
+              "options": [
+                "take",
+                "took",
+                "taking"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "efecafd072204da486cad329a6b16ccb",
+        "kind": "exercise",
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "title": "Complete a sentence",
+        "task": "Fill in the blank.\n\n1. On Monday, we {{blank}} at the hotel before dinner.\n2. During our trip last month, I {{blank}} a postcard for my sister.",
+        "context": "",
+        "scaffolding": "cues",
+        "skills": [
+          {
+            "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "name": "Past simple affirmative action verbs",
+            "role": "target",
+            "success_criterion": "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events."
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "complete_sentence",
+          "instruction": "Fill in the blank.",
+          "items": [
+            {
+              "text": "On Monday, we {{blank}} at the hotel before dinner.",
+              "context": ""
+            },
+            {
+              "text": "During our trip last month, I {{blank}} a postcard for my sister.",
+              "context": ""
+            }
+          ]
+        }
+      },
+      {
+        "id": "32dfbf0c19a94b5d8b3fe2bc2d1686f4",
+        "kind": "exercise",
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "title": "Transform a sentence",
+        "task": "Rewrite using past simple affirmative.\n\n1. I walk around the city and see the market.\n   Context: These actions happened yesterday.\n2. We take a train and eat lunch by the river.\n   Context: These actions happened last weekend.",
+        "context": "",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "name": "Past simple affirmative action verbs",
+            "role": "target",
+            "success_criterion": "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events."
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "transform",
+          "target_form": "past simple affirmative",
+          "instruction": "Rewrite using past simple affirmative.",
+          "items": [
+            {
+              "text": "I walk around the city and see the market.",
+              "context": "These actions happened yesterday."
+            },
+            {
+              "text": "We take a train and eat lunch by the river.",
+              "context": "These actions happened last weekend."
+            }
+          ]
+        }
+      },
+      {
+        "id": "6a0c5439f5a74326bd35cbc3aa894cb0",
+        "kind": "exercise",
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "title": "Write a short response",
+        "task": "Write a short message in English using Past simple action verbs for completed trip activities.\n\n1. A friend asks about a trip you took. Write a short account of the trip.",
+        "context": "",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "name": "Past simple affirmative action verbs",
+            "role": "target",
+            "success_criterion": "Write a short trip account with clear past simple action verbs for completed activities."
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "short_response",
+          "language": "English",
+          "response_scope": "a short message",
+          "focus": "Past simple action verbs for completed trip activities",
+          "instruction": "Write a short message in English using Past simple action verbs for completed trip activities.",
+          "items": [
+            {
+              "text": "A friend asks about a trip you took. Write a short account of the trip.",
+              "context": ""
+            }
+          ]
+        }
+      }
+    ],
+    "discussion_summary": null
+  },
+  "transcript": [
+    {
+      "phase": "main_generation",
+      "learner": "I speak Spanish and am learning English at about A2 level. I want to describe simple trips. Please explain in simple English, use short original examples, and create a complete lesson on one useful past-tense skill with practice. I prefer brief explanations before attempting exercises. Include an independent exercise where I write a short trip account.",
+      "references": {},
+      "tutor": {
+        "text": "Your lesson is ready: **English · Past simple affirmative action verbs**.\n\nYou’ll learn to say what you did on a trip, using forms such as *visited* and *went*. Open the lesson card for a brief explanation and short examples before the practice. It ends with an independent exercise where you write a short trip account.",
+        "activities": [],
+        "lesson_cards": [
+          {
+            "id": "e73c1b3b100d4649a844c0156c96507d",
+            "language": "English",
+            "title": "English · Past simple affirmative action verbs",
+            "focus_skill_id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "skill": {
+              "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+              "language": "English",
+              "key": "english-past-simple-affirmative-action-verbs",
+              "name": "Past simple affirmative action verbs",
+              "definition": "Use regular -ed forms and common irregular forms to say what someone did on a completed trip or other past occasion.",
+              "success_criteria": [
+                "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events.",
+                "Write a short trip account with clear past simple action verbs for completed activities."
+              ],
+              "status": "active",
+              "version": 1
+            },
+            "reason": "This is one useful past-tense skill for the learner’s goal of describing simple trips. The lesson gives brief explanations and short examples before supported practice and an independent trip account.",
+            "objective": "Describe completed trip activities using affirmative past simple sentences with regular and common irregular action verbs.",
+            "review": false,
+            "created": "2026-09-27T14:52:51.087233+00:00",
+            "practice_results": [
+              {
+                "number": 1,
+                "exercise_ids": [
+                  "2d8233f51616447a9f06c8bc55906e53",
+                  "efecafd072204da486cad329a6b16ccb",
+                  "32dfbf0c19a94b5d8b3fe2bc2d1686f4",
+                  "6a0c5439f5a74326bd35cbc3aa894cb0"
+                ],
+                "submitted": 0,
+                "correct_exercises": 0,
+                "assessed": 0,
+                "last_submitted_at": null,
+                "finished": false,
+                "scoring": "exercises",
+                "correct": null,
+                "total": null,
+                "percentage": null,
+                "review_at": null
+              }
+            ]
+          }
+        ],
+        "assessments": [],
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01"
+      },
+      "trace_id": "06d21e3925ffc906d319cbf3c6353dbd"
+    },
+    {
+      "phase": "section_question",
+      "learner": "Can you explain this section with another short example?",
+      "references": {
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "section_id": "when-to-use-it",
+        "selected_text": "Talk about a finished trip"
+      },
+      "tutor": {
+        "text": "Use the **past simple** when an action is finished. For example: *Yesterday, I walked to the beach.* The walk happened yesterday and is over, so we say **walked**, not *walk*.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "e1e4a8a2ea6b4c1c95d53727f293fa20"
+      },
+      "trace_id": "136cab34785f6ebbb5511d2bfc1b87f2"
+    },
+    {
+      "phase": "exercise_question",
+      "learner": "What is this exercise asking me to do? Please do not assess me yet.",
+      "references": {
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "exercise_id": "6a0c5439f5a74326bd35cbc3aa894cb0",
+        "selected_text": "Write a short response"
+      },
+      "tutor": {
+        "text": "Write a short message to a friend about a trip you took. Say what you did, using **past simple** action verbs because the trip is finished. You can write a few sentences; you don’t need to answer it now.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "aa73901c12c046b195f56f522bcd16d1"
+      },
+      "trace_id": "80d029ebe93f84d2a41fc88fc5160577"
+    },
+    {
+      "phase": "answer_submission",
+      "learner": "Item 1: \"Last Saturday, I visited a town and walked to a museum. That afternoon, I explored the square and photographed a bridge. That evening, I tasted local food and returned home.\"",
+      "references": {
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+        "exercise_id": "6a0c5439f5a74326bd35cbc3aa894cb0",
+        "action": "answer"
+      },
+      "tutor": {
+        "text": "Great work! Your short trip account uses past simple action verbs clearly throughout.",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [
+          {
+            "id": "cc6114b0a8c34ecf9b78c1ffd5b8adcb",
+            "exercise_id": "6a0c5439f5a74326bd35cbc3aa894cb0",
+            "learner_response": "Item 1: \"Last Saturday, I visited a town and walked to a museum. That afternoon, I explored the square and photographed a bridge. That evening, I tasted local food and returned home.\"",
+            "feedback": "",
+            "score": {
+              "correct": 1,
+              "total": 1
+            },
+            "blank_results": null,
+            "item_results": [
+              {
+                "item_number": 1,
+                "correct": true,
+                "feedback": ""
+              }
+            ],
+            "observations": [
+              {
+                "skill_id": "23e91571988c4d5d9574a7fa7ecfeec7",
+                "outcome": "success",
+                "issue_severity": "none",
+                "rationale": "Independent short trip account consistently uses affirmative past simple action verbs for completed activities: visited, walked, explored, photographed, tasted, returned.",
+                "id": "244c12c14f274f3b8f6b7d54d7628898",
+                "independent_success": true
+              }
+            ],
+            "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+            "focus_mastered": false,
+            "review_recommendations": []
+          }
+        ],
+        "turn_id": "7d9e31b174e14a75aa920c32b3dcb0fc"
+      },
+      "trace_id": "956f7281fb8d05df0c26c4d553209a42"
+    },
+    {
+      "phase": "main_continuation",
+      "learner": "Continue learning from that lesson using my attempt. If a review is due, recommend it; otherwise choose a useful next step.",
+      "references": {
+        "origin_lesson_id": "e73c1b3b100d4649a844c0156c96507d"
+      },
+      "tutor": {
+        "text": "Your trip account used past-tense action verbs well. **No review is due**, so the next step is saying what you *didn’t* do on a trip.\n\nOpen **English · Past simple negatives with action verbs** for a brief explanation, short examples, and practice.",
+        "activities": [],
+        "lesson_cards": [
+          {
+            "id": "8c48c02408ee45b5b7700e16653887b5",
+            "language": "English",
+            "title": "English · Past simple negatives with action verbs",
+            "focus_skill_id": "bed30017a9a44dd6a3aa797247d863c4",
+            "skill": {
+              "id": "bed30017a9a44dd6a3aa797247d863c4",
+              "language": "English",
+              "key": "english-past-simple-negatives-action-verbs",
+              "name": "Past simple negatives with action verbs",
+              "definition": "Use did not or didn't plus the base form of an action verb to say that an action did not happen on a completed past occasion.",
+              "success_criteria": [
+                "Form past simple negatives with did not or didn't plus the base form of an action verb.",
+                "Use past simple negatives in a short trip account to make clear which activities did not happen."
+              ],
+              "status": "active",
+              "version": 1
+            },
+            "reason": "There is no review due, and your trip account showed you can describe what you did. This next lesson adds a different useful skill: saying what you did not do.",
+            "objective": "Say which activities did not happen on a completed trip, using didn't or did not plus the base form of an action verb.",
+            "review": false,
+            "created": "2026-09-27T14:53:20.341259+00:00",
+            "practice_results": [
+              {
+                "number": 1,
+                "exercise_ids": [
+                  "b1941b41a74d4f908200908364d9b5fe",
+                  "c1fadd75dbfa4858b80e9e592e899278",
+                  "a2a6375f01e94d3ead60ca9bbccafdd0",
+                  "f716bd152e814948aee1b13f0dfadd11"
+                ],
+                "submitted": 0,
+                "correct_exercises": 0,
+                "assessed": 0,
+                "last_submitted_at": null,
+                "finished": false,
+                "scoring": "exercises",
+                "correct": null,
+                "total": null,
+                "percentage": null,
+                "review_at": null
+              }
+            ]
+          }
+        ],
+        "assessments": [],
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d"
+      },
+      "trace_id": "56207e2be0ded1e1d67bb14cc2ded432"
+    },
+    {
+      "phase": "lesson_after_restart",
+      "learner": "What is the most useful thing to remember from this lesson?",
+      "references": {
+        "lesson_id": "e73c1b3b100d4649a844c0156c96507d"
+      },
+      "tutor": {
+        "text": "For a finished trip, put **each action verb in the past simple**: *I walked to the museum and ate lunch.* Regular verbs often take **-ed** (*walked*); irregular verbs have their own forms (*eat → ate*).",
+        "activities": [],
+        "lesson_cards": [],
+        "assessments": [],
+        "turn_id": "df1fe3d80f654092b565151340dbd5f5"
+      },
+      "trace_id": "ef47c83e5a4010e85b0d4a4b3dfc244c"
+    }
+  ],
+  "learning": {
+    "learning_sessions": [],
+    "schema_version": "9",
+    "state": {
+      "profile": {
+        "explanation_language": {
+          "id": "a9cf8e1cc5bb4d87bbd38c69b8b84330",
+          "value": "simple English",
+          "learner_quote": "Please explain in simple English",
+          "created": "2026-09-27T14:52:34.592226+00:00"
+        },
+        "target_language": {
+          "id": "58e9b93f3816404195e08b0878557c23",
+          "value": "English",
+          "learner_quote": "am learning English",
+          "created": "2026-09-27T14:52:34.592273+00:00"
+        },
+        "level": {
+          "id": "bf7df533cde949398f2ab6945c0fc5dc",
+          "value": "about A2",
+          "learner_quote": "at about A2 level",
+          "created": "2026-09-27T14:52:34.592288+00:00"
+        },
+        "goals": {
+          "id": "019b548470614ae1b4abf5a55e3b0d7d",
+          "value": "describe simple trips",
+          "learner_quote": "I want to describe simple trips.",
+          "created": "2026-09-27T14:52:34.592304+00:00"
+        },
+        "teaching_preferences": {
+          "id": "176f98c43b0146d59c7d3502e86a92c3",
+          "value": "short original examples and brief explanations before exercises; include an independent short trip account writing exercise",
+          "learner_quote": "Please explain in simple English, use short original examples, and create a complete lesson on one useful past-tense skill with practice. I prefer brief explanations before attempting exercises. Include an independent exercise where I write a short trip account.",
+          "created": "2026-09-27T14:52:34.592316+00:00"
+        }
+      },
+      "lessons": [
+        {
+          "id": "e73c1b3b100d4649a844c0156c96507d",
+          "language": "English",
+          "title": "English · Past simple affirmative action verbs",
+          "focus_skill_id": "23e91571988c4d5d9574a7fa7ecfeec7",
+          "skill": {
+            "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "language": "English",
+            "key": "english-past-simple-affirmative-action-verbs",
+            "name": "Past simple affirmative action verbs",
+            "definition": "Use regular -ed forms and common irregular forms to say what someone did on a completed trip or other past occasion.",
+            "success_criteria": [
+              "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events.",
+              "Write a short trip account with clear past simple action verbs for completed activities."
+            ],
+            "status": "active",
+            "version": 1
+          },
+          "reason": "This is one useful past-tense skill for the learner’s goal of describing simple trips. The lesson gives brief explanations and short examples before supported practice and an independent trip account.",
+          "objective": "Describe completed trip activities using affirmative past simple sentences with regular and common irregular action verbs.",
+          "review": false,
+          "created": "2026-09-27T14:52:51.087233+00:00",
+          "practice_results": [
+            {
+              "number": 1,
+              "exercise_ids": [
+                "2d8233f51616447a9f06c8bc55906e53",
+                "efecafd072204da486cad329a6b16ccb",
+                "32dfbf0c19a94b5d8b3fe2bc2d1686f4",
+                "6a0c5439f5a74326bd35cbc3aa894cb0"
+              ],
+              "submitted": 1,
+              "correct_exercises": 1,
+              "assessed": 1,
+              "last_submitted_at": "2026-09-27T14:53:03.568122+00:00",
+              "finished": false,
+              "scoring": "items",
+              "correct": null,
+              "total": null,
+              "percentage": null,
+              "review_at": null
+            }
+          ]
+        },
+        {
+          "id": "8c48c02408ee45b5b7700e16653887b5",
+          "language": "English",
+          "title": "English · Past simple negatives with action verbs",
+          "focus_skill_id": "bed30017a9a44dd6a3aa797247d863c4",
+          "skill": {
+            "id": "bed30017a9a44dd6a3aa797247d863c4",
+            "language": "English",
+            "key": "english-past-simple-negatives-action-verbs",
+            "name": "Past simple negatives with action verbs",
+            "definition": "Use did not or didn't plus the base form of an action verb to say that an action did not happen on a completed past occasion.",
+            "success_criteria": [
+              "Form past simple negatives with did not or didn't plus the base form of an action verb.",
+              "Use past simple negatives in a short trip account to make clear which activities did not happen."
+            ],
+            "status": "active",
+            "version": 1
+          },
+          "reason": "There is no review due, and your trip account showed you can describe what you did. This next lesson adds a different useful skill: saying what you did not do.",
+          "objective": "Say which activities did not happen on a completed trip, using didn't or did not plus the base form of an action verb.",
+          "review": false,
+          "created": "2026-09-27T14:53:20.341259+00:00",
+          "practice_results": [
+            {
+              "number": 1,
+              "exercise_ids": [
+                "b1941b41a74d4f908200908364d9b5fe",
+                "c1fadd75dbfa4858b80e9e592e899278",
+                "a2a6375f01e94d3ead60ca9bbccafdd0",
+                "f716bd152e814948aee1b13f0dfadd11"
+              ],
+              "submitted": 0,
+              "correct_exercises": 0,
+              "assessed": 0,
+              "last_submitted_at": null,
+              "finished": false,
+              "scoring": "exercises",
+              "correct": null,
+              "total": null,
+              "percentage": null,
+              "review_at": null
+            }
+          ]
+        }
+      ],
+      "active_lesson": {
+        "id": "8c48c02408ee45b5b7700e16653887b5",
+        "language": "English",
+        "title": "English · Past simple negatives with action verbs",
+        "focus_skill_id": "bed30017a9a44dd6a3aa797247d863c4",
+        "skill": {
+          "id": "bed30017a9a44dd6a3aa797247d863c4",
+          "language": "English",
+          "key": "english-past-simple-negatives-action-verbs",
+          "name": "Past simple negatives with action verbs",
+          "definition": "Use did not or didn't plus the base form of an action verb to say that an action did not happen on a completed past occasion.",
+          "success_criteria": [
+            "Form past simple negatives with did not or didn't plus the base form of an action verb.",
+            "Use past simple negatives in a short trip account to make clear which activities did not happen."
+          ],
+          "status": "active",
+          "version": 1
+        },
+        "reason": "There is no review due, and your trip account showed you can describe what you did. This next lesson adds a different useful skill: saying what you did not do.",
+        "objective": "Say which activities did not happen on a completed trip, using didn't or did not plus the base form of an action verb.",
+        "review": false,
+        "created": "2026-09-27T14:53:20.341259+00:00",
+        "practice_results": [
+          {
+            "number": 1,
+            "exercise_ids": [
+              "b1941b41a74d4f908200908364d9b5fe",
+              "c1fadd75dbfa4858b80e9e592e899278",
+              "a2a6375f01e94d3ead60ca9bbccafdd0",
+              "f716bd152e814948aee1b13f0dfadd11"
+            ],
+            "submitted": 0,
+            "correct_exercises": 0,
+            "assessed": 0,
+            "last_submitted_at": null,
+            "finished": false,
+            "scoring": "exercises",
+            "correct": null,
+            "total": null,
+            "percentage": null,
+            "review_at": null
+          }
+        ]
+      },
+      "skills": [
+        {
+          "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+          "language": "English",
+          "key": "english-past-simple-affirmative-action-verbs",
+          "name": "Past simple affirmative action verbs",
+          "definition": "Use regular -ed forms and common irregular forms to say what someone did on a completed trip or other past occasion.",
+          "success_criteria": [
+            "Use the past simple form of regular and common irregular action verbs in affirmative sentences about completed events.",
+            "Write a short trip account with clear past simple action verbs for completed activities."
+          ],
+          "status": "active",
+          "version": 1,
+          "mastered": false,
+          "progress": {
+            "id": "23e91571988c4d5d9574a7fa7ecfeec7",
+            "name": "Past simple affirmative action verbs",
+            "status": "active",
+            "observations": 1,
+            "successes": 1,
+            "needs_work": 0,
+            "minor_errors": 0,
+            "uncertain": 0,
+            "independent_successes": 1,
+            "independent_since_difficulty": 1,
+            "assistance_events": 0,
+            "last_observed": "2026-09-27T14:53:03.568122+00:00",
+            "contexts": [
+              ""
+            ]
+          }
+        },
+        {
+          "id": "bed30017a9a44dd6a3aa797247d863c4",
+          "language": "English",
+          "key": "english-past-simple-negatives-action-verbs",
+          "name": "Past simple negatives with action verbs",
+          "definition": "Use did not or didn't plus the base form of an action verb to say that an action did not happen on a completed past occasion.",
+          "success_criteria": [
+            "Form past simple negatives with did not or didn't plus the base form of an action verb.",
+            "Use past simple negatives in a short trip account to make clear which activities did not happen."
+          ],
+          "status": "active",
+          "version": 1,
+          "mastered": false,
+          "progress": {
+            "id": "bed30017a9a44dd6a3aa797247d863c4",
+            "name": "Past simple negatives with action verbs",
+            "status": "active",
+            "observations": 0,
+            "successes": 0,
+            "needs_work": 0,
+            "minor_errors": 0,
+            "uncertain": 0,
+            "independent_successes": 0,
+            "independent_since_difficulty": 0,
+            "assistance_events": 0,
+            "last_observed": null,
+            "contexts": []
+          }
+        }
+      ],
+      "active_exercise": {
+        "id": "f716bd152e814948aee1b13f0dfadd11",
+        "kind": "exercise",
+        "lesson_id": "8c48c02408ee45b5b7700e16653887b5",
+        "title": "Write a short response",
+        "task": "Write a short message in English using past simple negatives for trip activities.\n\n1. A friend asks about a trip you took. You visited a town, but some activities you considered did not happen.",
+        "context": "",
+        "scaffolding": "none",
+        "skills": [
+          {
+            "id": "bed30017a9a44dd6a3aa797247d863c4",
+            "name": "Past simple negatives with action verbs",
+            "role": "target",
+            "success_criterion": "Use past simple negatives in a short trip account to make clear which activities did not happen."
+          }
+        ],
+        "source_ids": [],
+        "format": {
+          "version": 1,
+          "type": "short_response",
+          "language": "English",
+          "response_scope": "a short message",
+          "focus": "past simple negatives for trip activities",
+          "instruction": "Write a short message in English using past simple negatives for trip activities.",
+          "items": [
+            {
+              "text": "A friend asks about a trip you took. You visited a town, but some activities you considered did not happen.",
+              "context": ""
+            }
+          ]
+        }
+      },
+      "recent_observations": [
+        {
+          "id": "244c12c14f274f3b8f6b7d54d7628898",
+          "skill_id": "23e91571988c4d5d9574a7fa7ecfeec7",
+          "outcome": "success",
+          "issue_severity": "none",
+          "independent_success": true,
+          "rationale": "Independent short trip account consistently uses affirmative past simple action verbs for completed activities: visited, walked, explored, photographed, tasted, returned.",
+          "exercise": "Write a short response",
+          "lesson_id": "e73c1b3b100d4649a844c0156c96507d",
+          "created": "2026-09-27T14:53:03.568122+00:00"
+        }
+      ],
+      "sources": []
+    },
+    "events": [
+      {
+        "id": "8dafc369085b45ba862a19495bc47a7d",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "a9cf8e1cc5bb4d87bbd38c69b8b84330",
+        "kind": "learner_fact",
+        "created": "2026-09-27T14:52:34.592255+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "c5cc49caa3234acbbe6cf7d743cd154f",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "58e9b93f3816404195e08b0878557c23",
+        "kind": "learner_fact",
+        "created": "2026-09-27T14:52:34.592281+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "3630c81ffaa34d3a86388a9bcb22e896",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "bf7df533cde949398f2ab6945c0fc5dc",
+        "kind": "learner_fact",
+        "created": "2026-09-27T14:52:34.592294+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "46a0a59045d549e28ac64ab6ab47373e",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "019b548470614ae1b4abf5a55e3b0d7d",
+        "kind": "learner_fact",
+        "created": "2026-09-27T14:52:34.592310+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "4a0da38e8617475aaec753079659b837",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "176f98c43b0146d59c7d3502e86a92c3",
+        "kind": "learner_fact",
+        "created": "2026-09-27T14:52:34.592322+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "42c5c31ed09c469ea858f252eb92431a",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "23e91571988c4d5d9574a7fa7ecfeec7",
+        "kind": "skill",
+        "created": "2026-09-27T14:52:51.087157+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "43d661c9c56d42d4b0c335b8b7780ccb",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "e73c1b3b100d4649a844c0156c96507d",
+        "kind": "lesson",
+        "created": "2026-09-27T14:52:51.087322+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "9202cf90146d4c298e6e6500a6229a8f",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "2d8233f51616447a9f06c8bc55906e53",
+        "kind": "exercise",
+        "created": "2026-09-27T14:52:51.087737+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "2a8305b0a4ea4588850c42168be40ec1",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "efecafd072204da486cad329a6b16ccb",
+        "kind": "exercise",
+        "created": "2026-09-27T14:52:51.088031+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "78ce5379fe394d1b9fc30cd4de68a461",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "32dfbf0c19a94b5d8b3fe2bc2d1686f4",
+        "kind": "exercise",
+        "created": "2026-09-27T14:52:51.088241+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "3b80b18f5950437ca45e991689abfecc",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "253180dc217f4cc1a6e972db0fa1ad01",
+        "entity_id": "6a0c5439f5a74326bd35cbc3aa894cb0",
+        "kind": "exercise",
+        "created": "2026-09-27T14:52:51.088442+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "a281f077d25740efb684a57c8ec19567",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "7d9e31b174e14a75aa920c32b3dcb0fc",
+        "entity_id": "cc6114b0a8c34ecf9b78c1ffd5b8adcb",
+        "kind": "attempt",
+        "created": "2026-09-27T14:53:03.568430+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "c07a72d343e14869b28a324d3b6cfda8",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d",
+        "entity_id": "bed30017a9a44dd6a3aa797247d863c4",
+        "kind": "skill",
+        "created": "2026-09-27T14:53:20.341045+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "01f84b6b6d2a409988628b03f457b193",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d",
+        "entity_id": "8c48c02408ee45b5b7700e16653887b5",
+        "kind": "lesson",
+        "created": "2026-09-27T14:53:20.341535+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "eee13205dab14e4eb37620ebfb5e1124",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d",
+        "entity_id": "b1941b41a74d4f908200908364d9b5fe",
+        "kind": "exercise",
+        "created": "2026-09-27T14:53:20.341870+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "dfb77d2ced6f4fc4a658ed125f39355d",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d",
+        "entity_id": "c1fadd75dbfa4858b80e9e592e899278",
+        "kind": "exercise",
+        "created": "2026-09-27T14:53:20.342298+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "f6a4e2986a61475dbf00a986348996d0",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d",
+        "entity_id": "a2a6375f01e94d3ead60ca9bbccafdd0",
+        "kind": "exercise",
+        "created": "2026-09-27T14:53:20.342779+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      },
+      {
+        "id": "3cf4e74140494528b0b5e51858e814b8",
+        "learner": "session:52b8b0ae606943858928ef9140f87585",
+        "session": "52b8b0ae606943858928ef9140f87585",
+        "turn_id": "000e8fb2bd544710948def6bff8b7a4d",
+        "entity_id": "f716bd152e814948aee1b13f0dfadd11",
+        "kind": "exercise",
+        "created": "2026-09-27T14:53:20.343239+00:00",
+        "prompt_version": "bec51cbf37e466cb"
+      }
+    ],
+    "sessions": []
+  }
+}

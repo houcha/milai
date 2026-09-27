@@ -9,6 +9,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from milai.config import Settings
+from milai.exercises import serialize_answers
 from milai.observability import Telemetry
 from milai.store import Store
 from milai.tutor import Tutor
@@ -42,6 +43,17 @@ MIXED_TRIP_SENTENCES = [
 def choose_trip_exercise(exercises: list[dict]) -> dict:
     """Choose an open writing task this synthetic answer can actually address."""
     for exercise in exercises:
+        if public := exercise.get("format"):
+            if (
+                public["type"] == "short_response"
+                and exercise.get("scaffolding") == "none"
+                and any(
+                    word in json.dumps(public).lower()
+                    for word in ("trip", "journey", "travel", "visit")
+                )
+            ):
+                return exercise
+            continue
         task = exercise["task"].lower()
         if (
             exercise.get("scaffolding") == "none"
@@ -56,6 +68,18 @@ def choose_trip_exercise(exercises: list[dict]) -> dict:
 def trip_answer_for(exercise: dict) -> str:
     """Meet the selected open-writing task's sentence and verb requirements."""
     task = exercise["task"].lower()
+    if public := exercise.get("format"):
+        sentences = (
+            MIXED_TRIP_SENTENCES
+            if "irregular" in public["focus"].lower()
+            else REGULAR_TRIP_SENTENCES
+        )
+        response = (
+            sentences[0]
+            if public["response_scope"] == "one sentence"
+            else " ".join(sentences[:3])
+        )
+        return serialize_answers([response for _ in public["items"]])
     exact_count = re.search(
         r"\b(?:write|compose)\s+(three|four|five|six|[3-6])\s+", task
     )

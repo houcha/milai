@@ -1,5 +1,60 @@
 # Validation reports
 
+Choice format has since been removed from new generation. The live reports and
+screenshots below document the earlier five-format implementation; saved choice
+exercises remain supported. Schema and persistence regression tests verify that
+new exercises cannot use choice format.
+
+## 2026-09-27 — Typed exercise contracts
+
+`just qa` passes formatting, lint, ty, and 147 Python tests. `npm run test:web`
+passes the renderer, exercise-controller, and web-view suites. Coverage includes
+all five formats, fixed instructions, one-point-per-item aggregation, deterministic
+choice correctness, legacy migration/rollback, private-reference isolation, final
+submissions, Unicode/multiline mapping, retry after failed assessment, and terminal
+item collection. The browser test harness now explicitly binds its simulated
+session storage; tests no longer share Node's global session storage.
+
+A real Chromium preview at 1440 × 1050 and 390 × 844 exercised all five controls,
+restored text and radio drafts after reload, submitted each once, and checked
+saved answers and feedback in place. Neither the document nor the reading pane
+had horizontal overflow. Preview responses are synthetic and establish UI behavior,
+not assessment quality. Reviewed screenshots:
+
+| Format | Desktop | Mobile |
+| --- | --- | --- |
+| Choice | [View](screenshots/typed-choose_form-desktop.png) | [View](screenshots/typed-choose_form-mobile.png) |
+| Completion | [View](screenshots/typed-complete_sentence-desktop.png) | [View](screenshots/typed-complete_sentence-mobile.png) |
+| Translation | [View](screenshots/typed-translate-desktop.png) | [View](screenshots/typed-translate-mobile.png) |
+| Transformation | [View](screenshots/typed-transform-desktop.png) | [View](screenshots/typed-transform-mobile.png) |
+| Short response | [View](screenshots/typed-short_response-desktop.png) | [View](screenshots/typed-short_response-mobile.png) |
+| Submitted feedback | [View](screenshots/typed-results-desktop.png) | [View](screenshots/typed-results-mobile.png) |
+
+The [live English journey](typed-exercises-journey.json), prompt
+`bec51cbf37e466cb`, passed all 16 existing application checks, including typed
+lesson generation, assessment, continuation, and persistence through restart.
+Its short response received 1/1 with empty item feedback. Review found broad
+completion cues and a redundant writing instruction inside a situation; subsequent
+prompt guidance requires base-form context for targeted inflection and declarative
+short-response situations.
+
+The [targeted live checks](typed-exercises-live-check.json), final prompt
+`dc16cdb4ab3f2807`, used real configured models with temporary synthetic sessions:
+
+- A fixed translation cue “You have” with informal-plural context accepted
+  “ihr habt” alone as 1/1, with no repeated English requirement.
+- A fixed writing exercise accepted “Wir haben ein Fahrrad.” as 1/1 although
+  its private reference used “ein Auto.” Correct item feedback stayed empty.
+- A new German lesson generated all five formats. Its completion items supplied
+  the base verb; its writing items were declarative situations. Translation and
+  transformation items matched the taught forms and expressions.
+
+These are specific reviewed examples, not a general guarantee of language quality.
+Transformation labels still depend on the model choosing language appropriate to
+the learner (the sample used “first-person plural”). The initial sandboxed journey
+was interrupted after network access was blocked; only the completed runs with
+network access above count as live evidence. No learner database was used.
+
 ## 2026-09-27 — Recoverable active-skill selection
 
 All 99 Python tests, Ruff format/lint, and ty passed. A regression through the

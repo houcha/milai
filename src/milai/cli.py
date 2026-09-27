@@ -11,6 +11,7 @@ from openai import APITimeoutError, RateLimitError
 
 from milai.config import Settings
 from milai.exercise_format import terminal_exercise_task
+from milai.exercises import parse_answers, serialize_answers
 from milai.observability import Telemetry
 from milai.probe import probe
 from milai.store import SCHEMA_VERSION, InvalidReference, SchemaMismatch, Store
@@ -108,11 +109,32 @@ async def chat(settings: Settings, session: str | None):
                 if lesson_id is None:
                     print("Open a lesson with /lesson <id> before answering.")
                     continue
-                if len(answer_parts) != 3 or not answer_parts[2].strip():
-                    print("Use /answer <exercise-id> <text>.")
+                if len(answer_parts) < 2:
+                    print("Use /answer <exercise-id> [text].")
                     continue
-                exercise_id, answer = answer_parts[1], answer_parts[2]
+                exercise_id = answer_parts[1]
                 try:
+                    if len(answer_parts) == 2:
+                        detail = store.lesson_detail(store.owner, session, lesson_id)
+                        exercise = next(
+                            (
+                                item
+                                for item in detail["exercises"]
+                                if item["id"] == exercise_id
+                            ),
+                            None,
+                        )
+                        if not exercise or not exercise.get("format"):
+                            raise ValueError(
+                                "Use /answer <exercise-id> <text> for legacy exercises"
+                            )
+                        if store.exercise_status(store.owner, session, exercise_id)[
+                            "submitted"
+                        ]:
+                            raise ValueError("This exercise has already been submitted")
+                        answer = await collect_typed_answers(exercise)
+                    else:
+                        answer = answer_parts[2]
                     reply = await tutor.respond(
                         store.owner,
                         session,
@@ -124,6 +146,8 @@ async def chat(settings: Settings, session: str | None):
                     print_reply(reply)
                 except (InvalidReference, ValueError) as exc:
                     print(f"Answer not accepted: {exc}")
+                except (EOFError, KeyboardInterrupt):
+                    print("Answer cancelled; nothing was submitted.")
                 except RateLimitError:
                     print("Provider quota reached; this turn was rolled back.")
                 except (APITimeoutError, TimeoutError):
@@ -161,6 +185,34 @@ async def chat(settings: Settings, session: str | None):
     finally:
         await tutor.close()
         store.close()
+
+
+async def collect_typed_answers(exercise: dict) -> str:
+    """Collect and label one answer per typed item without requiring JSON input."""
+    public = exercise["format"]
+    print(public["instruction"])
+    answers = []
+    for index, item in enumerate(public["items"], 1):
+        print(f"{index}. {item['text'].replace('{{blank}}', '____')}")
+        if item["context"]:
+            print(f"Context: {item['context']}")
+        for number, option in enumerate(item.get("options", []), 1):
+            print(f"  {number}: {option}")
+        while True:
+            value = await asyncio.to_thread(
+                input,
+                "Option number: " if public["type"] == "choose_form" else "Answer: ",
+            )
+            try:
+                if not value.strip():
+                    raise ValueError("Enter an answer before submitting")
+                parse_answers(value, {**public, "items": [item]})
+            except ValueError as exc:
+                print(str(exc))
+            else:
+                answers.append(value.strip())
+                break
+    return serialize_answers(answers)
 
 
 def print_reply(reply: TutorReply) -> None:
@@ -210,14 +262,18 @@ def print_lesson(detail: dict) -> None:
                 label = "ready"
             print(f"\n[{label}] {exercise['title']} · {exercise['id']}")
             print(terminal_exercise_task(exercise["task"]))
-        print("\nSubmit with /answer <exercise-id> <text>.")
+        print(
+            "\nSubmit with /answer <exercise-id> for typed exercises, "
+            "or /answer <exercise-id> <text>."
+        )
     for result in detail.get("practice_results", []):
         if result["finished"]:
             print(f"\nPractice {result['number']} result:")
             if result["percentage"] is not None:
+                unit = "answers" if result["scoring"] == "items" else result["scoring"]
                 print(
                     f"{result['percentage']}% correct — {result['correct']} of "
-                    f"{result['total']} {result['scoring']} on the first submission."
+                    f"{result['total']} {unit} on the first submission."
                 )
             else:
                 print("Submitted; some earlier answers have no saved assessment.")
