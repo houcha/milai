@@ -1,5 +1,13 @@
 # Validation reports
 
+## 2026-09-27 — Recoverable active-skill selection
+
+All 99 Python tests, Ruff format/lint, and ty passed. A regression through the
+decorated tools verifies actionable `invalid_operation`, zero writes on duplicate
+selection, fresh practice saved in the existing lesson, and the unchanged
+one-generation-per-turn bound. Planner calls are mocked; live model recovery
+has not been evaluated.
+
 ## 2026-09-27 — Progression without mastery gates
 
 All 98 Python tests, Ruff lint, and ty passed. Regression coverage verifies

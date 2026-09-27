@@ -32,6 +32,12 @@ transaction covers lesson content, exercises, card linkage, main reply, and the
 rest of the turn. Progress stages can be shown while generation runs; only
 committed content is exposed as a finished lesson.
 
+A valid draft selecting the already-active skill returns a recoverable
+`invalid_operation` before any writes. Requested extra practice uses
+`present_exercise` in that existing lesson. It never substitutes practice for
+a move-forward request or retries lesson generation in the same turn. Other
+invalid generated content and operational failures still roll back the turn.
+
 ## Learning state
 
 Each session has a skill graph and a chronological list of generated lessons.

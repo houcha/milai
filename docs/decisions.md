@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-09-27 — Recover from duplicate active-skill selection
+
+- Keep one active lesson per current focus: requested extra practice appends to
+  its existing document rather than creating a duplicate lesson.
+- Return actionable `invalid_operation` guidance when a valid generated draft
+  selects that active skill. Check before saving; keep the one-generation-per-turn
+  bound and rollback behavior for unexpected validation and operational failures.
+
 ## 2026-09-27 — Mastery describes evidence, not permission to advance
 
 - Remove direct and transitive prerequisite mastery gates from lesson creation.

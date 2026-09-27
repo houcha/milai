@@ -454,6 +454,18 @@ async def start_lesson(ctx: RunContextWrapper[Context], lesson: LessonIntent) ->
     document, exercises = _validated_lesson_draft(
         plan, keyed, {item["source_id"] for item in source_excerpts}
     )
+    active = c.store.active_lesson(c.learner)
+    if (
+        active
+        and plan.existing_skill_key
+        and keyed[plan.existing_skill_key]["id"] == active["focus_skill_id"]
+    ):
+        raise ValueError(
+            "The selected skill already has the active lesson. No new lesson was saved. "
+            "For explicitly requested extra practice, use present_exercise in that "
+            "existing lesson. Do not substitute extra practice for a request to move "
+            "forward, and do not retry start_lesson in this turn."
+        )
     if c.on_progress is not None:
         await c.on_progress({"type": "stage", "text": "Saving lesson…"})
     with c.store.savepoint():

@@ -330,3 +330,83 @@ def test_generation_timeout_rolls_back_document_exercises_and_turn(
     assert store.conversation(store.owner, session) == []
     asyncio.run(tutor.close())
     store.close()
+
+
+def test_active_skill_selection_is_recoverable_and_practice_stays_in_lesson(
+    tmp_path, monkeypatch
+):
+    from agents.testing import ScriptedModel
+
+    from milai.tools import present_exercise
+    from tests.test_lesson_conversations import _exercises, _seed_lesson
+
+    store = Store(tmp_path / "active-skill.db")
+    session = store.session(store.owner)
+    scope = store.learning_scope(store.owner, session)
+    lesson = _seed_lesson(
+        store, session, "seed", "subject-pronouns", "Subject pronouns"
+    )
+    criterion = store.skill(scope, lesson["focus_skill_id"])["success_criteria"][0]
+    planned = draft()
+    planned.update(existing_skill_key="subject-pronouns", new_skill=None)
+    for exercise in planned["exercises"]:
+        exercise["skills"][0]["success_criterion"] = criterion
+    calls = []
+
+    async def generate(*args, **kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(final_output=_LessonPlan.model_validate(planned))
+
+    monkeypatch.setattr("milai.tools.Runner.run", generate)
+    ctx = Context(
+        store,
+        scope,
+        session,
+        "practice",
+        "More exercises please",
+        "test",
+        generation_model=ScriptedModel([]),
+        planner_instructions="Generate a lesson.",
+        origin_lesson_id=lesson["id"],
+    )
+    before = list(store.db.iterdump())
+    result = json.loads(asyncio.run(invoke(ctx)))
+    assert result["error"] == "invalid_operation"
+    assert result["saved"] is False
+    assert "present_exercise" in result["guidance"]
+    assert "do not retry" in result["guidance"]
+    assert list(store.db.iterdump()) == before
+    assert ctx.lesson_ids == []
+    assert len(calls) == 1
+
+    exercise = _exercises(criterion)[0]
+    exercise["skills"][0]["skill_id"] = lesson["focus_skill_id"]
+    exercise["early_revisit_request"] = None
+    arguments = json.dumps({"exercise": exercise})
+
+    async def add_practice():
+        return await present_exercise.on_invoke_tool(
+            ToolContext(
+                ctx,
+                tool_name=present_exercise.name,
+                tool_call_id="practice",
+                tool_arguments=arguments,
+            ),
+            arguments,
+        )
+
+    with store.transaction():
+        saved = asyncio.run(add_practice())
+        store.save_turn(ctx, "Here is fresh practice.", [])
+    assert saved["lesson_id"] == lesson["id"]
+    assert len(store.lessons(scope)) == 1
+    assert (
+        len(store.lesson_detail(store.owner, session, lesson["id"])["exercises"]) == 4
+    )
+    active = store.active_lesson(scope)
+    assert active is not None and active["id"] == lesson["id"]
+    assert len(calls) == 1
+    with pytest.raises(RuntimeError, match="Only one lesson generation"):
+        asyncio.run(invoke(ctx))
+    assert len(calls) == 1
+    store.close()
