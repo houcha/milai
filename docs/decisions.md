@@ -1,5 +1,14 @@
 # Decision log
 
+## 2026-09-27 — Mastery describes evidence, not permission to advance
+
+- Remove direct and transitive prerequisite mastery gates from lesson creation.
+  Keep ownership, language, reference, and acyclic graph validation.
+- Explicit continuation chooses another appropriate skill even after incorrect
+  or incomplete practice. Explain necessary background inside that lesson.
+  Reviews remain optional; mastery, scores, and review timing are unchanged.
+- This supersedes earlier decisions requiring mastery before progression.
+
 ## 2026-09-26 — Final answers and practice-set accuracy
 
 - Replace correction loops with one saved submission per exercise, regardless of

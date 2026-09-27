@@ -17,7 +17,7 @@ lesson intent. The planner returns a typed draft with one focus skill and its
 direct prerequisites, objective, ordered Markdown sections with stable IDs,
 worked examples, recap, and three to six exercises. At least two exercises are
 unscaffolded. The application resolves skill references, checks ownership,
-prerequisite mastery, content bounds, and exercise contracts before saving.
+prerequisite graph integrity, content bounds, and exercise contracts before saving.
 The document is capped at 32,000 characters; the generation request allows
 32,768 output tokens shared by reasoning and visible output.
 
@@ -42,7 +42,7 @@ teaching focus; viewing an older lesson does not. A later lesson on the same ski
 is a separate Review entry. Titles are derived from language and skill, so an
 example context or source cannot become the lesson title.
 
-New skills require every ancestor prerequisite to be mastered. Mastery is derived
+Prerequisites inform lesson background without gating progression. Mastery is derived
 from two independent successes on distinct unscaffolded exercises since the
 latest substantial `needs_work` observation. An independent success has no
 skill-specific assistance. A minor slip can count as success while remaining
@@ -51,7 +51,8 @@ submission create no attempt or mastery evidence. Prepared exercises remain
 accessible after a minor slip; automatic new remedial practice waits for the
 existing delayed-review rule. An explicit request can bring practice forward.
 Assessments record due-review recommendations. Only an explicit continuation
-request lets main chat generate the next eligible lesson or review.
+request lets main chat generate the next appropriate lesson, with review optional. Incorrect or incomplete
+practice does not block a new focus or mark any prerequisite mastered.
 
 Exercises belong to a lesson, target its focus skill, and may list previously
 taught supporting skills. Attempts and help retain exact exercise and skill

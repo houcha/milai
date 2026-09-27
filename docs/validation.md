@@ -1,5 +1,14 @@
 # Validation reports
 
+## 2026-09-27 — Progression without mastery gates
+
+All 98 Python tests, Ruff lint, and ty passed. Regression coverage verifies
+progression with unmastered direct and transitive prerequisites, revisiting an
+earlier dependent skill, unchanged earlier answers/results, and no invented
+mastery. Existing ownership, graph validation, and rollback tests pass.
+Teaching scenarios for advancing after low scores are in `evaluation.md`;
+live model teaching quality has not been evaluated for this prompt change.
+
 ## 2026-09-26 — Final submissions and lesson accuracy
 
 All 97 Python tests, browser/renderer Node tests, Ruff format/lint, and ty passed.

@@ -44,7 +44,7 @@ No overall pass if source honesty or assistance distinction scores zero.
 | Interaction | Prepared exercises are appropriate after a complete explanation; questions receive local context without rewriting the document |
 | Feedback | Specific, actionable, respectful; separates correct and incorrect components, counts requested parts consistently, and never asks for corrections to a submitted exercise; does not assess questions as attempts |
 | Assistance | A helped retry is not called independent mastery |
-| Adaptation | Due reviews are recommended; explicit continuation selects eligible next teaching after checking prerequisites |
+| Adaptation | Due reviews are optional; explicit continuation selects another appropriate skill with necessary background |
 | Memory | Restart preserves useful facts, the lesson document, local discussion, and unresolved questions |
 
 Also manually exercise: proactive intent discovery; the same skill reused in a review
@@ -87,10 +87,11 @@ verified excerpts. Unknown source material must not be invented.
 
 | Scenario | Expected behavior |
 | --- | --- |
-| Beginner asks for an advanced construction with unmastered prerequisites | Tutor chooses the earliest teachable prerequisite, explains the relationship, and does not teach the advanced construction yet |
+| Beginner asks for an advanced construction with unmastered prerequisites | Tutor teaches the requested construction with necessary background; unmastered prerequisites do not block it |
 | German pronouns: learner answers four of five correctly but uses `es` for a sister instead of `sie` | Tutor records a minor slip if warranted and corrects briefly; prepared exercises remain available, while new remedial drills wait for later review unless requested |
 | Substantial misunderstanding on the current skill | Tutor records difficulty and gives focused teaching |
 | Repeated difficulty on a previously taught skill | A due-review recommendation appears; explicit continuation may create a separate Review lesson while preserving history |
+| Low score or incomplete practice, then “Let’s move forward” | Tutor starts another appropriate skill, preserves scores and mastery evidence, and does not force remediation |
 | Two independent successes on distinct unscaffolded exercises | Skill becomes mastered unless a later `needs_work` observation resets the count |
 | An assisted or scaffolded success | Evidence is saved but does not advance mastery |
 | A later lesson uses an earlier skill | Exercise targets the current new skill and tags the earlier skill as supporting |

@@ -20,15 +20,17 @@ section or exercise question buttons. Further explanations appear in discussion;
 additional practice is appended to the lesson. The generated-lesson list records history, not a future
 roadmap. Reopening a past lesson does not change the current teaching focus.
 
-Prerequisite edges form a directed acyclic graph. Every prerequisite must be
-mastered before a new dependent skill is taught. Mastery means two independent
+Prerequisite edges form a directed acyclic graph. Prerequisites guide background
+explanations and never block progression. Mastery means two independent
 successes on distinct unscaffolded exercises since the latest substantial
 `needs_work` observation. Assisted, scaffolded, or uncertain responses do not
 count. A mostly correct answer with a minor slip may count as success, with the
 slip recorded for a later check. Prepared exercises remain available after such a
 slip; newly generated remedial drills wait for the delayed review unless the
-learner asks for them. An advanced request never bypasses a prerequisite; the
-tutor explains the relationship and teaches the earliest eligible skill.
+learner asks for them. An advanced request can proceed with
+necessary background explained inside the new lesson. Explicit requests to move
+forward choose another appropriate skill even after incorrect or incomplete
+practice; remedial lessons are not compulsory.
 
 Short-answer exercises can place editable blanks directly in numbered sentences.
 The learner fills them in and submits the exercise once; the tutor assesses all
@@ -49,8 +51,8 @@ Previously taught skills may support it. Questions and clarification do not coun
 as attempts. Help is attached only to the exercise skills it concerns, including
 help requested in main chat. Assessments record evidence and may recommend a
 review, but do not automatically open a new lesson. The learner can explicitly
-continue from an older or current lesson, and main chat chooses the next eligible
-lesson or review. Mastery remains derived from skill evidence. Separately, a
+continue from an older or current lesson, and main chat chooses the next appropriate
+lesson, or a review when requested. Mastery remains derived from skill evidence. Separately, a
 practice set shows its correct rate once all its exercises have been submitted.
 New assessments count explicitly requested answer parts, with partial credit;
 older sets without part counts show a labelled rate of fully correct exercises.

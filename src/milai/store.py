@@ -774,10 +774,6 @@ class Store:
                 prerequisite = self.skill(ctx.learner, prerequisite_id, active=True)
                 if prerequisite["language"] != language:
                     raise InvalidReference("Prerequisite language differs from lesson")
-                if not self.mastered(ctx.learner, prerequisite_id):
-                    raise ValueError(
-                        "Teach and master prerequisite skills before this lesson"
-                    )
             skill_id = self._resolve_skills(ctx, language, [], [new_skill])[
                 new_skill["key"]
             ]
@@ -790,13 +786,6 @@ class Store:
             )
         if skill["language"] != language:
             raise InvalidReference("Skill language does not match the lesson")
-        unmet = [
-            item
-            for item in self.prerequisites(ctx.learner, skill_id)
-            if not self.mastered(ctx.learner, item)
-        ]
-        if unmet:
-            raise ValueError("Teach and master all prerequisite skills first")
         active = self.active_lesson(ctx.learner)
         if active and active["focus_skill_id"] == skill_id:
             raise ValueError("This skill is already the active lesson; continue it")

@@ -1,4 +1,4 @@
-"""Lesson focus, prerequisite gating, mastery, and tutor persistence."""
+"""Lesson focus, prerequisite relationships, mastery, and tutor persistence."""
 
 import asyncio
 import json
@@ -266,7 +266,7 @@ def test_inline_exercise_tasks_persist_and_reject_invalid_markers(tmp_path):
     reopened.close()
 
 
-def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
+def test_one_skill_per_lesson_and_unmastered_prerequisites_allow_progression(tmp_path):
     store = Store(tmp_path / "lesson.db")
     session = store.session(store.owner)
     scope = store.learning_scope(store.owner, session)
@@ -283,22 +283,8 @@ def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
             [],
             "Same focus",
         )
-    with pytest.raises(ValueError, match="master"), store.transaction():
-        start_complete_lesson(
-            store,
-            context(store, scope, session, "blocked"),
-            "German",
-            None,
-            skill_spec("verb-agreement", "Verb agreement"),
-            [first_id],
-            "Next",
-        )
-    assert len(store.lessons(scope)) == 1
-    assert len(store.search_skills(scope, "German", "", 20)) == 1
-    for number in range(2):
-        task = exercise(store, scope, session, first_id, f"task-{number}")
-        observe(store, scope, session, task["id"], first_id, f"answer-{number}")
-    assert store.mastered(scope, first_id)
+    before = store.lesson_detail(store.owner, session, first["id"])
+    assert not store.mastered(scope, first_id)
     with store.transaction():
         next_lesson = start_complete_lesson(
             store,
@@ -309,6 +295,8 @@ def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
             [first_id],
             "Build sentences",
         )
+    assert not store.mastered(scope, first_id)
+    assert store.lesson_detail(store.owner, session, first["id"]) == before
     assert next_lesson["focus_skill_id"] != first_id
     assert store.prerequisites(scope, next_lesson["focus_skill_id"]) == [first_id]
     with pytest.raises(ValueError, match="exactly one target"), store.transaction():
@@ -338,6 +326,51 @@ def test_one_skill_per_lesson_and_prerequisites_gate_progression(tmp_path):
         supporting=[first_id],
     )
     assert [item["role"] for item in task["skills"]] == ["target", "supporting"]
+    assert store.db.execute("PRAGMA foreign_key_check").fetchall() == []
+    store.close()
+
+
+def test_unmastered_ancestors_allow_new_and_revisited_lessons(tmp_path):
+    store = Store(tmp_path / "ancestors.db")
+    session = store.session(store.owner)
+    scope = store.learning_scope(store.owner, session)
+    first = seed_graph(store, scope, session)["lesson"]
+    first_id = first["focus_skill_id"]
+    task = exercise(store, scope, session, first_id, "difficulty")
+    observe(store, scope, session, task["id"], first_id, "answer", outcome="needs_work")
+    before = store.lesson_detail(store.owner, session, first["id"])
+    lessons = [first]
+    for key in ("agreement", "questions"):
+        with store.transaction():
+            lessons.append(
+                start_complete_lesson(
+                    store,
+                    context(store, scope, session, key),
+                    "German",
+                    None,
+                    skill_spec(key, key.title()),
+                    [lessons[-1]["focus_skill_id"]],
+                    "Move forward",
+                )
+            )
+    assert set(store.prerequisites(scope, lessons[-1]["focus_skill_id"])) == {
+        lesson["focus_skill_id"] for lesson in lessons[:-1]
+    }
+    with store.transaction():
+        review = start_complete_lesson(
+            store,
+            context(store, scope, session, "revisit"),
+            "German",
+            lessons[1]["focus_skill_id"],
+            None,
+            [],
+            "Requested review",
+        )
+    assert review["focus_skill_id"] == lessons[1]["focus_skill_id"]
+    assert all(
+        not store.mastered(scope, lesson["focus_skill_id"]) for lesson in lessons
+    )
+    assert store.lesson_detail(store.owner, session, first["id"]) == before
     assert store.db.execute("PRAGMA foreign_key_check").fetchall() == []
     store.close()
 

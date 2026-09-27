@@ -359,7 +359,7 @@ def _validated_lesson_draft(
 
 @function_tool(failure_error_function=tool_error)
 async def start_lesson(ctx: RunContextWrapper[Context], lesson: LessonIntent) -> dict:
-    """Plan and start one language-skill lesson, gated by mastered prerequisites."""
+    """Plan and start one language-skill lesson, informed by learner goals and skill evidence."""
     c = ctx.context
     c.check()
     profile = c.store.profile(c.learner)
