@@ -1127,7 +1127,7 @@ function continuationLessonId() {
 
 function syncContinuationControls() {
   const lessonId = continuationLessonId();
-  document.querySelector("#chat-shortcuts").hidden = !lessonId;
+  document.querySelector("#path-next").hidden = !lessonId;
   document.querySelector("#continue-learning").disabled = !lessonId || busy || continuationPending;
 }
 

@@ -1,5 +1,28 @@
 # Validation reports
 
+## 2026-09-30 — New lesson in the learning path
+
+`npm run test:web` passed. Existing continuation checks still cover the current
+teaching focus after revisiting older lessons, draft preservation, retry,
+duplicate prevention, and hiding the shortcut for empty sessions.
+
+A synthetic Chromium preview at 320, 390, 700, 701, and 1440 pixels verified
+that New lesson follows the last lesson inside the scrolling path panel, aligns
+with the lesson buttons, and leaves the composer clear. There was no horizontal
+overflow. The plus uses vector strokes centered inside its circle, and the marker
+stays vertically centered beside the button as its height changes. The
+gap before New lesson matches the 24-pixel gap between lessons. A dotted
+connector follows the marker axis from the last circle to the plus, including
+when titles wrap or the button text is enlarged. The
+connector uses fixed-size repeating dots anchored at the segments' shared edge,
+so their spacing stays continuous instead of changing with segment length.
+The circle's SVG allows stroke edges to render outside its viewport without
+clipping at fractional zoom levels. The
+accessibility tree names the action New lesson; lesson navigation
+and reload retain the path. Reviewed screenshots:
+[desktop](screenshots/new-lesson-path-desktop.png) and
+[mobile](screenshots/new-lesson-path-mobile.png).
+
 ## 2026-09-29 — Learning-path status and accuracy
 
 `npm run test:web` passed. Regression coverage distinguishes completed original

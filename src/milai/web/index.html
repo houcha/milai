@@ -19,6 +19,11 @@
         <h2 id="path-heading">Learning path</h2>
         <p id="path-empty" class="path-empty">Lessons will appear as you learn.</p>
         <ol id="learning-path" class="lesson-chain"></ol>
+        <div id="path-next" class="path-next" hidden>
+          <button id="continue-learning" class="path-next-button" type="button">
+            <svg class="path-next-icon" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6.5"/><path d="M7 4v6M4 7h6"/></svg>New lesson
+          </button>
+        </div>
       </section>
       <a id="skills-link" class="skills-link" href="#skills">Skills</a>
     </aside>
@@ -35,9 +40,6 @@
       <main class="workspace">
         <section class="chat-panel" data-view="chat" aria-label="Tutor conversation">
           <div id="messages" class="messages" aria-live="polite"></div>
-          <div id="chat-shortcuts" class="chat-shortcuts" aria-label="Conversation shortcuts" hidden>
-            <button id="continue-learning" class="quiet-button" type="button">New lesson</button>
-          </div>
           <form id="composer" class="composer">
             <label for="message" class="sr-only">Message Milai</label>
             <textarea id="message" maxlength="8000" rows="2" placeholder="Follow your curiosity…"></textarea>

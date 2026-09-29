@@ -1,5 +1,18 @@
 # Decision log
 
+## 2026-09-30 — Continue from the learning path
+
+- Move New lesson after the last lesson in the learning-path sidebar, with an
+  aligned plus marker, muted green text, and a subtle dashed outline. Keep it
+  beside the lesson history when the sidebar scrolls, including on narrow screens.
+- Use the same 24-pixel gap between every entry, including New lesson. Extend a
+  dotted connector from the last lesson's circle to the plus marker; earlier
+  lessons retain solid connectors.
+- Preserve continuation from the current teaching focus, draft preservation,
+  retry behavior, and hiding the action before the first lesson. Lesson pages
+  keep their existing actions. This supersedes the composer shortcut placement
+  from the 2026-09-27 continuation decision.
+
 ## 2026-09-29 — Separate lesson status from practice accuracy
 
 - Use a green checkmark for submission of the original practice set, a green ring

@@ -647,7 +647,7 @@ test("one lesson card includes all finished practice sets, including unscored re
   assert.equal(scores[1].textContent, "Practice 2: Submitted · Accuracy unavailable");
 });
 
-test("completed lessons only offer more practice and the chat shortcut preserves drafts on retry", async () => {
+test("completed lessons only offer more practice and the path shortcut preserves drafts on retry", async () => {
   const completed = completedLesson();
   let fail = true;
   const app = application("#lesson/older", async (path) => {
@@ -676,18 +676,18 @@ test("completed lessons only offer more practice and the chat shortcut preserves
   assert.equal(app.run("continuationPending"), false);
 });
 
-test("chat shortcut continues from current focus and hides when the session has no lessons", async () => {
+test("path shortcut continues from current focus and hides when the session has no lessons", async () => {
   const payload = sessionPayload();
   payload.learning.lessons[0] = completedLesson();
   const app = application("#chat", async () => streamResponse([{type: "complete", result: {
     reply: {text: "Next lesson"}, learning: payload.learning,
   }}]));
   app.run(`applySession(${JSON.stringify(payload)})`);
-  assert.equal(app.node("#chat-shortcuts").hidden, false);
+  assert.equal(app.node("#path-next").hidden, false);
   await app.node("#continue-learning").listeners.click();
   assert.equal(app.requests.at(-1).body.origin_lesson_id, "newer");
   app.run('applySession({session: "empty", sessions: [], conversation: [], learning: {lessons: []}})');
-  assert.equal(app.node("#chat-shortcuts").hidden, true);
+  assert.equal(app.node("#path-next").hidden, true);
   assert.equal(app.node("#continue-learning").disabled, true);
   assert.equal(app.requests.at(-1).body.lesson_id, undefined);
 });
@@ -871,7 +871,7 @@ test("exercise submission ignores an attached quote and completed exercise text 
   assert.equal(app.requests[3].body.exercise_id, "one");
 });
 
-test("viewing an older lesson does not change the chat shortcut's teaching focus", async () => {
+test("viewing an older lesson does not change the path shortcut's teaching focus", async () => {
   const app = application("#lesson/older", async (path) => {
     if (path.startsWith("/api/lessons/")) return {ok: true, json: async () => detail()};
     return streamResponse([{type: "complete", result: {reply: {text: "Next step", lesson_cards: []}, learning: {lessons: []}, sessions: []}}]);

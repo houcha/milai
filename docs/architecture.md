@@ -222,7 +222,7 @@ pending messages, and chat scroll. Unchanged cards retain their controls. Both i
 and committed answer responses supply results, with session checks for background
 responses. No new endpoint or model call is needed.
 
-New lesson appears only in a shortcut row above the main chat composer,
+New lesson appears after the last lesson in the learning-path sidebar,
 hidden when the session has no lesson. It sends explicit main-chat continuation
 with the current teaching focus as `origin_lesson_id`; opening an older lesson
 does not change that target. The tutor acknowledges results and prepares
@@ -298,7 +298,7 @@ toolbar row. A single-finger right swipe also returns to chat at widths up to
 within 700 milliseconds; vertical movement, cancellation, multitouch, selected
 text, controls, and horizontally scrollable content do not navigate. Native
 scrolling is prevented only after recognizing a horizontal rightward drag.
-Back navigation retains the teaching focus; the main chat's **New lesson**
+Back navigation retains the teaching focus; the learning path's **New lesson**
 shortcut advances from the current
 teaching focus. Browser session storage keeps per-session, per-lesson drafts, selected
 text, and reading position through reloads and clears them on session delete.

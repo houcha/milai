@@ -121,9 +121,11 @@ results; new recaps come from the final assessment turn, without a separate mode
 request. Older results without recaps retain their scores without an invented
 interpretation. Answer submissions and detailed feedback stay on exercise cards.
 
-**New lesson** is a shortcut immediately above the main chat composer,
-available once the session has a lesson. It advances from the current teaching
-focus, including when the learner has revisited an older lesson. The tutor
+**New lesson** follows the last lesson in the learning-path sidebar,
+using the same gap as other entries and a dotted connector from the last lesson
+to its plus marker. It is available once the session has a lesson and advances
+from the current teaching focus, including when the learner has revisited an older
+lesson. The tutor
 acknowledges available results and prepares the next appropriate lesson without
 another confirmation. The shortcut preserves an unsent message and is disabled
 while a request is pending. Lesson pages have no New lesson action.
