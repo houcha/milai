@@ -27,6 +27,8 @@ and stays with that message in conversation history. There are no repeated
 section or exercise question buttons. Further explanations appear in discussion;
 additional practice is appended to the lesson. The generated-lesson list records history, not a future
 roadmap. Reopening a past lesson does not change the current teaching focus.
+The learning path highlights the open lesson; in the main conversation it
+highlights the current teaching focus.
 
 Prerequisite edges form a directed acyclic graph. Prerequisites guide background
 explanations and never block progression. Mastery means two independent

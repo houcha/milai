@@ -273,6 +273,62 @@ function sessionPayload(session = "one") {
   };
 }
 
+test("sidebar highlight follows lesson navigation and returns to the teaching focus in chat", async () => {
+  const app = application("#chat", async (path) => ({ok: true, json: async () => ({
+    ...detail(), lesson: {...lesson, id: path.includes("newer") ? "newer" : "older"},
+  })}));
+  const payload = sessionPayload();
+  payload.learning.current_focus_lesson_id = "newer";
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  await app.run("renderView()");
+  const assertSelected = (id, ariaCurrent) => {
+    const links = app.node("#learning-path").querySelectorAll(".lesson-link");
+    for (const link of links) {
+      assert.equal(link.parentElement.classList.contains("current"), link.dataset.lessonId === id);
+      assert.equal(link.getAttribute("aria-current"), link.dataset.lessonId === id ? ariaCurrent : null);
+    }
+  };
+  assertSelected("newer", "step");
+  await app.node("#learning-path").children[0].children[0].listeners.click();
+  assert.equal(app.run("lessonData.id"), "older");
+  assertSelected("older", "page");
+  app.run(`renderLearning(${JSON.stringify(payload.learning)})`);
+  assertSelected("older", "page");
+  assert.equal(app.run("continuationLessonId()"), "newer");
+  await app.node("#learning-path").children[1].children[0].listeners.click();
+  assert.equal(app.run("lessonData.id"), "newer");
+  assertSelected("newer", "page");
+  app.run('location.hash = "#lesson/older"');
+  await app.run("renderView()");
+  assertSelected("older", "page");
+  await app.run('navigate("chat")');
+  assertSelected("newer", "step");
+});
+
+test("sidebar selects a lesson while it loads and ignores a stale lesson response", async () => {
+  const resolveLesson = new Map();
+  const app = application("#lesson/older", (path) => new Promise((resolve) => {
+    const id = path.includes("newer") ? "newer" : "older";
+    resolveLesson.set(id, () => resolve({ok: true, json: async () => ({
+      ...detail(), lesson: {...lesson, id},
+    })}));
+  }));
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  const older = app.run("renderView()");
+  const links = app.node("#learning-path").querySelectorAll(".lesson-link");
+  assert.equal(links[0].getAttribute("aria-current"), "page");
+  assert.equal(links[1].getAttribute("aria-current"), null);
+  const newer = app.run('navigate("lesson", "newer")');
+  assert.equal(links[0].parentElement.classList.contains("current"), false);
+  assert.equal(links[1].parentElement.classList.contains("current"), true);
+  resolveLesson.get("newer")();
+  await newer;
+  resolveLesson.get("older")();
+  await older;
+  assert.equal(app.run("lessonData.id"), "newer");
+  assert.deepEqual(app.node("#learning-path").querySelectorAll(".lesson-link").map(link => link.getAttribute("aria-current")), [null, "page"]);
+});
+
 test("language follows the selected session and stays out of lesson titles", async () => {
   const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
   const payload = sessionPayload();
@@ -514,7 +570,8 @@ test("lesson sidebar and main card open stored content directly", async () => {
   assert.equal(app.node("#lesson-view").hidden, false);
   assert.equal(app.node("#lesson-document").children[1].textContent, lesson.title);
   assert.equal(app.requests[0].path, "/api/lessons/older?session=one");
-  assert.equal(app.node("#learning-path").children[1].children[0].attributes["aria-current"], "step");
+  assert.equal(app.node("#learning-path").children[0].children[0].getAttribute("aria-current"), "page");
+  assert.equal(app.node("#learning-path").children[1].children[0].getAttribute("aria-current"), null);
   await app.node("#learning-path").children[0].children[0].listeners.click();
   assert.equal(app.requests.length, 1);
 });

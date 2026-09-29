@@ -281,12 +281,23 @@ function syncLessonCards() {
   elements.messages.scrollTop = scroll;
 }
 
+function syncPathSelection() {
+  const viewingLesson = currentRoute.view === "lesson";
+  const selectedId = viewingLesson ? currentRoute.lessonId
+    : learningData.current_focus_lesson_id || learningData.current_focus?.id || learningData.active_lesson?.id;
+  for (const link of elements.path.querySelectorAll(".lesson-link")) {
+    const selected = link.dataset.lessonId === selectedId;
+    link.parentElement.classList.toggle("current", selected);
+    if (selected) link.setAttribute("aria-current", viewingLesson ? "page" : "step");
+    else link.removeAttribute("aria-current");
+  }
+}
+
 function renderLearning(learning = {}) {
   learningData = learning;
   syncContinuationControls();
   syncLessonCards();
   const lessons = learning.lessons || [];
-  const focusId = learning.current_focus_lesson_id || learning.current_focus?.id || learning.active_lesson?.id;
   elements.path.replaceChildren();
   document.querySelector("#path-empty").hidden = lessons.length > 0;
   for (const lesson of lessons) {
@@ -294,17 +305,15 @@ function renderLearning(learning = {}) {
     const link = document.createElement("button");
     link.type = "button";
     link.className = "lesson-link";
+    link.dataset.lessonId = lesson.id;
     const result = lesson.practice_results?.at(-1);
     link.textContent = `${lesson.title}${result?.percentage != null ? ` · ${result.percentage}%` : ""}`;
     link.disabled = busy;
-    if (lesson.id === focusId) {
-      link.setAttribute("aria-current", "step");
-      item.classList.add("current");
-    }
     link.addEventListener("click", () => navigate("lesson", lesson.id));
     item.append(link);
     elements.path.append(item);
   }
+  syncPathSelection();
   const skills = learning.skills || [];
   elements.skillCount.textContent = String(skills.length);
   elements.skills.replaceChildren();
@@ -971,6 +980,7 @@ async function renderView() {
   if (changed && currentRoute.view === "lesson") saveReadingPosition();
   if (changed && currentRoute.view === "chat") chatScroll.set(activeSession, elements.messages.scrollTop);
   currentRoute = route;
+  syncPathSelection();
   if (changed) routeSequence++;
   document.querySelectorAll("[data-view]").forEach((panel) => { panel.hidden = panel.dataset.view !== route.view; });
   document.querySelector(".path-rail").hidden = route.view === "sessions";
