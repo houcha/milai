@@ -1,5 +1,25 @@
 # Decision log
 
+## 2026-09-29 — Language replaces brand word
+
+- Replace the path-rail's brand word with the selected session's language.
+  Hover and keyboard focus reveal `← Sessions` on the same link. Keep the brand
+  mark; use `milai` before a language is known.
+- Remove the separate Sessions breadcrumb and language badge from the session
+  header. On narrow screens, where the rail brand is hidden, show the language
+  link above the session name with a visible back arrow on touch screens.
+- Keep the language in Sessions-list metadata. This supersedes the badge placement
+  described in the 2026-09-27 entry.
+
+## 2026-09-27 — Show language at session level
+
+- Show the language once in the session header, beside the name on desktop and
+  below it on narrow screens. Include it in each Sessions list entry's metadata;
+  hide the badge while the language is unknown.
+- Derive lesson titles from the skill name alone and retain a `Review ·` prefix
+  for revisits. Apply this to existing lessons as well as new ones. This supersedes
+  the earlier language-and-skill title convention.
+
 ## 2026-09-27 — Keep continuation in main chat
 
 - Put New lesson only in a shortcut row above the main chat composer.

@@ -1,5 +1,30 @@
 # Validation reports
 
+## 2026-09-29 — Session language navigation
+
+`uv run ruff check .`, `uv run ty check .`, and `npm run test:web` passed.
+The preceding storage and title change passed all 153 Python tests; this
+navigation update changes only browser assets, web-view tests, and documentation.
+
+Regression coverage checks session-scoped language facts, fallback to a saved
+lesson's language, unknown languages, and titles after reopening the database.
+Web checks cover switching between languages, the unknown-language fallback,
+showing a newly discovered language, and retaining skill-only lesson titles.
+
+A synthetic Chromium preview at 1440 × 1000 and 390 × 844 verified the language
+in the path-rail brand, its **← Sessions** hover and keyboard-focus state, and the
+touch-screen link above the session name. The Sessions list retains language
+metadata. Switching sessions, reloading, unknown languages, chat-card titles,
+and Review titles passed. A long session name at 320 pixels fit without
+horizontal overflow. Reviewed screenshots:
+
+| View | Desktop | Mobile |
+| --- | --- | --- |
+| Lesson | [View](screenshots/session-language-lesson-desktop.png) | [View](screenshots/session-language-lesson-mobile.png) |
+| Sessions | [View](screenshots/session-language-sessions-desktop.png) | [View](screenshots/session-language-sessions-mobile.png) |
+
+[Desktop hover state](screenshots/session-language-hover-desktop.png).
+
 ## 2026-09-27 — Lesson completion handoff
 
 `just qa` passes formatting, lint, ty, and all 152 Python tests.

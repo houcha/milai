@@ -7,6 +7,14 @@ lesson with an **Open lesson** card, then lets the learner return to discuss pro
 and choose what comes next. The learner does not need to choose a curriculum or a
 specific source to begin.
 
+Each session is for one language. Its language replaces the brand word in the
+learning-path rail. Hovering or focusing that link reveals **← Sessions**; on
+touch screens the language link remains visible with a back arrow above the
+session name. Before the language is known, the brand word remains **milai**.
+The Sessions list also shows language as secondary text. Lesson headings, cards,
+and learning-path entries use only the skill name; revisits keep a **Review ·**
+prefix.
+
 Each lesson is a fixed document focused on one precise, reusable language skill.
 It contains an objective, ordered explanation sections, worked examples, a recap,
 and three to six exercises, including at least two without scaffolding. The

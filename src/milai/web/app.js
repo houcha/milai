@@ -975,9 +975,8 @@ async function renderView() {
   document.querySelectorAll("[data-view]").forEach((panel) => { panel.hidden = panel.dataset.view !== route.view; });
   document.querySelector(".path-rail").hidden = route.view === "sessions";
   document.querySelector(".app-shell").classList.toggle("wide-view", route.view === "sessions");
-  document.querySelector("#session-heading").hidden = route.view === "sessions";
-  document.querySelector("#sessions-link").textContent = route.view === "sessions" ? "Sessions" : "← Sessions";
-  for (const [id, selected] of [["sessions-link", route.view === "sessions"], ["session-label", route.view === "chat"], ["skills-link", route.view === "skills"]]) {
+  document.querySelector(".topbar").hidden = route.view === "sessions";
+  for (const [id, selected] of [["session-label", route.view === "chat"], ["skills-link", route.view === "skills"]]) {
     const link = document.querySelector(`#${id}`);
     if (selected) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
@@ -1250,7 +1249,8 @@ function renderSessions(sessions) {
     const title = document.createElement("span");
     title.textContent = session.title;
     const detail = document.createElement("small");
-    detail.textContent = session.turns ? `${session.turns} ${session.turns === 1 ? "exchange" : "exchanges"}` : "A fresh start";
+    const activity = session.turns ? `${session.turns} ${session.turns === 1 ? "exchange" : "exchanges"}` : "A fresh start";
+    detail.textContent = [session.language, activity].filter(Boolean).join(" · ");
     button.append(title, detail);
     button.addEventListener("click", () => manageSession("select", { session: session.id }));
     const row = document.createElement("article");
@@ -1271,7 +1271,13 @@ function renderSessions(sessions) {
     row.append(button, actions);
     list.append(row);
   });
-  elements.session.textContent = sessionItems.find((item) => item.id === activeSession)?.title || "New learning session";
+  const selected = sessionItems.find((item) => item.id === activeSession);
+  elements.session.textContent = selected?.title || "New learning session";
+  for (const id of ["brand-sessions-link", "mobile-sessions-link"]) {
+    const link = document.querySelector(`#${id}`);
+    link.querySelector(".session-nav-language").textContent = selected?.language || "milai";
+    link.setAttribute("aria-label", selected?.language ? `Sessions · ${selected.language}` : "Sessions");
+  }
 }
 
 function applySession(payload) {

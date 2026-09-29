@@ -6,7 +6,7 @@ import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers
 import { renderExerciseMarkdown } from "../src/milai/web/markdown.bundle.js";
 
 const lesson = {
-  id: "older", title: "German · Subject pronouns", objective: "Choose the right subject pronoun.",
+  id: "older", title: "Subject pronouns", objective: "Choose the right subject pronoun.",
   sections: [{id: "forms", title: "The forms", markdown: "Use **ich** for I."}],
   worked_examples: ["**Ich** singe."], recap: "Use the pronoun that fits the speaker.",
   exercises: [
@@ -219,6 +219,11 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
     if (!nodes.has(selector)) nodes.set(selector, element());
     return nodes.get(selector);
   };
+  for (const selector of ["#brand-sessions-link", "#mobile-sessions-link"]) {
+    const language = element(null, "span");
+    language.className = "session-nav-language";
+    node(selector).append(language);
+  }
   node("#lesson-document").dataset.selectionSource = "";
   node("#lesson-reading").append(node("#lesson-document"), node("#lesson-exercises"));
   const context = vm.createContext({
@@ -262,11 +267,49 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
 
 function sessionPayload(session = "one") {
   return {
-    session, sessions: [{id: session, title: "German practice"}], conversation: [],
-    learning: {lessons: [{id: "older", title: lesson.title}, {id: "newer", title: "German · Verbs"}],
+    session, sessions: [{id: session, title: "Daily practice", language: "German"}], conversation: [],
+    learning: {lessons: [{id: "older", title: lesson.title}, {id: "newer", title: "Verbs"}],
       active_lesson: {id: "newer"}},
   };
 }
+
+test("language follows the selected session and stays out of lesson titles", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  const payload = sessionPayload();
+  payload.sessions = [
+    {id: "one", title: "Daily practice", language: "German", turns: 2},
+    {id: "two", title: "Daily practice", language: "French", turns: 1},
+    {id: "empty", title: "New learning session", language: null, turns: 0},
+  ];
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  await app.run("renderView()");
+  for (const selector of ["#brand-sessions-link", "#mobile-sessions-link"]) {
+    const link = app.node(selector);
+    assert.equal(link.querySelector(".session-nav-language").textContent, "German");
+    assert.equal(link.attributes["aria-label"], "Sessions · German");
+  }
+  assert.equal(app.node("#session-label").textContent, "Daily practice");
+  assert.equal(app.descendants(app.node("#lesson-document")).find(node => node.tagName === "H1").textContent, "Subject pronouns");
+  assert.equal(app.descendants(app.node("#learning-path")).find(node => node.tagName === "BUTTON").textContent, "Subject pronouns");
+  const details = app.descendants(app.node("#sessions")).filter(node => node.tagName === "SMALL");
+  assert.deepEqual(details.map(node => node.textContent), ["German · 2 exchanges", "French · 1 exchange", "A fresh start"]);
+  await app.run('navigate("skills")');
+  assert.equal(app.node(".topbar").hidden, false);
+  assert.equal(app.node("#brand-sessions-link").querySelector(".session-nav-language").textContent, "German");
+  await app.run('navigate("sessions")');
+  assert.equal(app.node(".topbar").hidden, true);
+  app.run(`applySession(${JSON.stringify({...payload, session: "two", learning: {}})})`);
+  await app.run('navigate("chat")');
+  assert.equal(app.node(".topbar").hidden, false);
+  assert.equal(app.node("#brand-sessions-link").querySelector(".session-nav-language").textContent, "French");
+  app.run(`applySession(${JSON.stringify({...payload, session: "empty", learning: {}})})`);
+  assert.equal(app.node("#brand-sessions-link").querySelector(".session-nav-language").textContent, "milai");
+  assert.equal(app.node("#brand-sessions-link").attributes["aria-label"], "Sessions");
+  payload.sessions[2].language = "Italian";
+  app.run(`renderSessions(${JSON.stringify(payload.sessions)})`);
+  assert.equal(app.node("#brand-sessions-link").querySelector(".session-nav-language").textContent, "Italian");
+  assert.equal(app.node("#mobile-sessions-link").querySelector(".session-nav-language").textContent, "Italian");
+});
 
 function completedLesson() {
   return {...lesson, practice_results: [{
@@ -463,7 +506,7 @@ for (const changedSession of [false, true]) {
 test("lesson sidebar and main card open stored content directly", async () => {
   const app = application("#chat", async (path) => ({ok: true, json: async () => detail()}));
   app.run(`applySession(${JSON.stringify(sessionPayload())}); renderConversation([{
-    role: "assistant", content: "I made a lesson.", lesson_cards: [{id: "older", title: "German · Subject pronouns"}]
+    role: "assistant", content: "I made a lesson.", lesson_cards: [{id: "older", title: "Subject pronouns"}]
   }]);`);
   const card = app.node("#messages").children[0].children.at(-1);
   await card.children.at(-1).listeners.click();

@@ -270,7 +270,7 @@ def test_one_skill_per_lesson_and_unmastered_prerequisites_allow_progression(tmp
     scope = store.learning_scope(store.owner, session)
     first = seed_graph(store, scope, session)["lesson"]
     first_id = first["focus_skill_id"]
-    assert first["title"] == "German · Subject pronouns"
+    assert first["title"] == "Subject pronouns"
     with pytest.raises(ValueError, match="already the active lesson"):
         start_complete_lesson(
             store,
@@ -419,7 +419,7 @@ def test_mastery_requires_distinct_unassisted_exercises_since_last_difficulty(tm
             [],
             "Requested review",
         )
-    assert review["review"] and review["title"].startswith("Review: German ·")
+    assert review["review"] and review["title"] == "Review · Subject pronouns"
     assert len(store.lessons(scope)) == 3
     store.close()
 
@@ -788,7 +788,7 @@ def test_start_lesson_tool_uses_private_one_skill_plan(tmp_path, monkeypatch):
         result = asyncio.run(
             invoke(start_lesson, ctx, {"lesson": {"intent": "Begin learning"}})
         )
-    assert result["title"] == "German · Subject pronouns"
+    assert result["title"] == "Subject pronouns"
     assert len(store.lessons(scope)) == 1
     assert len(requests) == 1
     assert "reusable_active_skills" in requests[0]

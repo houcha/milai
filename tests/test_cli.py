@@ -88,12 +88,12 @@ def test_cli_renders_open_lesson_card(capsys):
         TutorReply(
             text="I prepared one skill for your trip.",
             activities=[],
-            lesson_cards=[{"id": "lesson-1", "title": "English · Past tense"}],
+            lesson_cards=[{"id": "lesson-1", "title": "Past tense"}],
         )
     )
     output = capsys.readouterr().out
     assert "I prepared one skill for your trip" in output
-    assert "[OPEN LESSON] English · Past tense · /lesson lesson-1" in output
+    assert "[OPEN LESSON] Past tense · /lesson lesson-1" in output
 
 
 def test_cli_opens_stored_lesson_and_routes_answer_and_continuation(
@@ -117,7 +117,7 @@ def test_cli_opens_stored_lesson_and_routes_answer_and_continuation(
             return session
 
         def lessons(self, scope):
-            return [{"id": "lesson-1", "title": "English · Past tense"}]
+            return [{"id": "lesson-1", "title": "Past tense"}]
 
         def lesson_detail(self, learner, session, lesson_id):
             assert (learner, session, lesson_id) == (
@@ -127,7 +127,7 @@ def test_cli_opens_stored_lesson_and_routes_answer_and_continuation(
             )
             return {
                 "id": lesson_id,
-                "title": "English · Past tense",
+                "title": "Past tense",
                 "objective": "Tell someone what happened yesterday.",
                 "sections": [
                     {"id": "form", "title": "Form", "markdown": "Use the past form."}

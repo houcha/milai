@@ -368,6 +368,11 @@ class Store:
                 "SELECT s.id, s.created, coalesce(nullif(sc.title, ''), "
                 "(SELECT substr(message, 1, 80) FROM turns WHERE session=s.id ORDER BY rowid LIMIT 1), "
                 "'New learning session') AS title, "
+                "coalesce((SELECT nullif(trim(value), '') FROM learner_facts "
+                "WHERE learner=sc.scope AND field='target_language' "
+                "ORDER BY rowid DESC LIMIT 1), "
+                "(SELECT language FROM lessons WHERE learner=sc.scope "
+                "ORDER BY rowid LIMIT 1)) AS language, "
                 "(SELECT count(*) FROM turns WHERE session=s.id) AS turns "
                 "FROM sessions s JOIN session_scopes sc ON sc.session=s.id "
                 "WHERE s.learner=? ORDER BY s.rowid DESC",
@@ -1043,8 +1048,7 @@ class Store:
         return {
             "id": lesson_id,
             "language": row["language"],
-            "title": ("Review: " if review else "")
-            + f"{row['language']} · {skill['name']}",
+            "title": ("Review · " if review else "") + skill["name"],
             "focus_skill_id": skill["id"],
             "skill": skill,
             "reason": row["reason"],

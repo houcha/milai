@@ -10,7 +10,11 @@
 <body>
   <div class="app-shell">
     <aside class="path-rail" aria-label="Learning path">
-      <a class="brand" href="#chat"><span class="brand-mark">m.</span><strong>milai</strong></a>
+      <a id="brand-sessions-link" class="brand session-nav" href="#sessions" aria-label="Sessions">
+        <span class="brand-mark" aria-hidden="true">m.</span>
+        <strong class="session-nav-language" aria-hidden="true">milai</strong>
+        <strong class="session-nav-back" aria-hidden="true">← Sessions</strong>
+      </a>
       <section id="path-panel" aria-labelledby="path-heading">
         <h2 id="path-heading">Learning path</h2>
         <p id="path-empty" class="path-empty">Lessons will appear as you learn.</p>
@@ -21,7 +25,10 @@
     <div class="studio">
       <header class="topbar">
         <div class="session-header">
-          <a id="sessions-link" href="#sessions">← Sessions</a>
+          <a id="mobile-sessions-link" class="mobile-session-nav session-nav" href="#sessions" aria-label="Sessions">
+            <span class="session-nav-language" aria-hidden="true">milai</span>
+            <span class="session-nav-back" aria-hidden="true">← Sessions</span>
+          </a>
           <h1 id="session-heading"><a id="session-label" href="#chat">New learning session</a></h1>
         </div>
       </header>

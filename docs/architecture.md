@@ -45,8 +45,15 @@ A skill is a language-specific, reusable ability with a definition and observabl
 success criteria. Directed prerequisite edges must be acyclic. A lesson references
 exactly one focus skill. Generating a lesson updates the session's current
 teaching focus; viewing an older lesson does not. A later lesson on the same skill
-is a separate Review entry. Titles are derived from language and skill, so an
-example context or source cannot become the lesson title.
+is a separate Review entry. Titles are derived from the skill name, with a
+`Review ·` prefix for revisits; an example context or source cannot become the
+lesson title. Each session has one language, shown in the browser's path-rail
+brand and Sessions list. On narrow screens the language link moves above the
+session title; hover and keyboard focus expose its Sessions destination. Session
+metadata uses the latest saved target-language
+fact, falling back to the first stored lesson's language when no fact is available.
+Unknown languages show the default brand word. These labels and titles are derived on read,
+including for existing lessons, without a schema change.
 
 Prerequisites inform lesson background without gating progression. Mastery is derived
 from two independent successes on distinct unscaffolded exercises since the

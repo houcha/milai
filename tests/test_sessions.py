@@ -9,7 +9,7 @@ import pytest
 from milai.store import InvalidReference, Store
 from milai.tools import Exercise
 from milai.web import WebApplication
-from tests.test_learning import context, seed_graph
+from tests.test_learning import context, seed_graph, skill_spec, start_complete_lesson
 
 
 class Writer:
@@ -24,6 +24,54 @@ class Writer:
 
     def payload(self):
         return json.loads(bytes(self.data).split(b"\r\n\r\n", 1)[1])
+
+
+def test_session_languages_use_own_facts_or_saved_lessons_after_reopen(tmp_path):
+    path = tmp_path / "languages.db"
+    store = Store(path)
+    learner = store.owner
+    saved, onboarding, empty = [store.session(learner) for _ in range(3)]
+    scope = store.learning_scope(learner, saved)
+    with store.transaction():
+        lesson = start_complete_lesson(
+            store,
+            context(store, scope, saved),
+            "German",
+            None,
+            skill_spec(),
+            [],
+            "Saved lesson without a target-language fact",
+        )
+        for owner, session, language in [
+            (learner, saved, "English"),
+            (store.learning_scope(learner, onboarding), onboarding, "Spanish"),
+            (store.learning_scope(learner, onboarding), onboarding, "French"),
+        ]:
+            store.record_facts(
+                context(store, owner, session),
+                [
+                    {
+                        "field": "target_language",
+                        "value": language,
+                        "learner_quote": language,
+                    }
+                ],
+            )
+    store.close()
+
+    store = Store(path)
+    app = WebApplication(store, cast(Any, object()), saved, 8765)
+    payload = app.bootstrap()
+    assert {item["id"]: item["language"] for item in payload["sessions"]} == {
+        saved: "German",
+        onboarding: "French",
+        empty: None,
+    }
+    assert payload["learning"]["lessons"][0]["title"] == "Subject pronouns"
+    assert store.lesson_detail(learner, saved, lesson["id"])["title"] == (
+        "Subject pronouns"
+    )
+    store.close()
 
 
 def test_sessions_isolate_skills_lessons_and_delete_graph(tmp_path):
@@ -192,7 +240,7 @@ def test_tutor_receives_and_writes_only_selected_session_state(tmp_path, monkeyp
     )
     asyncio.run(tutor.respond(store.owner, first, "German through songs"))
     asyncio.run(tutor.respond(store.owner, second, "Italian at a café"))
-    assert seen[0]["title"] == "German · Subject pronouns"
+    assert seen[0]["title"] == "Subject pronouns"
     assert seen[1] is None
     assert store.profile(scope)["goals"]["value"] == "German through songs"
     assert (

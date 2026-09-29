@@ -13,7 +13,7 @@ from milai.web import WebApplication, learning_view
 def test_learning_view_projects_lessons_and_mastery():
     snapshot = {
         "profile": {"target_language": {"value": "German", "learner_quote": "German"}},
-        "lessons": [{"id": "lesson-1", "title": "German · Subject pronouns"}],
+        "lessons": [{"id": "lesson-1", "title": "Subject pronouns"}],
         "active_lesson": {"id": "lesson-1", "focus_skill_id": "skill-1"},
         "skills": [
             {
@@ -26,7 +26,7 @@ def test_learning_view_projects_lessons_and_mastery():
     }
     view = learning_view(snapshot)
     assert view["profile"] == {"target_language": "German"}
-    assert view["lessons"][0]["title"] == "German · Subject pronouns"
+    assert view["lessons"][0]["title"] == "Subject pronouns"
     assert view["active_lesson"]["focus_skill_id"] == "skill-1"
     assert view["skills"][0]["mastered"] is True
 

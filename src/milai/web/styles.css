@@ -9,9 +9,13 @@ button:disabled { opacity:.5; cursor:wait; }
 :focus-visible { outline:2px solid var(--green); outline-offset:4px; }
 a { color:inherit; }
 .app-shell { display:grid; grid-template-columns:280px minmax(0,1fr); height:100dvh; }
-.brand { display:flex; gap:11px; align-items:center; text-decoration:none; margin:0 10px 38px; }
-.brand-mark { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; background:var(--green); color:#f2f2d9; font:italic 31px Georgia,serif; }
-.brand strong { font:30px Georgia,serif; letter-spacing:-1px; }
+.brand { display:grid; grid-template-columns:42px minmax(0,1fr); gap:11px; align-items:center; text-decoration:none; margin:0 10px 38px; min-width:0; }
+.brand-mark { display:grid; grid-column:1; grid-row:1; place-items:center; width:42px; height:42px; border-radius:50%; background:var(--green); color:#f2f2d9; font:italic 31px Georgia,serif; }
+.brand strong { grid-column:2; grid-row:1; min-width:0; overflow-wrap:anywhere; font:30px Georgia,serif; letter-spacing:-1px; }
+.session-nav-back { visibility:hidden; }
+.session-nav:hover .session-nav-language,.session-nav:focus-visible .session-nav-language { visibility:hidden; }
+.session-nav:hover .session-nav-back,.session-nav:focus-visible .session-nav-back { visibility:visible; }
+.mobile-session-nav { display:none; }
 .new-session { border:0; border-radius:8px; background:var(--green); color:white; padding:12px 16px; text-align:left; font-weight:550; }
 .new-session:hover { background:#2e4026; }
 .new-session span { margin-right:10px; }
@@ -116,9 +120,7 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .skills-link { display:block; margin-top:16px; border-top:1px solid var(--line); padding:16px 10px 0; text-decoration:none; color:var(--green); }
 .skills-link[aria-current] { font-weight:700; }
 .session-header { min-width:0; }
-#sessions-link { display:inline-block; color:var(--muted); font-size:12px; text-decoration:none; padding:4px 0; }
-#sessions-link:hover { color:var(--green); text-decoration:underline; }
-#session-heading { margin:8px 0 0; font-size:22px; font-weight:500; line-height:1.4; overflow-wrap:anywhere; }
+#session-heading { min-width:0; margin:0; font-size:22px; font-weight:500; line-height:1.4; overflow-wrap:anywhere; }
 #session-label { text-decoration:none; }
 #session-label:hover { color:var(--green); }
 .topbar { border-bottom:1px solid var(--line); }
@@ -141,6 +143,10 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
   #path-panel,.lesson-chain { min-width:0; }
   .path-rail .brand { display:none; }
   #path-heading { margin:12px 0; }
+  .mobile-session-nav { display:inline-grid; color:var(--green); font-size:13px; text-decoration:none; margin-bottom:8px; overflow-wrap:anywhere; }
+  .mobile-session-nav span { grid-column:1; grid-row:1; }
+  .mobile-session-nav:hover { text-decoration:underline; }
+  .mobile-session-nav .session-nav-back { color:var(--muted); }
   #session-heading { font-size:18px; }
   .skills-link { padding:8px 0 0; margin-top:4px; }
   .workspace { order:2; flex:1; min-height:0; min-width:0; }
@@ -152,6 +158,12 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
   .session-row { align-items:stretch; flex-direction:column; gap:4px; }
   .session-actions { padding:0 12px 10px; }
   .sessions-heading { flex-wrap:wrap; }
+}
+@media (hover:none) and (max-width:700px) {
+  .mobile-session-nav { position:relative; padding-left:17px; }
+  .mobile-session-nav::before { content:"←"; position:absolute; left:0; }
+  .mobile-session-nav:hover .session-nav-language,.mobile-session-nav:focus-visible .session-nav-language { visibility:visible; }
+  .mobile-session-nav:hover .session-nav-back,.mobile-session-nav:focus-visible .session-nav-back { visibility:hidden; }
 }
 
 .lesson-card { margin-top:20px; padding:20px 22px; background:var(--surface); border:1px solid #b6c3a8; border-left:4px solid var(--green); border-radius:10px; }
