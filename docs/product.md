@@ -27,8 +27,15 @@ and stays with that message in conversation history. There are no repeated
 section or exercise question buttons. Further explanations appear in discussion;
 additional practice is appended to the lesson. The generated-lesson list records history, not a future
 roadmap. Reopening a past lesson does not change the current teaching focus.
-The learning path highlights the open lesson; in the main conversation it
-highlights the current teaching focus.
+Lesson view fills the workspace without the learning-path sidebar or session
+header. It keeps the lesson heading and makes the full left reading gutter a
+back-navigation target, with a small arrow centered inside it and no toolbar
+row. Scrolling over that gutter scrolls the lesson. On narrow screens the arrow
+sits beside the existing tabs; a deliberate right swipe on reading or discussion content also
+returns to the main conversation. Scrolling, text selection, answer controls,
+and horizontally scrollable content retain their normal interactions.
+Returning to the main conversation restores the sidebar and session header,
+with the learning path highlighting the current teaching focus.
 
 Prerequisite edges form a directed acyclic graph. Prerequisites guide background
 explanations and never block progression. Mastery means two independent

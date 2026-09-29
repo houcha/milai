@@ -132,7 +132,7 @@ function streamResponse(events) {
   };
 }
 
-function application(hash = "#chat", respond = () => new Promise(() => {}), browserStorage = storage()) {
+function application(hash = "#chat", respond = () => new Promise(() => {}), browserStorage = storage(), viewportWidth = 1440) {
   const requests = [];
   const documentListeners = {};
   let selection = null;
@@ -140,7 +140,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
     const classes = new Set();
     let html = "";
     const item = {
-      hidden: false, value: "", textContent: "", scrollTop: 0, scrollHeight: 500,
+      hidden: false, value: "", textContent: "", scrollTop: 0, scrollHeight: 500, clientHeight: 200,
       get innerHTML() { return html; },
       set innerHTML(value) {
         html = value;
@@ -195,6 +195,8 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
       removeAttribute(name) { delete this.attributes[name]; },
       focus() {}, select() {}, showModal() {}, close() {},
       scrollIntoView() { this.scrolled = true; },
+      scrollBy({top}) { this.scrollTop = Math.max(0, Math.min(this.scrollHeight - this.clientHeight, this.scrollTop + top)); },
+      getBoundingClientRect() { return {left: 0}; },
       querySelector(selector) { return descendants(this).find((child) => matches(child, selector)) ?? null; },
       querySelectorAll(selector) { return descendants(this).filter((child) => matches(child, selector)); },
       requestSubmit() { this.listeners.submit?.({preventDefault() {}}); },
@@ -233,7 +235,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
     renderMarkdown: (value) => value, sessionStorage: browserStorage,
     TextDecoder, Uint8Array,
     location: new URL(hash, "http://localhost/"),
-    window: {addEventListener() {}, getSelection: () => selection},
+    window: {addEventListener() {}, getSelection: () => selection, matchMedia: () => ({matches: viewportWidth <= 850})},
     fetch: (path, options = {}) => {
       if (path === "/api/bootstrap") return new Promise(() => {});
       requests.push({path, body: options.body ? JSON.parse(options.body) : null});
@@ -254,6 +256,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
   vm.runInContext("setBusy(false)", context);
   return {
     node, requests, storage: browserStorage, run: (code) => vm.runInContext(code, context), descendants,
+    resize(width) { viewportWidth = width; },
     select(start, text, end = start) {
       selection = {
         isCollapsed: !text, rangeCount: 1, toString: () => text,
@@ -272,6 +275,151 @@ function sessionPayload(session = "one") {
       active_lesson: {id: "newer"}},
   };
 }
+
+test("lesson view uses the full workspace and restores navigation on return", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  assert.equal(app.node(".path-rail").hidden, true);
+  assert.equal(app.node(".topbar").hidden, true);
+  assert.equal(app.node(".app-shell").classList.contains("wide-view"), true);
+  assert.equal(app.node("#lesson-view").hidden, false);
+  assert.equal(app.descendants(app.node("#lesson-document")).find(node => node.tagName === "H1").textContent, lesson.title);
+  await app.node("#back-to-conversation").listeners.click();
+  assert.equal(app.node(".path-rail").hidden, false);
+  assert.equal(app.node(".topbar").hidden, false);
+  assert.equal(app.node(".app-shell").classList.contains("wide-view"), false);
+  assert.equal(app.node(".chat-panel").hidden, false);
+  await app.run('navigate("sessions")');
+  assert.equal(app.node(".path-rail").hidden, true);
+  assert.equal(app.node(".topbar").hidden, true);
+  await app.run('navigate("skills")');
+  assert.equal(app.node(".path-rail").hidden, false);
+  assert.equal(app.node(".topbar").hidden, false);
+  assert.equal(app.node(".app-shell").classList.contains("wide-view"), false);
+});
+
+test("wheel events over the back gutter scroll the lesson without navigating or intercepting zoom", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const reading = app.node("#lesson-reading");
+  reading.scrollHeight = 1200;
+  reading.scrollTop = 200;
+  const button = app.node("#back-to-conversation");
+  const wheel = (deltaY, deltaMode = 0, options = {}) => {
+    const event = {deltaY, deltaMode, cancelable: true, prevented: false,
+      preventDefault() { this.prevented = true; }, ...options};
+    button.listeners.wheel(event);
+    assert.equal(app.run("currentRoute.view"), "lesson");
+    return event;
+  };
+  assert.equal(wheel(60).prevented, true);
+  assert.equal(reading.scrollTop, 260);
+  wheel(-40);
+  assert.equal(reading.scrollTop, 220);
+  wheel(3, 1);
+  assert.equal(reading.scrollTop, 268);
+  wheel(1, 2);
+  assert.equal(reading.scrollTop, 468);
+  assert.equal(wheel(5.5, 0, {cancelable: false}).prevented, false);
+  assert.equal(reading.scrollTop, 473.5);
+  for (const options of [{ctrlKey: true}, {metaKey: true}]) {
+    assert.equal(wheel(100, 0, options).prevented, false);
+    assert.equal(reading.scrollTop, 473.5);
+  }
+  assert.equal(wheel(0, 0, {deltaX: 100}).prevented, false);
+  assert.equal(reading.scrollTop, 473.5);
+  wheel(10000);
+  assert.equal(reading.scrollTop, 1000);
+  wheel(-10000);
+  assert.equal(reading.scrollTop, 0);
+  app.resize(390);
+  assert.equal(wheel(100).prevented, false);
+  assert.equal(reading.scrollTop, 0);
+  await button.listeners.click();
+  assert.equal(app.run("currentRoute.view"), "chat");
+});
+
+function swipeEvent(target, x, y, time, ended = false) {
+  const touch = {identifier: 1, clientX: x, clientY: y};
+  return {target, touches: ended ? [] : [touch], changedTouches: [touch], timeStamp: time,
+    cancelable: true, prevented: false, preventDefault() { this.prevented = true; }};
+}
+
+test("mobile right swipe returns from either lesson tab and preserves the draft and reading position", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  app.resize(390);
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const events = app.node("#lesson-view").listeners;
+  app.node("#lesson-message").value = "What does this mean?";
+  app.node("#lesson-message").listeners.input();
+  for (const [tab, target] of [["lesson", "#lesson-document"], ["discussion", "#lesson-messages"]]) {
+    app.run(`setLessonTab("${tab}")`);
+    app.node("#lesson-reading").scrollTop = 123;
+    events.touchstart(swipeEvent(app.node(target), 40, 200, 0));
+    const move = swipeEvent(app.node(target), 140, 205, 150);
+    events.touchmove(move);
+    assert.equal(move.prevented, true);
+    await events.touchend(swipeEvent(app.node(target), 200, 205, 250, true));
+    assert.equal(app.run("currentRoute.view"), "chat");
+    await app.run('navigate("lesson", "older")');
+    assert.equal(app.node("#lesson-message").value, "What does this mean?");
+    assert.equal(app.node("#lesson-reading").scrollTop, 123);
+  }
+});
+
+test("swipe back leaves scrolling, short or slow drags, left swipes, cancellation and multitouch alone", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  app.resize(390);
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const events = app.node("#lesson-view").listeners;
+  const target = app.node("#lesson-document");
+  for (const [x, y, time] of [[45, 320, 150], [75, 205, 150], [200, 205, 900], [-60, 205, 150]]) {
+    events.touchstart(swipeEvent(target, 40, 200, 0));
+    const move = swipeEvent(target, x, y, time);
+    events.touchmove(move);
+    assert.equal(move.prevented, x === 75);
+    await events.touchend(swipeEvent(target, x, y, time + 50, true));
+    assert.equal(app.run("currentRoute.view"), "lesson");
+  }
+  for (const cancel of [() => events.touchcancel(), () => events.touchstart({...swipeEvent(target, 40, 200, 50), touches: [{}, {}]})]) {
+    events.touchstart(swipeEvent(target, 40, 200, 0));
+    cancel();
+    await events.touchend(swipeEvent(target, 200, 205, 250, true));
+    assert.equal(app.run("currentRoute.view"), "lesson");
+  }
+});
+
+test("swipe back ignores controls, selected text, desktop and busy conversations", async () => {
+  const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
+  app.resize(390);
+  app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+  await app.run("renderView()");
+  const events = app.node("#lesson-view").listeners;
+  const checkIgnored = async (target) => {
+    events.touchstart(swipeEvent(target, 40, 200, 0));
+    const move = swipeEvent(target, 140, 205, 150);
+    events.touchmove(move);
+    assert.equal(move.prevented, false);
+    await events.touchend(swipeEvent(target, 200, 205, 250, true));
+    assert.equal(app.run("currentRoute.view"), "lesson");
+  };
+  for (const tag of ["input", "textarea", "select", "button", "a", "label", "pre", "code", "table"]) {
+    await checkIgnored(app.run(`document.createElement("${tag}")`));
+  }
+  const target = app.node("#lesson-document");
+  app.select(target, "Use ich for I.");
+  await checkIgnored(target);
+  app.select(target, "");
+  app.resize(1440);
+  await checkIgnored(target);
+  app.resize(390);
+  app.run("setBusy(true)");
+  await checkIgnored(target);
+});
 
 test("sidebar highlight follows lesson navigation and returns to the teaching focus in chat", async () => {
   const app = application("#chat", async (path) => ({ok: true, json: async () => ({

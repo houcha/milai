@@ -35,6 +35,52 @@ const answerRequests = new Map();
 const answerKey = (session, lesson, exercise) => JSON.stringify([session, lesson, exercise]);
 let routeSequence = 0;
 const chatScroll = new Map();
+let backSwipe = null;
+
+function startBackSwipe(event) {
+  backSwipe = null;
+  if (currentRoute.view !== "lesson" || busy || event.touches.length !== 1
+    || !window.matchMedia("(max-width:850px)").matches
+    || window.getSelection()?.isCollapsed === false
+    || event.target.closest("a,button,input,textarea,select,label,[contenteditable],pre,code,table,.katex,.selected-reference")) return;
+  const touch = event.touches[0];
+  backSwipe = { id: touch.identifier, x: touch.clientX, y: touch.clientY, time: event.timeStamp };
+}
+
+function moveBackSwipe(event) {
+  if (!backSwipe) return;
+  const touch = event.touches[0];
+  if (event.touches.length !== 1 || touch.identifier !== backSwipe.id
+    || busy || window.getSelection()?.isCollapsed === false
+    || event.timeStamp - backSwipe.time > 700) {
+    backSwipe = null;
+    return;
+  }
+  const dx = touch.clientX - backSwipe.x;
+  const dy = Math.abs(touch.clientY - backSwipe.y);
+  if (dx < -24 || (dy > 16 && dy > dx / 2)) {
+    backSwipe = null;
+  } else if (dx > 24) {
+    if (event.cancelable) event.preventDefault();
+    else backSwipe = null;
+  }
+}
+
+function endBackSwipe(event) {
+  const swipe = backSwipe;
+  backSwipe = null;
+  if (!swipe || busy || currentRoute.view !== "lesson" || event.touches.length
+    || !window.matchMedia("(max-width:850px)").matches
+    || window.getSelection()?.isCollapsed === false) return;
+  const touch = Array.from(event.changedTouches).find(touch => touch.identifier === swipe.id);
+  if (!touch) return;
+  const dx = touch.clientX - swipe.x;
+  const dy = Math.abs(touch.clientY - swipe.y);
+  if (dx >= 80 && dx > dy * 2 && event.timeStamp - swipe.time <= 700) {
+    if (event.cancelable) event.preventDefault();
+    return navigate("chat");
+  }
+}
 
 function routeFromHash() {
   const hash = location.hash.slice(1);
@@ -946,6 +992,22 @@ function renderLessonResults() {
   }
 }
 
+function scrollLessonFromGutter(event) {
+  if (currentRoute.view !== "lesson" || event.ctrlKey || event.metaKey
+    || window.matchMedia("(max-width:850px)").matches) return;
+  const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? elements.lessonReading.clientHeight : 1;
+  if (!event.deltaY) return;
+  if (event.cancelable) event.preventDefault();
+  elements.lessonReading.scrollBy({ top: event.deltaY * unit, behavior: "instant" });
+}
+
+function resizeLessonBack() {
+  if (currentRoute.view !== "lesson") return;
+  const button = document.querySelector("#back-to-conversation");
+  button.style.width = window.matchMedia("(max-width:850px)").matches ? ""
+    : `${elements.lessonDocument.getBoundingClientRect().left - elements.lessonView.getBoundingClientRect().left}px`;
+}
+
 function renderLesson() {
   renderLessonDocument();
   renderLessonExercises();
@@ -956,6 +1018,7 @@ function renderLesson() {
   renderSelectedReference();
   setLessonTab(state.tab);
   elements.lessonReading.scrollTop = state.readingPosition;
+  resizeLessonBack();
   document.title = `${lessonData.title} · Milai`;
 }
 
@@ -977,15 +1040,18 @@ async function renderView() {
     return;
   }
   const changed = !sameRoute(route, currentRoute);
+  if (changed) backSwipe = null;
   if (changed && currentRoute.view === "lesson") saveReadingPosition();
   if (changed && currentRoute.view === "chat") chatScroll.set(activeSession, elements.messages.scrollTop);
   currentRoute = route;
   syncPathSelection();
   if (changed) routeSequence++;
   document.querySelectorAll("[data-view]").forEach((panel) => { panel.hidden = panel.dataset.view !== route.view; });
-  document.querySelector(".path-rail").hidden = route.view === "sessions";
-  document.querySelector(".app-shell").classList.toggle("wide-view", route.view === "sessions");
-  document.querySelector(".topbar").hidden = route.view === "sessions";
+  const wideView = route.view === "sessions" || route.view === "lesson";
+  document.querySelector(".path-rail").hidden = wideView;
+  document.querySelector(".app-shell").classList.toggle("wide-view", wideView);
+  document.querySelector(".topbar").hidden = wideView;
+  resizeLessonBack();
   for (const [id, selected] of [["session-label", route.view === "chat"], ["skills-link", route.view === "skills"]]) {
     const link = document.querySelector(`#${id}`);
     if (selected) link.setAttribute("aria-current", "page");
@@ -1351,11 +1417,17 @@ elements.lessonMessage.addEventListener("keydown", (event) => {
 elements.lessonMessage.addEventListener("input", () => updateLessonState({ draft: elements.lessonMessage.value }));
 elements.lessonReading.addEventListener("scroll", saveReadingPosition);
 window.addEventListener("resize", resizeItemAnswers);
+window.addEventListener("resize", resizeLessonBack);
 document.addEventListener("selectionchange", captureLessonSelection);
 document.querySelector("#remove-reference").addEventListener("click", clearLessonSelection);
 document.querySelector("#lesson-tab").addEventListener("click", () => setLessonTab("lesson"));
 document.querySelector("#discussion-tab").addEventListener("click", () => setLessonTab("discussion"));
 document.querySelector("#back-to-conversation").addEventListener("click", () => navigate("chat"));
+document.querySelector("#back-to-conversation").addEventListener("wheel", scrollLessonFromGutter, { passive: false });
+elements.lessonView.addEventListener("touchstart", startBackSwipe, { passive: true });
+elements.lessonView.addEventListener("touchmove", moveBackSwipe, { passive: false });
+elements.lessonView.addEventListener("touchend", endBackSwipe, { passive: false });
+elements.lessonView.addEventListener("touchcancel", () => { backSwipe = null; }, { passive: true });
 document.querySelector("#continue-learning").addEventListener("click", () => continueLearning(continuationLessonId()));
 elements.newSession.addEventListener("click", () => manageSession("create"));
 

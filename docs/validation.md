@@ -1,5 +1,27 @@
 # Validation reports
 
+## 2026-09-29 — Full lesson workspace
+
+`npm run test:web` passed. Navigation coverage verifies that lessons hide the
+rail and session header, retain the lesson heading, and restore navigation on
+return to chat. Sessions and Skills retain their respective layouts.
+
+A synthetic Chromium preview at 1440 × 1000 and 390 × 844 verified full-width
+lessons starting at the top of the workspace, scrolling within the reading pane,
+mobile Lesson/Discussion tabs, return navigation, and reload. The back arrow
+is centered inside the full clickable left gutter on desktop and fits within
+the tabs row on mobile, without its own toolbar. Mouse clicks near both the top
+and bottom of the gutter returned to chat. Wheel events at the top, center, and
+bottom of the gutter scrolled the reading pane in both directions, matched
+scrolling over its content, respected scroll bounds, and left the discussion
+unchanged. Regression tests also cover line/page wheel units, momentum events,
+and preserving zoom gestures. Real Chromium touch events returned to chat from both tabs,
+kept vertical scrolling working, and left composer-input swipes in the lesson.
+Widths from 320 to 2400 pixels had no horizontal overflow; the desktop gutter
+matched the content edge and did not overlap the reading text. Reviewed screenshots:
+[desktop](screenshots/lesson-workspace-lesson-desktop.png) and
+[mobile](screenshots/lesson-workspace-lesson-mobile.png).
+
 ## 2026-09-29 — Session language navigation
 
 `uv run ruff check .`, `uv run ty check .`, and `npm run test:web` passed.

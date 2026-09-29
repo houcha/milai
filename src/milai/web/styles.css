@@ -105,6 +105,7 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 @media (prefers-reduced-motion:reduce) { .messages { scroll-behavior:auto; } }
 
 .app-shell.wide-view { grid-template-columns:minmax(0,1fr); }
+.app-shell.wide-view .studio { grid-template-rows:minmax(0,1fr) auto; }
 .path-rail { min-height:0; display:flex; flex-direction:column; padding:30px 22px 22px; border-right:1px solid var(--line); background:#eeefe7; }
 #path-panel { overflow-y:auto; min-height:0; flex:1; }
 #path-heading { color:var(--muted); font-size:12px; font-weight:600; margin:8px 0 20px; }
@@ -176,8 +177,10 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .practice-card button { border:1px solid var(--green); border-radius:7px; padding:9px 12px; background:transparent; color:var(--green); font-size:12px; white-space:nowrap; }
 .message-reference { color:var(--muted); font-size:11px; }
 
-.lesson-view { min-width:0; min-height:0; display:grid; grid-template-rows:auto auto minmax(0,1fr); }
-.lesson-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px clamp(20px,3vw,40px); border-bottom:1px solid var(--line); }
+.lesson-view { position:relative; min-width:0; min-height:0; display:grid; grid-template-rows:minmax(0,1fr); }
+.lesson-back { position:absolute; z-index:1; inset:0 auto 0 0; display:grid; place-items:center; width:clamp(20px,4vw,70px); padding:0; border:0; background:transparent; color:var(--muted); }
+.lesson-back:hover { color:var(--green); background:#3f513408; }
+.lesson-back:focus-visible { outline-offset:-4px; }
 .lesson-tabs { display:none; }
 .lesson-layout { min-height:0; display:grid; grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr); }
 .lesson-reading { min-width:0; overflow-y:auto; padding:clamp(24px,4vw,60px) clamp(20px,4vw,70px) 80px; scroll-behavior:smooth; }
@@ -265,11 +268,12 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 
 @media (max-width:1100px) {
   .lesson-layout { grid-template-columns:minmax(0,1fr) minmax(280px,.8fr); }
-  .lesson-reading { padding-inline:30px; }
+  .lesson-reading { padding-inline:48px 30px; }
 }
 @media (max-width:850px) {
-  .lesson-view { grid-template-rows:auto auto minmax(0,1fr); }
-  .lesson-tabs { display:flex; border-bottom:1px solid var(--line); }
+  .lesson-view { grid-template-rows:auto minmax(0,1fr); }
+  .lesson-back { inset:3px auto auto 3px; width:40px; height:40px; border-radius:50%; }
+  .lesson-tabs { display:flex; padding-left:46px; border-bottom:1px solid var(--line); }
   .lesson-tabs button { flex:1; border:0; border-bottom:3px solid transparent; padding:14px 8px 11px; background:transparent; color:var(--muted); }
   .lesson-tabs button[aria-selected="true"] { color:var(--green); border-color:var(--green); font-weight:600; }
   .lesson-layout { display:block; }
@@ -280,8 +284,6 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 }
 @media (max-width:700px) {
   .lesson-view { min-height:0; min-width:0; }
-  .lesson-toolbar { padding:10px 16px; flex-wrap:wrap; }
-  .lesson-toolbar button { font-size:11px; }
   .lesson-reading { padding:25px 20px 70px; overflow-x:hidden; }
   .lesson-reading h1,.lesson-section h2,.lesson-exercise h3 { overflow-wrap:anywhere; }
   .lesson-reading .markdown { overflow-wrap:anywhere; }

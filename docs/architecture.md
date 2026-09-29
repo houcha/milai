@@ -272,7 +272,9 @@ Ownership checks and session deletion cover every record. Schemas older than 5
 still require `milai reset --yes`, which archives the database and WAL/SHM
 sidecars before creating the current schema.
 
-The browser lesson route shows the document beside its discussion. On narrow
+The browser lesson route hides the learning-path rail and session header, using
+the full workspace for the document beside its discussion. The lesson's own
+heading stays visible; returning to chat restores the rail and header. On narrow
 screens, **Lesson** and **Discussion** tabs replace the columns. Exercises appear
 under the explanation, with status and answer fields. Submitted exercises retain
 past answers and feedback without answer controls. There are no section or
@@ -285,8 +287,19 @@ Chat requests accept optional `selected_text` only for lesson discussion message
 alongside existing optional `section_id` or `exercise_id`. The HTTP body limit is
 64 KiB. The full lesson remains available whether or not a quote is attached.
 Cards and sidebar entries open
-stored lessons directly. **Back to conversation** navigates without changing
-focus; the main chat's **New lesson** shortcut advances from the current
+stored lessons directly. An accessible back-arrow button covers the full left
+reading gutter on desktop, with its arrow centered horizontally and vertically.
+Its width follows the actual content edge after rendering and resizing. Wheel
+events over this gutter scroll the reading pane with pixel, line, and page
+deltas normalized; zoom gestures keep their default behavior. The button sits
+beside the existing tabs on narrow screens, without a
+toolbar row. A single-finger right swipe also returns to chat at widths up to
+850 pixels. Touch listeners recognize a horizontal swipe of at least 80 pixels
+within 700 milliseconds; vertical movement, cancellation, multitouch, selected
+text, controls, and horizontally scrollable content do not navigate. Native
+scrolling is prevented only after recognizing a horizontal rightward drag.
+Back navigation retains the teaching focus; the main chat's **New lesson**
+shortcut advances from the current
 teaching focus. Browser session storage keeps per-session, per-lesson drafts, selected
 text, and reading position through reloads and clears them on session delete.
 Legacy browser references without quotes are discarded while preserving other

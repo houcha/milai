@@ -1,5 +1,19 @@
 # Decision log
 
+## 2026-09-29 — Give lessons the full workspace
+
+- Hide the learning-path rail and session header while a lesson is open, on
+  desktop and mobile. Keep the lesson heading, document, exercises, discussion,
+  and Back to conversation action. Make the whole left reading gutter clickable
+  and center the back arrow inside it instead of using a toolbar row. On narrow
+  screens, use the
+  existing tabs row for the arrow and also support a deliberate right swipe.
+- Keep tap and keyboard navigation available alongside swipes. Ignore gesture
+  starts on controls, selected text, and horizontally scrollable lesson content;
+  cancel on vertical scrolling, multitouch, slow drags, or touch cancellation.
+- Restore the rail and session header when returning to chat. The current
+  teaching focus and lesson drafts retain their existing behavior.
+
 ## 2026-09-29 — Language replaces brand word
 
 - Replace the path-rail's brand word with the selected session's language.
