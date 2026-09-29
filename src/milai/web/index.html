@@ -36,18 +36,18 @@
         <section class="chat-panel" data-view="chat" aria-label="Tutor conversation">
           <div id="messages" class="messages" aria-live="polite"></div>
           <div id="chat-shortcuts" class="chat-shortcuts" aria-label="Conversation shortcuts" hidden>
-            <button id="continue-learning" class="quiet-button" type="button">New lesson ↗</button>
+            <button id="continue-learning" class="quiet-button" type="button">New lesson</button>
           </div>
           <form id="composer" class="composer">
             <label for="message" class="sr-only">Message Milai</label>
             <textarea id="message" maxlength="8000" rows="2" placeholder="Follow your curiosity…"></textarea>
-            <button id="send" type="submit" aria-label="Send message">Send <span aria-hidden="true">↗</span></button>
+            <button id="send" type="submit" aria-label="Send message">Send</button>
           </form>
           <p class="composer-hint">Enter to send · Shift + Enter for a new line</p>
         </section>
         <section id="lesson-view" class="lesson-view" data-view="lesson" aria-label="Lesson" hidden>
           <div class="lesson-toolbar">
-            <button id="back-to-conversation" class="quiet-button" type="button">← Back to conversation</button>
+            <button id="back-to-conversation" class="quiet-button" type="button">Back to conversation</button>
           </div>
           <div class="lesson-tabs" role="tablist" aria-label="Lesson areas">
             <button id="lesson-tab" type="button" role="tab" aria-controls="lesson-reading" aria-selected="true">Lesson</button>
@@ -74,7 +74,7 @@
               <form id="lesson-composer" class="composer">
                 <label for="lesson-message" class="sr-only">Ask about this lesson</label>
                 <textarea id="lesson-message" maxlength="8000" rows="2" placeholder="Ask about this lesson…"></textarea>
-                <button id="lesson-send" type="submit">Send <span aria-hidden="true">↗</span></button>
+                <button id="lesson-send" type="submit">Send</button>
               </form>
               <p id="lesson-progress" class="composer-hint" role="status" aria-live="polite">Ask about the whole lesson, or select text to focus your question.</p>
             </section>

@@ -411,7 +411,7 @@ test("lesson cards change from ready to complete in place and stay in their sess
   assert.equal(messages.children.at(-1), pending);
   assert.equal(messages.scrollTop, 37);
   assert.equal(card.querySelectorAll("button").length, 1);
-  assert.equal(card.querySelector("button").textContent, "Revisit lesson ↗");
+  assert.equal(card.querySelector("button").textContent, "Revisit lesson");
   await card.querySelector("button").listeners.click();
   assert.equal(app.run("currentRoute.lessonId"), "older");
   app.run(`applySession(${JSON.stringify(payload)})`);

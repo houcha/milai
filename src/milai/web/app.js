@@ -133,7 +133,7 @@ function renderLessonCard(wrapper, lesson) {
   const button = document.createElement("button");
   button.type = "button";
   button.disabled = busy;
-  button.textContent = latest ? "Revisit lesson ↗" : "Open lesson ↗";
+  button.textContent = latest ? "Revisit lesson" : "Open lesson";
   button.addEventListener("click", () => {
     if (!busy) return navigate("lesson", lesson.id);
   });
@@ -148,7 +148,7 @@ function activityNode(activity) {
   title.textContent = text(activity.title, "New exercise");
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = "Open exercise ↗";
+  button.textContent = "Open exercise";
   button.addEventListener("click", async () => {
     await navigate("lesson", activity.lesson_id);
     document.getElementById(`lesson-exercise-${activity.id}`)?.scrollIntoView({ block: "start" });
@@ -243,7 +243,7 @@ function renderConversation(conversation) {
     ]) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = `${label} ↗`;
+      button.textContent = label;
       button.addEventListener("click", () => { elements.message.value = message; elements.message.focus(); });
       suggestions.append(button);
     }
