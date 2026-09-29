@@ -37,6 +37,15 @@ and horizontally scrollable content retain their normal interactions.
 Returning to the main conversation restores the sidebar and session header,
 with the learning path highlighting the current teaching focus.
 
+Learning-path circles show lesson status: a green checkmark when the original
+practice set is submitted, a green ring with a dot for the current unfinished
+lesson or one with partial submissions, and a muted empty circle otherwise.
+Completion is independent of accuracy and mastery; optional extra practice does
+not remove the checkmark. The most recent scored, finished set appears below the
+title as a slim green accuracy bar with a right-aligned percentage. Hover text
+and accessible lesson labels identify status and practice accuracy. Navigation
+highlighting remains separate from these progress indicators.
+
 Prerequisite edges form a directed acyclic graph. Prerequisites guide background
 explanations and never block progression. Mastery means two independent
 successes on distinct unscaffolded exercises since the latest substantial
@@ -89,9 +98,9 @@ practice set shows its correct rate once all its exercises have been submitted.
 New typed assessments count correct answers, with one point per item;
 legacy tasks retain their explicitly requested component scores, with partial credit;
 older sets without part counts show a labelled rate of fully correct exercises.
-The lesson list shows the latest set's result. Learners can revisit lessons below
-100% and ask for fresh exercises: each generated set keeps its own result, so a
-later success does not overwrite the original answers. A review is suggested one
+The lesson list shows the latest scored, finished set's result. Learners can
+revisit lessons below 100% and ask for fresh exercises: each generated set keeps
+its own result, so a later success does not overwrite the original answers. A review is suggested one
 day after finishing a set. This timing is advisory; reading, discussion, and an
 explicit request for earlier fresh practice remain available.
 

@@ -276,6 +276,65 @@ function sessionPayload(session = "one") {
   };
 }
 
+test("learning path separates completion, partial practice, current focus and unstarted lessons", () => {
+  const app = application();
+  const payload = sessionPayload();
+  payload.learning.lessons = [
+    {id: "older", title: "Subject pronouns", practice_results: [{finished: true, submitted: 4, percentage: 50}]},
+    {id: "unscored", title: "Earlier lesson", practice_results: [{finished: true, submitted: 3, percentage: null}]},
+    {id: "partial", title: "Verb forms", practice_results: [{finished: false, submitted: 1, percentage: null}]},
+    {id: "unstarted", title: "Questions", practice_results: [{finished: false, submitted: 0, percentage: null}]},
+    {id: "newer", title: "Word order"},
+  ];
+  app.run(`applySession(${JSON.stringify(payload)})`);
+  const entries = app.node("#learning-path").children;
+  assert.deepEqual(entries.map(entry => entry.dataset.status), ["completed", "completed", "in-progress", "not-started", "in-progress"]);
+  assert.deepEqual(entries.map(entry => entry.querySelector(".lesson-marker").textContent), ["✓", "✓", "", "", ""]);
+  const complete = entries[0].querySelector(".lesson-link");
+  assert.equal(complete.querySelector(".lesson-title").textContent, "Subject pronouns");
+  assert.equal(complete.querySelector(".lesson-percentage").textContent, "50%");
+  assert.equal(complete.querySelector(".lesson-accuracy-fill").style.width, "50%");
+  assert.equal(complete.getAttribute("aria-label"), "Subject pronouns — Completed, practice accuracy: 50%");
+  assert.equal(complete.title, complete.getAttribute("aria-label"));
+  assert.equal(complete.querySelector(".lesson-marker").getAttribute("aria-hidden"), "true");
+  assert.equal(complete.querySelector(".lesson-accuracy").getAttribute("aria-hidden"), "true");
+  assert.ok(entries.slice(1).every(entry => entry.querySelector(".lesson-accuracy") === null));
+  assert.equal(entries[2].querySelector(".lesson-link").getAttribute("aria-label"), "Verb forms — In progress");
+  assert.equal(entries[3].querySelector(".lesson-link").getAttribute("aria-label"), "Questions — Not started");
+  payload.learning.current_focus_lesson_id = "older";
+  app.run(`renderLearning(${JSON.stringify(payload.learning)})`);
+  const selected = app.node("#learning-path").children[0];
+  assert.equal(selected.dataset.status, "completed");
+  assert.equal(selected.querySelector(".lesson-marker").textContent, "✓");
+  assert.equal(selected.querySelector(".lesson-link").getAttribute("aria-current"), "step");
+});
+
+test("optional practice retains completion and the latest scored accuracy, including zero and perfect scores", () => {
+  const app = application();
+  const payload = sessionPayload();
+  const results = [{number: 1, finished: true, submitted: 3, percentage: 0}];
+  payload.learning.lessons[0].practice_results = results;
+  const render = () => app.run(`applySession(${JSON.stringify(payload)})`);
+  const entry = () => app.node("#learning-path").children[0];
+  const check = (percentage) => {
+    assert.equal(entry().dataset.status, "completed");
+    assert.equal(entry().querySelector(".lesson-marker").textContent, "✓");
+    assert.equal(entry().querySelector(".lesson-percentage").textContent, `${percentage}%`);
+    assert.equal(entry().querySelector(".lesson-accuracy-fill").style.width, `${percentage}%`);
+  };
+  render();
+  check(0);
+  results.push({number: 2, finished: false, submitted: 1, percentage: null});
+  render();
+  check(0);
+  results[1] = {number: 2, finished: true, submitted: 2, percentage: 100};
+  render();
+  check(100);
+  results.push({number: 3, finished: true, submitted: 2, percentage: null});
+  render();
+  check(100);
+});
+
 test("lesson view uses the full workspace and restores navigation on return", async () => {
   const app = application("#lesson/older", async () => ({ok: true, json: async () => detail()}));
   app.run(`applySession(${JSON.stringify(sessionPayload())})`);
@@ -431,6 +490,7 @@ test("sidebar highlight follows lesson navigation and returns to the teaching fo
   await app.run("renderView()");
   const assertSelected = (id, ariaCurrent) => {
     const links = app.node("#learning-path").querySelectorAll(".lesson-link");
+    assert.deepEqual(links.map(link => link.parentElement.dataset.status), ["not-started", "in-progress"]);
     for (const link of links) {
       assert.equal(link.parentElement.classList.contains("current"), link.dataset.lessonId === id);
       assert.equal(link.getAttribute("aria-current"), link.dataset.lessonId === id ? ariaCurrent : null);
@@ -494,7 +554,7 @@ test("language follows the selected session and stays out of lesson titles", asy
   }
   assert.equal(app.node("#session-label").textContent, "Daily practice");
   assert.equal(app.descendants(app.node("#lesson-document")).find(node => node.tagName === "H1").textContent, "Subject pronouns");
-  assert.equal(app.descendants(app.node("#learning-path")).find(node => node.tagName === "BUTTON").textContent, "Subject pronouns");
+  assert.equal(app.node("#learning-path").querySelector(".lesson-title").textContent, "Subject pronouns");
   const details = app.descendants(app.node("#sessions")).filter(node => node.tagName === "SMALL");
   assert.deepEqual(details.map(node => node.textContent), ["German · 2 exchanges", "French · 1 exchange", "A fresh start"]);
   await app.run('navigate("skills")');
@@ -1202,17 +1262,20 @@ test("lesson results appear only after a full set and keep earlier practice resu
   await app.run("renderView()");
   const panel = app.node("#lesson-results");
   assert.equal(panel.hidden, true);
-  app.run(`lessonData.practice_results = [{number: 1, finished: false, submitted: 1, percentage: null}]; renderLessonResults()`);
+  app.run(`lessonData.practice_results = [{number: 1, finished: false, submitted: 1, percentage: null}]; renderLessonResults(); updateLessonResultInPath(lessonData)`);
   assert.equal(panel.hidden, true);
+  assert.equal(app.node("#learning-path").children[0].dataset.status, "in-progress");
+  assert.equal(app.node("#learning-path").children[0].querySelector(".lesson-accuracy"), null);
   app.run(`lessonData.practice_results = [{number: 1, finished: true, submitted: 2, correct: 6, total: 8, percentage: 75, scoring: "parts", review_at: "2099-01-01T12:00:00+00:00"}]; renderLessonResults(); updateLessonResultInPath(lessonData)`);
   assert.equal(panel.hidden, false);
   assert.equal(panel.children[0].querySelector(".lesson-score").textContent, "75% correct");
   assert.match(panel.children[0].children[2].textContent, /6 of 8 answer parts/);
   assert.match(panel.children[0].children.at(-1).textContent, /sooner/);
-  assert.match(app.node("#learning-path").children[0].children[0].textContent, /75%/);
+  assert.equal(app.node("#learning-path").children[0].dataset.status, "completed");
+  assert.equal(app.node("#learning-path").children[0].querySelector(".lesson-percentage").textContent, "75%");
   app.run(`lessonData.practice_results.push({number: 2, finished: true, correct: 2, total: 2, percentage: 100, scoring: "parts"}); renderLessonResults(); updateLessonResultInPath(lessonData)`);
   assert.deepEqual(panel.children.map((entry) => entry.querySelector(".lesson-score").textContent), ["75% correct", "100% correct"]);
-  assert.match(app.node("#learning-path").children[0].children[0].textContent, /100%/);
+  assert.equal(app.node("#learning-path").children[0].querySelector(".lesson-percentage").textContent, "100%");
 });
 
 test("saved answers cannot be sent twice when refreshing the card fails", async () => {

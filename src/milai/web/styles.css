@@ -113,11 +113,18 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 .lesson-chain { list-style:none; padding:0 0 0 10px; margin:0; }
 .lesson-chain li { position:relative; padding:0 0 24px 22px; }
 .lesson-chain li:not(:last-child)::after { content:""; position:absolute; left:2px; top:19px; bottom:-19px; width:2px; background:#ccd3c2; }
-.lesson-chain li::before { content:""; position:absolute; z-index:1; box-sizing:border-box; left:-4px; top:12px; width:14px; height:14px; border:2px solid #a2ad96; background:var(--paper); border-radius:50%; }
-.lesson-chain li.current::before { background:var(--green); border-color:var(--green); }
+.lesson-marker { position:absolute; z-index:1; display:grid; place-items:center; left:-4px; top:12px; width:14px; height:14px; border:2px solid #a2ad96; background:var(--paper); border-radius:50%; pointer-events:none; }
+.lesson-chain li[data-status="completed"] .lesson-marker { background:var(--green); border-color:var(--green); color:white; font-size:10px; font-weight:700; line-height:1; }
+.lesson-chain li[data-status="in-progress"] .lesson-marker { border-color:var(--green); }
+.lesson-chain li[data-status="in-progress"] .lesson-marker::before { content:""; position:absolute; left:50%; top:50%; width:4px; height:4px; border-radius:50%; background:var(--green); transform:translate(-50%,-50%); }
 .lesson-link { width:100%; text-align:left; border:0; border-radius:8px; background:transparent; padding:8px 10px; color:var(--ink); line-height:1.6; overflow-wrap:anywhere; }
 .lesson-link:hover { background:#e3e8d9; }
 .lesson-link[aria-current] { background:#dde5d1; font-weight:600; }
+.lesson-title { display:block; }
+.lesson-accuracy { display:grid; grid-template-columns:minmax(0,1fr) 4ch; align-items:center; gap:8px; margin-top:6px; color:var(--muted); font-size:11px; font-weight:400; }
+.lesson-accuracy-track { display:block; height:4px; overflow:hidden; border-radius:4px; background:#ccd3c2; }
+.lesson-accuracy-fill { display:block; height:100%; border-radius:inherit; background:#7c8e69; }
+.lesson-percentage { text-align:right; font-variant-numeric:tabular-nums; }
 .skills-link { display:block; margin-top:16px; border-top:1px solid var(--line); padding:16px 10px 0; text-decoration:none; color:var(--green); }
 .skills-link[aria-current] { font-weight:700; }
 .session-header { min-width:0; }

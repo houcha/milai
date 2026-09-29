@@ -1,5 +1,22 @@
 # Validation reports
 
+## 2026-09-29 — Learning-path status and accuracy
+
+`npm run test:web` passed. Regression coverage distinguishes completed original
+practice, partial submissions, current unfinished focus, and other unstarted
+lessons. It verifies completion below 100%, unscored historical completion,
+zero and perfect accuracy, preservation during optional practice, and updates
+after submitted answers. Navigation highlighting does not replace status.
+
+A synthetic Chromium preview at 320, 390, 700, 701, and 1440 pixels verified
+that the connector passes through circle centers and begins at the first circle,
+titles wrap above their accuracy rows, bars have equal widths, percentages align
+on the right, and the page has no horizontal overflow. The browser accessibility
+tree includes lesson status and practice accuracy in button names. Opening a
+lesson, returning to chat, and reloading retain the indicators. Reviewed screenshots:
+[desktop](screenshots/learning-path-desktop.png) and
+[mobile](screenshots/learning-path-mobile.png).
+
 ## 2026-09-29 — Full lesson workspace
 
 `npm run test:web` passed. Navigation coverage verifies that lessons hide the

@@ -1,5 +1,16 @@
 # Decision log
 
+## 2026-09-29 — Separate lesson status from practice accuracy
+
+- Use a green checkmark for submission of the original practice set, a green ring
+  with a dot for the current unfinished lesson or partial submissions, and a
+  muted empty circle for other unstarted lessons. Completion does not require a
+  perfect score or mastery; optional practice does not undo completion.
+- Move accuracy below the lesson title into a slim green bar with a right-aligned
+  percentage. Retain the latest scored, finished result while later practice is
+  unfinished or unscored. Keep navigation highlighting independent of status,
+  and expose status and accuracy in accessible labels and hover text.
+
 ## 2026-09-29 — Give lessons the full workspace
 
 - Hide the learning-path rail and session header while a lesson is open, on

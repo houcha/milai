@@ -348,12 +348,44 @@ function renderLearning(learning = {}) {
   document.querySelector("#path-empty").hidden = lessons.length > 0;
   for (const lesson of lessons) {
     const item = document.createElement("li");
+    const results = lesson.practice_results || [];
+    const status = results[0]?.finished ? "completed"
+      : lesson.id === continuationLessonId() || results.some(result => result.submitted > 0)
+        ? "in-progress" : "not-started";
+    const statusLabel = {completed: "Completed", "in-progress": "In progress", "not-started": "Not started"}[status];
+    item.dataset.status = status;
     const link = document.createElement("button");
     link.type = "button";
     link.className = "lesson-link";
     link.dataset.lessonId = lesson.id;
-    const result = lesson.practice_results?.at(-1);
-    link.textContent = `${lesson.title}${result?.percentage != null ? ` · ${result.percentage}%` : ""}`;
+    const marker = document.createElement("span");
+    marker.className = "lesson-marker";
+    marker.textContent = status === "completed" ? "✓" : "";
+    marker.setAttribute("aria-hidden", "true");
+    const title = document.createElement("span");
+    title.className = "lesson-title";
+    title.textContent = lesson.title;
+    link.append(marker, title);
+    const result = results.filter(result => result.finished && result.percentage != null).at(-1);
+    const label = `${lesson.title} — ${statusLabel}${result ? `, practice accuracy: ${result.percentage}%` : ""}`;
+    link.setAttribute("aria-label", label);
+    link.title = label;
+    if (result) {
+      const accuracy = document.createElement("span");
+      accuracy.className = "lesson-accuracy";
+      accuracy.setAttribute("aria-hidden", "true");
+      const track = document.createElement("span");
+      track.className = "lesson-accuracy-track";
+      const fill = document.createElement("span");
+      fill.className = "lesson-accuracy-fill";
+      fill.style.width = `${result.percentage}%`;
+      track.append(fill);
+      const percentage = document.createElement("span");
+      percentage.className = "lesson-percentage";
+      percentage.textContent = `${result.percentage}%`;
+      accuracy.append(track, percentage);
+      link.append(accuracy);
+    }
     link.disabled = busy;
     link.addEventListener("click", () => navigate("lesson", lesson.id));
     item.append(link);
