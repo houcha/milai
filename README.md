@@ -7,8 +7,8 @@ complete stored lessons, OpenAI Agents SDK, and Langfuse tracing.
 
 Install Python 3.12+ and uv, then `uv sync`. Put credentials in `.env` using
 [.env.example](.env.example) as a guide. Main chat, lesson discussion, assessment,
-and additional practice use `OPENAI_MODEL` (default `gpt-6-sol`) with low reasoning.
-Complete lessons and reviews use `OPENAI_LESSON_MODEL` (default `gpt-6-sol`) with
+and additional practice use `OPENAI_MODEL` (default `gpt-6.1-sol`) with low reasoning.
+Complete lessons and reviews use `OPENAI_LESSON_MODEL` (default `gpt-6.1-sol`) with
 `low` reasoning, requested Fast processing, and a 32,768-token output budget.
 The models share one authenticated Responses API client. `OPENAI_API_KEY` is
 required; requests are billed to its project. There are no automatic retries or

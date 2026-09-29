@@ -20,7 +20,7 @@ class Settings:
     timeout: float = 300
     request_timeout: float = 300
     max_tokens: int = 4096
-    lesson_model: str = "gpt-6-sol"
+    lesson_model: str = "gpt-6.1-sol"
     lesson_reasoning_effort: Literal[
         "none", "minimal", "low", "medium", "high", "xhigh", "max"
     ] = "low"
@@ -37,7 +37,7 @@ class Settings:
         values["OPENAI_BASE_URL"] = (
             values["OPENAI_BASE_URL"] or "https://api.openai.com/v1"
         )
-        values["OPENAI_MODEL"] = values["OPENAI_MODEL"] or "gpt-6-sol"
+        values["OPENAI_MODEL"] = values["OPENAI_MODEL"] or "gpt-6.1-sol"
         missing = [key for key, value in values.items() if not value]
         if missing:
             raise ValueError("Configure in .env: " + ", ".join(missing))
@@ -46,7 +46,7 @@ class Settings:
             raise ValueError("OPENAI_BASE_URL must be HTTPS without credentials")
         if url.query or url.fragment:
             raise ValueError("OPENAI_BASE_URL cannot contain a query or fragment")
-        lesson_model = os.getenv("OPENAI_LESSON_MODEL", "gpt-6-sol").strip()
+        lesson_model = os.getenv("OPENAI_LESSON_MODEL", "gpt-6.1-sol").strip()
         lesson_effort = os.getenv("OPENAI_LESSON_REASONING_EFFORT", "low").strip()
         lesson_tier = os.getenv("OPENAI_LESSON_SERVICE_TIER", "fast").strip()
         lesson_budget = os.getenv("MILAI_LESSON_MAX_OUTPUT_TOKENS", "32768").strip()

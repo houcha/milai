@@ -24,8 +24,8 @@ def test_openai_defaults_ignore_old_provider(monkeypatch, tmp_path):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("GEMINI_API_KEY", "old-secret")
     settings = Settings.load()
-    assert settings.model == "gpt-6-sol"
-    assert settings.lesson_model == "gpt-6-sol"
+    assert settings.model == "gpt-6.1-sol"
+    assert settings.lesson_model == "gpt-6.1-sol"
     assert settings.lesson_reasoning_effort == "low"
     assert settings.lesson_service_tier == "fast"
     assert settings.lesson_max_output_tokens == 32768

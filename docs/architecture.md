@@ -21,7 +21,7 @@ prerequisite graph integrity, content bounds, and exercise contracts before savi
 The document is capped at 32,000 characters; the generation request allows
 32,768 output tokens shared by reasoning and visible output.
 
-Generation uses `OPENAI_LESSON_MODEL=gpt-6-sol`,
+Generation uses `OPENAI_LESSON_MODEL=gpt-6.1-sol`,
 `OPENAI_LESSON_REASONING_EFFORT=low`, and
 `OPENAI_LESSON_SERVICE_TIER=fast` by default. The SDK receives the reasoning
 effort and `ModelSettings.extra_body={"service_tier": "fast"}`. Chat, lesson
