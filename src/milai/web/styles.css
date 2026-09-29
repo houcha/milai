@@ -111,9 +111,9 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 #path-heading { color:var(--muted); font-size:12px; font-weight:600; margin:8px 0 20px; }
 .path-empty { color:var(--muted); line-height:1.7; font-size:13px; }
 .lesson-chain { list-style:none; padding:0 0 0 10px; margin:0; }
-.lesson-chain li { position:relative; padding:0 0 24px 20px; border-left:2px solid #ccd3c2; }
-.lesson-chain li:last-child { border-color:transparent; }
-.lesson-chain li::before { content:""; position:absolute; left:-6px; top:12px; width:10px; height:10px; border:2px solid #a2ad96; background:var(--paper); border-radius:50%; }
+.lesson-chain li { position:relative; padding:0 0 24px 22px; }
+.lesson-chain li:not(:last-child)::after { content:""; position:absolute; left:2px; top:19px; bottom:-19px; width:2px; background:#ccd3c2; }
+.lesson-chain li::before { content:""; position:absolute; z-index:1; box-sizing:border-box; left:-4px; top:12px; width:14px; height:14px; border:2px solid #a2ad96; background:var(--paper); border-radius:50%; }
 .lesson-chain li.current::before { background:var(--green); border-color:var(--green); }
 .lesson-link { width:100%; text-align:left; border:0; border-radius:8px; background:transparent; padding:8px 10px; color:var(--ink); line-height:1.6; overflow-wrap:anywhere; }
 .lesson-link:hover { background:#e3e8d9; }
