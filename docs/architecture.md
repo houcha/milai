@@ -68,7 +68,12 @@ request lets main chat generate the next appropriate lesson, with review optiona
 practice does not block a new focus or mark any prerequisite mastered.
 
 Exercises belong to a lesson, target its focus skill, and may list previously
-taught supporting skills. Attempts and help retain exact exercise and skill
+taught supporting skills, including attempted skills without lesson completion
+or mastery. Prompts use evidence to choose suitable difficulty and support and
+require supplying incidental vocabulary when familiarity lacks evidence. Grammar
+assessment separates such vocabulary gaps from target errors. These teaching
+rules remain prompt contracts rather than automatic language analysis.
+Attempts and help retain exact exercise and skill
 references. Ambiguous requests are clarified before evidence is assigned. Skills
 can be superseded without rewriting historical lessons or observations.
 

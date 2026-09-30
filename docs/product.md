@@ -88,7 +88,16 @@ other exercises while feedback is pending. Feedback updates its own card without
 replacing other answer fields or moving focus.
 
 Each exercise belongs to one lesson and targets that lesson's focus skill.
-Previously taught skills may support it. Questions and clarification do not count
+Supporting grammar comes from previously taught or attempted skills; the current
+lesson's explicitly explained target is the new grammar to practice. Earlier
+lessons need not be fully submitted, correct, or mastered before their grammar
+can be reused. Evidence guides difficulty and support rather than eligibility.
+Incidental constructions and words in examples do not establish learned skills
+or vocabulary. Grammar practice supplies unfamiliar vocabulary and meanings when
+familiarity is uncertain, without revealing the tested grammar. A vocabulary gap
+or unrelated spelling error does not lose grammar credit when the answer
+demonstrates the target; insufficient grammar evidence remains uncertain.
+Questions and clarification do not count
 as attempts. Help is attached only to the exercise skills it concerns, including
 help requested in main chat. Assessments record evidence and may recommend a
 review, but do not automatically open a new lesson. The learner can explicitly

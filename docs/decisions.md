@@ -1,5 +1,20 @@
 # Decision log
 
+## 2026-09-30 — Keep grammar practice within learned background
+
+- Test the current lesson's explicitly explained target with supporting grammar
+  previously taught or attempted by the learner. Full exercise submission,
+  correct performance, and mastery are not requirements for reusing it; evidence
+  guides difficulty and support. Keep these teaching rules in prompts without
+  adding completion eligibility flags to skill catalogs.
+- Treat incidental example vocabulary as exposure, not knowledge. Supply words,
+  meanings, or base forms when familiarity is uncertain, or use a task that keeps
+  that language visible without revealing the target grammar.
+- Do not deduct grammar credit for incidental vocabulary gaps or unrelated
+  spelling when the submitted structure demonstrates the target. Record uncertain
+  evidence when the grammar cannot be assessed. Apply these prompt rules to new
+  lessons, requested practice, and new assessments; preserve saved results.
+
 ## 2026-09-30 — Continue from the learning path
 
 - Move New lesson after the last lesson in the learning-path sidebar, with an

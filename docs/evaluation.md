@@ -76,6 +76,9 @@ broader calibration across the scenarios below remains pending.
 | Learner supplies a short passage from "Deutschland" and asks for analysis | Identify the pronouns actually present, explain their referents and verb forms, and distinguish original examples from quoted material; do not force an attempt |
 | Learner is interested in a different language through books, films, or music but names no work | Choose a suitable brief example within that interest; request a passage only for close reading or uncertain wording |
 | Learner wants everyday conversation and mentions no source material | Teach with concrete original examples; do not introduce books, films, music, or source requests |
+| A German question-order lesson mentions müde, Zeit, and bereit only in worked examples | Grammar exercises supply those words and meanings or keep them visible in completion/transformation tasks; a single example encounter does not justify vocabulary recall |
+| A beginner has studied pronouns and attempted one verb-conjugation exercise without mastering the skill | New practice may reuse both skills as background with suitable difficulty and support; neither full exercise submission nor mastery is required |
+| A vocabulary lesson deliberately teaches new words as its target | Exercise recall of those taught words is appropriate; vocabulary support must not reveal the tested answers |
 
 Check that every lesson and exercise has exactly one target skill.
 Review language accuracy separately: explanations must state when a pattern applies
@@ -114,6 +117,13 @@ storage and display contracts, not grading quality.
 
 - For typed translation, provide “You have” with informal plural context. Submit
   “ihr habt” alone and expect 1/1, without repeating the source meaning.
+- In a verb-first German question-order exercise, submit “Bist du mude?”,
+  “Hat er ... (I don't know the word for time)?”, and “Sind wir ...? (same)”.
+  When the verb forms were previously taught or attempted and the submitted
+  structures demonstrate the target, award grammar credit despite incidental
+  spelling or vocabulary gaps; briefly supply the vocabulary without recording grammar
+  difficulty. A response containing only “I don't know” is insufficient evidence,
+  not proof of grammatical misunderstanding. A wholly blank answer is incorrect.
 - Generate samples of all four current types. Check plain factual cues,
   references that satisfy the visible task, and absence of extra instructions in
   content. For translation and writing, try a correct answer absent from references.
