@@ -14,8 +14,10 @@ These tests do not establish tutoring quality.
 
 `uv run milai probe` checks the configured chat model's tool use and replay, then
 checks the configured lesson model (now Sol) with `low` reasoning, Fast mode,
-and structured output. Record the returned processing tier when the API supplies it; requesting
-Fast does not guarantee that every response uses it. Run this before the learning
+and structured output, plus the configured review model's tool-free structured
+output with its own effort/budget and Standard processing. Record the returned
+processing tier when the API supplies it; requesting Fast does not guarantee that
+every response uses it. Run this before the learning
 scenario. A configured Langfuse client does not by itself prove server ingestion.
 
 `uv run python -m milai.acceptance` asks for a complete lesson, opens a section and
@@ -26,6 +28,20 @@ model compatibility, application checks, and state; `--report PATH` saves JSON.
 and no provider fallback. Its concrete English request is a test fixture, not a
 production prompt or teaching sequence. Contract success does not establish
 teaching quality; review the transcript separately.
+
+`uv run python -m milai.review_evaluation --report docs/reviewer-comparison.json`
+compares the configured reviewer and chat models on identical compact inputs,
+using 12 labelled synthetic cases (24 paid requests). It uses temporary databases,
+checks output against predefined correctness/evidence labels and real storage
+validation, and rolls back each model's writes before the next comparison.
+Cases cover all four current exercise types, valid alternatives, incidental
+vocabulary gaps, target errors, minor slips, empty responses, helped success,
+legacy blanks/components, and completion recaps. Sol is not ground truth.
+The report records input, expected labels, output, prompt hash, settings, SDK
+usage, latency, and failures, and is saved after every response. Review the
+feedback and memory prose too; a small synthetic pass does not establish general
+grading quality. Token-based cost estimates must state current pricing and cache
+categories and must not be presented as an invoice or production savings measure.
 
 ## Tutoring quality review
 

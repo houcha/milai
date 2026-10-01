@@ -9,7 +9,7 @@ from openai.types.responses import ResponseCompletedEvent
 from openai.types.shared import Reasoning
 from pydantic import BaseModel, TypeAdapter
 
-from milai.config import Settings, providers
+from milai.config import Settings, provider, providers
 from milai.observability import Telemetry
 
 
@@ -28,6 +28,9 @@ async def probe(settings: Settings, telemetry: Telemetry) -> dict:
         return nonce
 
     model, lesson_model = providers(settings)
+    review_model = provider(
+        settings, model_name=settings.review_model, client=model._client
+    )
     try:
         agent = Agent(
             name="endpoint-probe",
@@ -114,17 +117,48 @@ async def probe(settings: Settings, telemetry: Telemetry) -> dict:
                     raise RuntimeError("Lesson structured output failed verification")
                 if generation.final_output.nonce != nonce:
                     raise RuntimeError("Lesson structured output was incorrect")
+                review_result = await Runner.run(
+                    Agent(
+                        name="exercise-review-probe",
+                        instructions="Return the user's nonce in the structured field.",
+                        model=review_model,
+                        output_type=LessonProbeResult,
+                        model_settings=ModelSettings(
+                            max_tokens=settings.review_max_output_tokens,
+                            reasoning=Reasoning(
+                                effort=settings.review_reasoning_effort
+                            ),
+                            extra_body={"service_tier": "default"},
+                            store=False,
+                            response_include=["reasoning.encrypted_content"],
+                        ),
+                    ),
+                    f"Return this nonce: {nonce}",
+                    max_turns=1,
+                    run_config=config,
+                )
+                if (
+                    not isinstance(review_result.final_output, LessonProbeResult)
+                    or review_result.final_output.nonce != nonce
+                ):
+                    raise RuntimeError("Reviewer structured output failed verification")
         return {
             "kind": "live",
             "endpoint": settings.base_url,
             "model": settings.model,
             "lesson_model": settings.lesson_model,
+            "review_model": settings.review_model,
             "tool_round_trip": "passed",
             "conversation_continuation": "passed",
             "reasoning_efforts": ["low", "high", settings.lesson_reasoning_effort],
             "lesson_structured_output": "passed",
             "lesson_requested_service_tier": settings.lesson_service_tier,
             "lesson_returned_service_tier": returned_tier,
+            "review_structured_output": "passed",
+            "review_requested_service_tier": "default",
+            "usage_review": TypeAdapter(
+                type(review_result.context_wrapper.usage)
+            ).dump_python(review_result.context_wrapper.usage, mode="json"),
             "usage_first": TypeAdapter(type(first.context_wrapper.usage)).dump_python(
                 first.context_wrapper.usage, mode="json"
             ),

@@ -13,6 +13,7 @@ from milai.exercises import (
     parse_answers,
     serialize_answers,
 )
+from milai.reviewer import ReviewOutput
 from milai.store import SCHEMA_VERSION, InvalidReference, Store
 from milai.tools import Context, Exercise, _LessonPlan
 from milai.tutor import LessonTurnOutput
@@ -321,25 +322,31 @@ def test_private_assessment_context_and_invalid_answers(learning, monkeypatch):
     calls = []
 
     async def run(agent, messages, *, context, **kwargs):
-        calls.append(agent.instructions)
+        calls.append(agent.instructions + str(messages))
         if context.action == "answer":
-            result = store.assess_attempt(
-                context,
-                exercise["id"],
-                "",
-                [
-                    {
-                        "skill_id": lesson["focus_skill_id"],
-                        "outcome": "success",
-                        "issue_severity": "none",
-                        "rationale": "Correct",
-                    }
-                ],
-                item_results=[{"item_number": 1, "correct": True, "feedback": ""}],
+            output = ReviewOutput(
+                assessment={
+                    "exercise_id": exercise["id"],
+                    "feedback": "",
+                    "observations": [
+                        {
+                            "skill_id": lesson["focus_skill_id"],
+                            "outcome": "success",
+                            "issue_severity": "none",
+                            "rationale": "Correct",
+                        }
+                    ],
+                    "item_results": [
+                        {"item_number": 1, "correct": True, "feedback": ""}
+                    ],
+                },
+                reply="Done",
+                summary="Reviewed the target.",
             )
-            context.assessments.append(result)
+        else:
+            output = LessonTurnOutput(reply="Done", summary="Reviewed the target.")
         return SimpleNamespace(
-            final_output=LessonTurnOutput(reply="Done", summary="Reviewed the target."),
+            final_output=output,
             to_input_list=lambda: messages,
         )
 

@@ -6,8 +6,13 @@ complete stored lessons, OpenAI Agents SDK, and Langfuse tracing.
 ## Run
 
 Install Python 3.12+ and uv, then `uv sync`. Put credentials in `.env` using
-[.env.example](.env.example) as a guide. Main chat, lesson discussion, assessment,
+[.env.example](.env.example) as a guide. Main chat, lesson discussion,
 and additional practice use `OPENAI_MODEL` (default `gpt-6.1-sol`) with low reasoning.
+Exercise submissions use `OPENAI_REVIEW_MODEL` (default `gpt-6-luna`) in one
+structured request with compact grading context, no tools, and no tutor follow-up.
+Review defaults to `medium` reasoning, Standard processing, and an 8,192-token output
+budget. Override effort with `OPENAI_REVIEW_REASONING_EFFORT` and budget with
+`MILAI_REVIEW_MAX_OUTPUT_TOKENS`.
 Complete lessons and reviews use `OPENAI_LESSON_MODEL` (default `gpt-6.1-sol`) with
 `low` reasoning, requested Fast processing, and a 32,768-token output budget.
 The models share one authenticated Responses API client. `OPENAI_API_KEY` is
@@ -50,18 +55,19 @@ exercise. `/state` shows learning memory, `/new` starts a fresh session, and
 `/quit` exits. The session ID is printed at startup.
 
 SQLite data lives in `.milai/learning.sqlite3` (override `MILAI_DATABASE`).
-Schema 5 stores fixed lesson documents, scoped turns, discussion summaries, and
-current teaching focus. Older databases require `milai reset --yes`, which archives
-the database and sidecars before creating a fresh one. Protect these files
+Schema 10 stores lesson documents, scoped turns, summaries, and practice results.
+Schemas 5–9 upgrade automatically. Earlier databases require `milai reset --yes`,
+which archives the database and sidecars before creating a fresh one. Protect these files
 as personal data. This is a local app; there is no shared service or login.
 
 Main chat discovers intent and generates a complete lesson on one precise language
 skill, with an **Open lesson** card. Each lesson contains its explanation, worked
 examples, recap, prepared exercises, and ongoing discussion. New skills require
-all prerequisite skills to be mastered. Mastery is derived from two independent
-successes on distinct exercises since the last substantial difficulty observation;
-no numeric score is assigned. A minor slip leaves prepared practice available
-while deferring a new remedial drill. Earlier skills may support a new lesson's
+appropriate background and support; prerequisites do not gate progression.
+Mastery is derived from two independent successes on distinct exercises since
+the last substantial difficulty observation; practice accuracy is scored separately.
+A minor slip leaves prepared practice available while deferring a new remedial
+drill. Earlier skills may support a new lesson's
 exercises. Assessments can recommend a due review; an explicit continuation request
 lets main chat choose an eligible next lesson or review. The tutor records
 skill-specific help and evidence. It can also
@@ -83,10 +89,13 @@ uv run pytest
 uv run ruff check .
 uv run ty check .
 uv run python -m milai.acceptance
+uv run python -m milai.review_evaluation --report docs/reviewer-comparison.json
 ```
 
 Tests mock model and retrieval responses. The probe and acceptance scenario use live
-services. [Evaluation](docs/evaluation.md) explains the separate teaching-quality
+services. The reviewer comparison makes 24 paid requests using labelled synthetic
+German and English cases, without reading the personal learning database.
+[Evaluation](docs/evaluation.md) explains the separate teaching-quality
 review. [Product brief](docs/product.md), [architecture](docs/architecture.md), and
 [decisions](docs/decisions.md) document scope, milestones and open product decisions.
 The [validation results](docs/validation.md) record a live model probe, synthetic

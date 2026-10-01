@@ -19,11 +19,12 @@ from openai.types.responses import ResponseTextDeltaEvent
 from openai.types.shared import Reasoning
 from pydantic import BaseModel, Field
 
-from milai.config import Settings, providers
+from milai.config import Settings, provider, providers
 from milai.exercises import parse_answers, serialize_answers
 from milai.observability import Telemetry
+from milai.reviewer import review, reviewer_prompt
 from milai.store import MAX_SELECTED_TEXT, Store, identifier, message_with_selection
-from milai.tools import TOOLS, Context
+from milai.tools import TOOLS, Context, persist_assessment
 
 
 class TutorReply(BaseModel):
@@ -50,7 +51,9 @@ def prompts() -> tuple[str, str, str]:
         root.joinpath(name).read_text() for name in ("tutor.md", "procedures.md")
     )
     planner = root.joinpath("lesson_planner.md").read_text()
-    version = hashlib.sha256((tutor + "\n\n" + planner).encode()).hexdigest()[:16]
+    version = hashlib.sha256(
+        (tutor + "\n\n" + planner + "\n\n" + reviewer_prompt()).encode()
+    ).hexdigest()[:16]
     return tutor, planner, version
 
 
@@ -62,6 +65,7 @@ class Tutor:
         telemetry: Telemetry,
         model=None,
         generation_model=None,
+        review_model=None,
     ):
         self.settings, self.store, self.telemetry = settings, store, telemetry
         if model is None:
@@ -70,11 +74,21 @@ class Tutor:
             self.generation_model = (
                 generation_model if generation_model is not None else lesson_model
             )
+            self.review_model = (
+                review_model
+                if review_model is not None
+                else provider(
+                    settings,
+                    model_name=settings.review_model,
+                    client=chat_model._client,
+                )
+            )
         else:
             self.model = model
             self.generation_model = (
                 generation_model if generation_model is not None else model
             )
+            self.review_model = review_model if review_model is not None else model
         self.lock = asyncio.Lock()
 
     async def respond(
@@ -181,7 +195,6 @@ class Tutor:
                     lesson_id = selected_exercise["lesson_id"]
                     detail = self.store.lesson_detail(scope, session, lesson_id)
             prompt, planner_prompt, version = prompts()
-            history = self.store.model_history(learner, session, lesson_id=lesson_id)
             ctx = Context(
                 self.store,
                 scope,
@@ -204,6 +217,9 @@ class Tutor:
                 selected_exercise_id=exercise_id,
                 on_progress=on_progress,
             )
+            if action == "answer":
+                return await self._review_answer(ctx, learner)
+            history = self.store.model_history(learner, session, lesson_id=lesson_id)
             state = self.store.prompt_state(scope)
             if origin_lesson_id:
                 state["origin_lesson"] = {
@@ -219,10 +235,6 @@ class Tutor:
                     "status": self.store.exercise_status(learner, session, exercise_id),
                     "action": action,
                 }
-                if action == "answer" and selected_exercise.get("format"):
-                    contract = self.store.exercise_contract(scope, exercise_id)
-                    if contract is not None:
-                        state["assessment_contract"] = contract.model_dump()
             instructions = prompt
             if detail and lesson_id is not None:
                 discussion_summary = self.store.discussion_summary(scope, lesson_id)
@@ -337,43 +349,12 @@ class Tutor:
                         completion_summary = None
                     if not reply.strip():
                         raise ValueError("Model returned no learner-facing response")
-                    if action == "answer" and not ctx.assessments:
-                        raise ValueError(
-                            "The answer could not be assessed. "
-                            "It was not saved; please submit again."
-                        )
                     items = result.to_input_list()[len(history) :]
                     self.store.save_turn(
                         ctx, reply, items, completion_summary=completion_summary
                     )
                     if summary is not None:
                         self.store.save_discussion_summary(ctx, summary)
-                    if action == "answer" and exercise_id:
-                        for assessment in ctx.assessments:
-                            weak = [
-                                item["skill_id"]
-                                for item in assessment["observations"]
-                                if item["outcome"] != "success"
-                            ]
-                            recorded_skills = {
-                                row[0]
-                                for row in self.store.db.execute(
-                                    "SELECT x.skill_id FROM assistance a "
-                                    "JOIN assistance_skills x ON x.assistance_id=a.id "
-                                    "WHERE a.exercise_id=? AND a.turn_id=?",
-                                    (exercise_id, ctx.turn_id),
-                                )
-                            }
-                            if remaining := [
-                                skill for skill in weak if skill not in recorded_skills
-                            ]:
-                                self.store.record_assistance(
-                                    ctx,
-                                    exercise_id,
-                                    remaining,
-                                    "explanation",
-                                    reply,
-                                )
                     activities = (
                         [
                             self.store.exercise(scope, exercise_id)
@@ -399,10 +380,74 @@ class Tutor:
                     turn_id=ctx.turn_id,
                 )
 
+    async def _review_answer(self, ctx: Context, learner: str) -> TutorReply:
+        with self.telemetry.turn(learner, ctx.session, ctx.prompt_version) as span:
+            span.set_attribute("milai.turn_kind", "exercise_review")
+            span.set_attribute("milai.review_model", self.settings.review_model)
+            if self.telemetry.content:
+                span.set_attribute("input.value", ctx.message)
+            with self.store.transaction():
+                async with asyncio.timeout(self.settings.timeout):
+                    if ctx.on_progress:
+                        await ctx.on_progress(
+                            {"type": "stage", "text": "Checking your answers…"}
+                        )
+                    output, usage = await review(ctx, self.settings, self.review_model)
+                persist_assessment(ctx, output.assessment)
+                # Keep private review context out of persisted conversation history.
+                self.store.save_turn(
+                    ctx,
+                    output.reply,
+                    [
+                        {"role": "user", "content": ctx.message},
+                        {"role": "assistant", "content": output.reply},
+                    ],
+                    completion_summary=output.completion_summary,
+                )
+                self.store.save_discussion_summary(ctx, output.summary)
+                weak = [
+                    item["skill_id"]
+                    for item in ctx.assessments[0]["observations"]
+                    if item["outcome"] != "success"
+                ]
+                if weak:
+                    self.store.record_assistance(
+                        ctx,
+                        output.assessment.exercise_id,
+                        weak,
+                        "explanation",
+                        output.reply,
+                    )
+            span.set_attribute("milai.committed_event_ids", ctx.event_ids)
+            span.set_attribute("milai.tool_calls", 0)
+            span.set_attribute("milai.turn_id", ctx.turn_id)
+            span.set_attribute("milai.review_requests", usage.requests)
+            span.set_attribute("milai.review_input_tokens", usage.input_tokens)
+            span.set_attribute(
+                "milai.review_cached_tokens", usage.input_tokens_details.cached_tokens
+            )
+            span.set_attribute(
+                "milai.review_cache_write_tokens",
+                usage.input_tokens_details.cache_write_tokens,
+            )
+            span.set_attribute("milai.review_output_tokens", usage.output_tokens)
+            span.set_attribute(
+                "milai.review_reasoning_tokens",
+                usage.output_tokens_details.reasoning_tokens,
+            )
+            if self.telemetry.content:
+                span.set_attribute("output.value", output.reply)
+            return TutorReply(
+                text=output.reply,
+                activities=[],
+                assessments=ctx.assessments,
+                turn_id=ctx.turn_id,
+            )
+
     async def close(self):
         clients = {
             id(client): client
-            for model in (self.model, self.generation_model)
+            for model in (self.model, self.generation_model, self.review_model)
             if (client := getattr(model, "_client", None)) is not None
         }
         for client in clients.values():

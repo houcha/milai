@@ -1,0 +1,3556 @@
+{
+  "timestamp": "2026-09-30T22:31:51.153469+00:00",
+  "prompt_hash": "c0087bb20b55dedf",
+  "reasoning_effort": "low",
+  "service_tier": "default",
+  "max_output_tokens": 8192,
+  "models": [
+    "gpt-6-luna",
+    "gpt-6.1-sol"
+  ],
+  "label_source": "Predefined expected correctness and evidence; Sol is a comparator, not ground truth.",
+  "results": [
+    {
+      "case": "informal_plural",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "9c0c88b612194239b025ed78024f07c3",
+          "kind": "exercise",
+          "lesson_id": "e522b37a9cc149ea9184aa6fa8382e24",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. You have\n   Context: Several people, informal",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "c3776b4392ce4290bddcfd500728227f",
+              "name": "informal plural",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "You have",
+                "context": "Several people, informal"
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "You have",
+                "context": "Several people, informal",
+                "references": [
+                  "ihr habt"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"ihr habt\"",
+        "skills": [
+          {
+            "id": "c3776b4392ce4290bddcfd500728227f",
+            "language": "German",
+            "key": "informal_plural",
+            "name": "informal plural",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "9c0c88b612194239b025ed78024f07c3",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "c3776b4392ce4290bddcfd500728227f",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Uses the present-tense form of haben that agrees with informal plural ihr."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "Correctly used present-tense haben agreeing with informal plural ihr.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2203,
+        "input_tokens_details": {
+          "cache_write_tokens": 2200,
+          "cached_tokens": 0
+        },
+        "output_tokens": 141,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2344,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2203,
+            "output_tokens": 141,
+            "total_tokens": 2344,
+            "input_tokens_details": {
+              "cache_write_tokens": 2200,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.376,
+      "passed": true
+    },
+    {
+      "case": "informal_plural",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "9c0c88b612194239b025ed78024f07c3",
+          "kind": "exercise",
+          "lesson_id": "e522b37a9cc149ea9184aa6fa8382e24",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. You have\n   Context: Several people, informal",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "c3776b4392ce4290bddcfd500728227f",
+              "name": "informal plural",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "You have",
+                "context": "Several people, informal"
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "You have",
+                "context": "Several people, informal",
+                "references": [
+                  "ihr habt"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"ihr habt\"",
+        "skills": [
+          {
+            "id": "c3776b4392ce4290bddcfd500728227f",
+            "language": "German",
+            "key": "informal_plural",
+            "name": "informal plural",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "9c0c88b612194239b025ed78024f07c3",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "c3776b4392ce4290bddcfd500728227f",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Correctly paired informal plural ihr with the present-tense form habt."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "The learner correctly used ihr habt for informal plural “you have,” demonstrating subject–verb agreement with haben.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2203,
+        "input_tokens_details": {
+          "cache_write_tokens": 2200,
+          "cached_tokens": 0
+        },
+        "output_tokens": 148,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2351,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2203,
+            "output_tokens": 148,
+            "total_tokens": 2351,
+            "input_tokens_details": {
+              "cache_write_tokens": 2200,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 6.563,
+      "passed": true
+    },
+    {
+      "case": "valid_alternative",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "156b2dda9ce34c81922b45ab5632908a",
+          "kind": "exercise",
+          "lesson_id": "87c786a59dcd4ae7b7b8c58d4322fb0a",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. We have time.\n   Context: time = Zeit",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "26e210d625304082a9403c2dc0662cf2",
+              "name": "valid alternative",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "We have time.",
+                "context": "time = Zeit"
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "We have time.",
+                "context": "time = Zeit",
+                "references": [
+                  "Wir haben Zeit."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Zeit haben wir.\"",
+        "skills": [
+          {
+            "id": "26e210d625304082a9403c2dc0662cf2",
+            "language": "German",
+            "key": "valid_alternative",
+            "name": "valid alternative",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "156b2dda9ce34c81922b45ab5632908a",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "26e210d625304082a9403c2dc0662cf2",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Uses haben in the present tense agreeing with wir."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "Demonstrated use of present-tense haben agreeing with wir.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2209,
+        "input_tokens_details": {
+          "cache_write_tokens": 2206,
+          "cached_tokens": 0
+        },
+        "output_tokens": 175,
+        "output_tokens_details": {
+          "reasoning_tokens": 37
+        },
+        "total_tokens": 2384,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2209,
+            "output_tokens": 175,
+            "total_tokens": 2384,
+            "input_tokens_details": {
+              "cache_write_tokens": 2206,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 37
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.479,
+      "passed": true
+    },
+    {
+      "case": "valid_alternative",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "156b2dda9ce34c81922b45ab5632908a",
+          "kind": "exercise",
+          "lesson_id": "87c786a59dcd4ae7b7b8c58d4322fb0a",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. We have time.\n   Context: time = Zeit",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "26e210d625304082a9403c2dc0662cf2",
+              "name": "valid alternative",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "We have time.",
+                "context": "time = Zeit"
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "We have time.",
+                "context": "time = Zeit",
+                "references": [
+                  "Wir haben Zeit."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Zeit haben wir.\"",
+        "skills": [
+          {
+            "id": "26e210d625304082a9403c2dc0662cf2",
+            "language": "German",
+            "key": "valid_alternative",
+            "name": "valid alternative",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "156b2dda9ce34c81922b45ab5632908a",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "26e210d625304082a9403c2dc0662cf2",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Uses haben correctly with wir; fronting Zeit is a valid German word order."
+            }
+          ]
+        },
+        "reply": "Correct—this word order is valid.",
+        "summary": "The learner correctly used present-tense haben agreeing with wir in a translation, with valid object-fronted word order.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2209,
+        "input_tokens_details": {
+          "cache_write_tokens": 2206,
+          "cached_tokens": 0
+        },
+        "output_tokens": 158,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2367,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2209,
+            "output_tokens": 158,
+            "total_tokens": 2367,
+            "input_tokens_details": {
+              "cache_write_tokens": 2206,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 4.725,
+      "passed": true
+    },
+    {
+      "case": "completion",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "e91ba0b92cb54f8f898afb85eccc3773",
+          "kind": "exercise",
+          "lesson_id": "fc8477b437eb4f718050ad5cd56ec0bb",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Ihr {{blank}} Zeit.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "3a0bf9bb08dc4a63b26119619b69cc09",
+              "name": "completion",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "complete_sentence",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": "",
+                "references": [
+                  "habt"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"habt\"",
+        "skills": [
+          {
+            "id": "3a0bf9bb08dc4a63b26119619b69cc09",
+            "language": "German",
+            "key": "completion",
+            "name": "completion",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "e91ba0b92cb54f8f898afb85eccc3773",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "3a0bf9bb08dc4a63b26119619b69cc09",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Correctly used the present-tense form of haben agreeing with Ihr."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "Demonstrated correct use of the present-tense form of haben agreeing with Ihr.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2184,
+        "input_tokens_details": {
+          "cache_write_tokens": 2181,
+          "cached_tokens": 0
+        },
+        "output_tokens": 147,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2331,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2184,
+            "output_tokens": 147,
+            "total_tokens": 2331,
+            "input_tokens_details": {
+              "cache_write_tokens": 2181,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 1.812,
+      "passed": true
+    },
+    {
+      "case": "completion",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "e91ba0b92cb54f8f898afb85eccc3773",
+          "kind": "exercise",
+          "lesson_id": "fc8477b437eb4f718050ad5cd56ec0bb",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Ihr {{blank}} Zeit.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "3a0bf9bb08dc4a63b26119619b69cc09",
+              "name": "completion",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "complete_sentence",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": "",
+                "references": [
+                  "habt"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"habt\"",
+        "skills": [
+          {
+            "id": "3a0bf9bb08dc4a63b26119619b69cc09",
+            "language": "German",
+            "key": "completion",
+            "name": "completion",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "e91ba0b92cb54f8f898afb85eccc3773",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "3a0bf9bb08dc4a63b26119619b69cc09",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Used the correct present-tense form of haben for ihr."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "The learner correctly used the present-tense form of haben agreeing with ihr.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2184,
+        "input_tokens_details": {
+          "cache_write_tokens": 2181,
+          "cached_tokens": 0
+        },
+        "output_tokens": 143,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2327,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2184,
+            "output_tokens": 143,
+            "total_tokens": 2327,
+            "input_tokens_details": {
+              "cache_write_tokens": 2181,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 4.024,
+      "passed": true
+    },
+    {
+      "case": "transformation",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "17ef15743ee44113a188a97e2c677282",
+          "kind": "exercise",
+          "lesson_id": "ac60bc6e866740f582653787c1be44b9",
+          "title": "Transform a sentence",
+          "task": "Rewrite using the subject ihr.\n\n1. Wir haben Zeit.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "16451d3b638746c792fb5d93c3a77453",
+              "name": "transformation",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "transform",
+            "target_form": "the subject ihr",
+            "instruction": "Rewrite using the subject ihr.",
+            "items": [
+              {
+                "text": "Wir haben Zeit.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "transform",
+            "target_form": "the subject ihr",
+            "items": [
+              {
+                "text": "Wir haben Zeit.",
+                "context": "",
+                "references": [
+                  "Ihr habt Zeit."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Ihr habt Zeit.\"",
+        "skills": [
+          {
+            "id": "16451d3b638746c792fb5d93c3a77453",
+            "language": "German",
+            "key": "transformation",
+            "name": "transformation",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "17ef15743ee44113a188a97e2c677282",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "16451d3b638746c792fb5d93c3a77453",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Correctly uses the present-tense form of haben agreeing with ihr."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "Demonstrated correct use of present-tense haben with the subject ihr.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2201,
+        "input_tokens_details": {
+          "cache_write_tokens": 2198,
+          "cached_tokens": 0
+        },
+        "output_tokens": 142,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2343,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2201,
+            "output_tokens": 142,
+            "total_tokens": 2343,
+            "input_tokens_details": {
+              "cache_write_tokens": 2198,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.248,
+      "passed": true
+    },
+    {
+      "case": "transformation",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "17ef15743ee44113a188a97e2c677282",
+          "kind": "exercise",
+          "lesson_id": "ac60bc6e866740f582653787c1be44b9",
+          "title": "Transform a sentence",
+          "task": "Rewrite using the subject ihr.\n\n1. Wir haben Zeit.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "16451d3b638746c792fb5d93c3a77453",
+              "name": "transformation",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "transform",
+            "target_form": "the subject ihr",
+            "instruction": "Rewrite using the subject ihr.",
+            "items": [
+              {
+                "text": "Wir haben Zeit.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "transform",
+            "target_form": "the subject ihr",
+            "items": [
+              {
+                "text": "Wir haben Zeit.",
+                "context": "",
+                "references": [
+                  "Ihr habt Zeit."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Ihr habt Zeit.\"",
+        "skills": [
+          {
+            "id": "16451d3b638746c792fb5d93c3a77453",
+            "language": "German",
+            "key": "transformation",
+            "name": "transformation",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "17ef15743ee44113a188a97e2c677282",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "16451d3b638746c792fb5d93c3a77453",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Correctly changed the subject to ihr and used the agreeing present-tense form habt."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "The learner correctly transformed a sentence from wir to ihr, using the agreeing present-tense form of haben.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2201,
+        "input_tokens_details": {
+          "cache_write_tokens": 2198,
+          "cached_tokens": 0
+        },
+        "output_tokens": 151,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2352,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2201,
+            "output_tokens": 151,
+            "total_tokens": 2352,
+            "input_tokens_details": {
+              "cache_write_tokens": 2198,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 4.433,
+      "passed": true
+    },
+    {
+      "case": "open_vocabulary_gap",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "329c653a04474c119cf30a70911779f9",
+          "kind": "exercise",
+          "lesson_id": "23b45f1be2a04a089a90210042c1acc2",
+          "title": "Write a short response",
+          "task": "Write one sentence in German using a present-tense form of haben.\n\n1. A possession you and a friend share.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "0d5fa201f41747a292b7a8136c1bc8c2",
+              "name": "open vocabulary gap",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "short_response",
+            "language": "German",
+            "response_scope": "one sentence",
+            "focus": "a present-tense form of haben",
+            "instruction": "Write one sentence in German using a present-tense form of haben.",
+            "items": [
+              {
+                "text": "A possession you and a friend share.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "short_response",
+            "language": "German",
+            "response_scope": "one sentence",
+            "focus": "a present-tense form of haben",
+            "items": [
+              {
+                "text": "A possession you and a friend share.",
+                "context": "",
+                "references": [
+                  "Wir haben ein Auto."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Wir haben ein ... (I don't know the word for car).\"",
+        "skills": [
+          {
+            "id": "0d5fa201f41747a292b7a8136c1bc8c2",
+            "language": "German",
+            "key": "open_vocabulary_gap",
+            "name": "open vocabulary gap",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "329c653a04474c119cf30a70911779f9",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "0d5fa201f41747a292b7a8136c1bc8c2",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Uses haben correctly with the plural subject wir; the vocabulary gap does not affect the grammar target."
+            }
+          ]
+        },
+        "reply": "“Car” is Auto in German.",
+        "summary": "Uses the present-tense form haben correctly with wir. Did not know the word for “car” (Auto).",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2288,
+        "input_tokens_details": {
+          "cache_write_tokens": 2285,
+          "cached_tokens": 0
+        },
+        "output_tokens": 214,
+        "output_tokens_details": {
+          "reasoning_tokens": 47
+        },
+        "total_tokens": 2502,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2288,
+            "output_tokens": 214,
+            "total_tokens": 2502,
+            "input_tokens_details": {
+              "cache_write_tokens": 2285,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 47
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.818,
+      "passed": true
+    },
+    {
+      "case": "open_vocabulary_gap",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "329c653a04474c119cf30a70911779f9",
+          "kind": "exercise",
+          "lesson_id": "23b45f1be2a04a089a90210042c1acc2",
+          "title": "Write a short response",
+          "task": "Write one sentence in German using a present-tense form of haben.\n\n1. A possession you and a friend share.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "0d5fa201f41747a292b7a8136c1bc8c2",
+              "name": "open vocabulary gap",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "short_response",
+            "language": "German",
+            "response_scope": "one sentence",
+            "focus": "a present-tense form of haben",
+            "instruction": "Write one sentence in German using a present-tense form of haben.",
+            "items": [
+              {
+                "text": "A possession you and a friend share.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "short_response",
+            "language": "German",
+            "response_scope": "one sentence",
+            "focus": "a present-tense form of haben",
+            "items": [
+              {
+                "text": "A possession you and a friend share.",
+                "context": "",
+                "references": [
+                  "Wir haben ein Auto."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Wir haben ein ... (I don't know the word for car).\"",
+        "skills": [
+          {
+            "id": "0d5fa201f41747a292b7a8136c1bc8c2",
+            "language": "German",
+            "key": "open_vocabulary_gap",
+            "name": "open vocabulary gap",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "329c653a04474c119cf30a70911779f9",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "0d5fa201f41747a292b7a8136c1bc8c2",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Uses haben correctly with the subject wir; the explicit vocabulary gap does not obscure the verb agreement."
+            }
+          ]
+        },
+        "reply": "“Car” is Auto in German: ein Auto. Your use of wir haben is correct.",
+        "summary": "The learner correctly used present-tense haben with wir. They explicitly noted not knowing the German word for car; Auto was supplied. This vocabulary gap did not affect the demonstrated verb agreement.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2288,
+        "input_tokens_details": {
+          "cache_write_tokens": 2285,
+          "cached_tokens": 0
+        },
+        "output_tokens": 189,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2477,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2288,
+            "output_tokens": 189,
+            "total_tokens": 2477,
+            "input_tokens_details": {
+              "cache_write_tokens": 2285,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 5.77,
+      "passed": true
+    },
+    {
+      "case": "incidental_vocabulary",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "b2e20c153752470fa59393c300b28705",
+          "kind": "exercise",
+          "lesson_id": "8236c9b838874b5cb85dfa1334bbe37d",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. Are you tired?\n   Context: One person, informal\n2. Does he have time?\n3. Are we ready?",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "0f96223e1ceb471aa2578ec237568f5b",
+              "name": "incidental vocabulary",
+              "role": "target",
+              "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal"
+              },
+              {
+                "text": "Does he have time?",
+                "context": ""
+              },
+              {
+                "text": "Are we ready?",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal",
+                "references": [
+                  "Bist du müde?"
+                ]
+              },
+              {
+                "text": "Does he have time?",
+                "context": "",
+                "references": [
+                  "Hat er Zeit?"
+                ]
+              },
+              {
+                "text": "Are we ready?",
+                "context": "",
+                "references": [
+                  "Sind wir bereit?"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Bist du mude?\"\nItem 2: \"Hat er ... (I don't know the word for time)?\"\nItem 3: \"Sind wir ...? (same)\"",
+        "skills": [
+          {
+            "id": "0f96223e1ceb471aa2578ec237568f5b",
+            "language": "German",
+            "key": "incidental_vocabulary",
+            "name": "incidental vocabulary",
+            "definition": "Put the finite verb first in a neutral German yes/no question.",
+            "success_criteria": [
+              "Put the finite verb first in a neutral German yes/no question."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Put the finite verb first in a neutral German yes/no question.",
+          "recap": "Put the finite verb first in a neutral German yes/no question."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "b2e20c153752470fa59393c300b28705",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 2,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 3,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "0f96223e1ceb471aa2578ec237568f5b",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "All three questions put the finite verb first; the missing content words do not obscure the target structure."
+            }
+          ]
+        },
+        "reply": "The missing words are **Zeit** (time) and **bereit** (ready). In standard spelling, **müde** uses ü.",
+        "summary": "In this translation exercise, demonstrated finite-verb-first order in all three German yes/no questions. Did not know the words for “time” and “ready”; wrote “mude” without the umlaut in item 1.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2332,
+        "input_tokens_details": {
+          "cache_write_tokens": 2329,
+          "cached_tokens": 0
+        },
+        "output_tokens": 391,
+        "output_tokens_details": {
+          "reasoning_tokens": 158
+        },
+        "total_tokens": 2723,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2332,
+            "output_tokens": 391,
+            "total_tokens": 2723,
+            "input_tokens_details": {
+              "cache_write_tokens": 2329,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 158
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 3.868,
+      "passed": true
+    },
+    {
+      "case": "incidental_vocabulary",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "b2e20c153752470fa59393c300b28705",
+          "kind": "exercise",
+          "lesson_id": "8236c9b838874b5cb85dfa1334bbe37d",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. Are you tired?\n   Context: One person, informal\n2. Does he have time?\n3. Are we ready?",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "0f96223e1ceb471aa2578ec237568f5b",
+              "name": "incidental vocabulary",
+              "role": "target",
+              "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal"
+              },
+              {
+                "text": "Does he have time?",
+                "context": ""
+              },
+              {
+                "text": "Are we ready?",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal",
+                "references": [
+                  "Bist du müde?"
+                ]
+              },
+              {
+                "text": "Does he have time?",
+                "context": "",
+                "references": [
+                  "Hat er Zeit?"
+                ]
+              },
+              {
+                "text": "Are we ready?",
+                "context": "",
+                "references": [
+                  "Sind wir bereit?"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Bist du mude?\"\nItem 2: \"Hat er ... (I don't know the word for time)?\"\nItem 3: \"Sind wir ...? (same)\"",
+        "skills": [
+          {
+            "id": "0f96223e1ceb471aa2578ec237568f5b",
+            "language": "German",
+            "key": "incidental_vocabulary",
+            "name": "incidental vocabulary",
+            "definition": "Put the finite verb first in a neutral German yes/no question.",
+            "success_criteria": [
+              "Put the finite verb first in a neutral German yes/no question."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Put the finite verb first in a neutral German yes/no question.",
+          "recap": "Put the finite verb first in a neutral German yes/no question."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "b2e20c153752470fa59393c300b28705",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 2,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 3,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "0f96223e1ceb471aa2578ec237568f5b",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "All three questions place the correctly conjugated finite verb before the subject. Incidental spelling and vocabulary gaps do not obscure the target structure."
+            }
+          ]
+        },
+        "reply": "Your verb-first question structure is correct throughout. Vocabulary: “tired” = müde, “time” = Zeit, and “ready” = bereit.",
+        "summary": "The learner correctly used finite-verb-first order in all three German yes/no questions, with appropriate verb forms. Incidental gaps: omitted the words for time and ready, and wrote mude without the umlaut in müde; these did not interfere with demonstrating the grammar target.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2332,
+        "input_tokens_details": {
+          "cache_write_tokens": 2329,
+          "cached_tokens": 0
+        },
+        "output_tokens": 251,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2583,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2332,
+            "output_tokens": 251,
+            "total_tokens": 2583,
+            "input_tokens_details": {
+              "cache_write_tokens": 2329,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 6.954,
+      "passed": true
+    },
+    {
+      "case": "target_grammar_error",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "1104adbc0fc549b181b6e5a88862c784",
+          "kind": "exercise",
+          "lesson_id": "47523a9d43784280a3353f9c36a408c1",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. Are you tired?\n   Context: One person, informal; tired = müde",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "b811df0c5f824496b7a5fb76e0dd405b",
+              "name": "target grammar error",
+              "role": "target",
+              "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal; tired = müde"
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal; tired = müde",
+                "references": [
+                  "Bist du müde?"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Du bist müde?\"",
+        "skills": [
+          {
+            "id": "b811df0c5f824496b7a5fb76e0dd405b",
+            "language": "German",
+            "key": "target_grammar_error",
+            "name": "target grammar error",
+            "definition": "Put the finite verb first in a neutral German yes/no question.",
+            "success_criteria": [
+              "Put the finite verb first in a neutral German yes/no question."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Put the finite verb first in a neutral German yes/no question.",
+          "recap": "Put the finite verb first in a neutral German yes/no question."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "needs_work",
+        "severity": "substantial",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "1104adbc0fc549b181b6e5a88862c784",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": false,
+              "feedback": "Use “Bist du müde?” A neutral German yes/no question puts the finite verb first."
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "b811df0c5f824496b7a5fb76e0dd405b",
+              "outcome": "needs_work",
+              "issue_severity": "substantial",
+              "rationale": "The finite verb follows the subject rather than coming first in the yes/no question."
+            }
+          ]
+        },
+        "reply": "A neutral German yes/no question puts the finite verb first: “Bist du müde?”",
+        "summary": "The learner placed the finite verb after the subject in a German yes/no question, indicating difficulty with verb-first word order.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2237,
+        "input_tokens_details": {
+          "cache_write_tokens": 2234,
+          "cached_tokens": 0
+        },
+        "output_tokens": 266,
+        "output_tokens_details": {
+          "reasoning_tokens": 68
+        },
+        "total_tokens": 2503,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2237,
+            "output_tokens": 266,
+            "total_tokens": 2503,
+            "input_tokens_details": {
+              "cache_write_tokens": 2234,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 68
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.907,
+      "passed": true
+    },
+    {
+      "case": "target_grammar_error",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "1104adbc0fc549b181b6e5a88862c784",
+          "kind": "exercise",
+          "lesson_id": "47523a9d43784280a3353f9c36a408c1",
+          "title": "Translate",
+          "task": "Translate into German.\n\n1. Are you tired?\n   Context: One person, informal; tired = müde",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "b811df0c5f824496b7a5fb76e0dd405b",
+              "name": "target grammar error",
+              "role": "target",
+              "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "translate",
+            "language": "German",
+            "instruction": "Translate into German.",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal; tired = müde"
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "translate",
+            "language": "German",
+            "items": [
+              {
+                "text": "Are you tired?",
+                "context": "One person, informal; tired = müde",
+                "references": [
+                  "Bist du müde?"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"Du bist müde?\"",
+        "skills": [
+          {
+            "id": "b811df0c5f824496b7a5fb76e0dd405b",
+            "language": "German",
+            "key": "target_grammar_error",
+            "name": "target grammar error",
+            "definition": "Put the finite verb first in a neutral German yes/no question.",
+            "success_criteria": [
+              "Put the finite verb first in a neutral German yes/no question."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Put the finite verb first in a neutral German yes/no question."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Put the finite verb first in a neutral German yes/no question.",
+          "recap": "Put the finite verb first in a neutral German yes/no question."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "needs_work",
+        "severity": "substantial",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "1104adbc0fc549b181b6e5a88862c784",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": false,
+              "feedback": "Bist du müde? In a neutral German yes/no question, the finite verb comes first, before the subject."
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "b811df0c5f824496b7a5fb76e0dd405b",
+              "outcome": "needs_work",
+              "issue_severity": "substantial",
+              "rationale": "Used statement word order with the subject before the finite verb rather than verb-first order for a neutral yes/no question."
+            }
+          ]
+        },
+        "reply": "Use “Bist du müde?” For a neutral yes/no question, put the finite verb before the subject. “Du bist müde?” can express a surprised confirmation, but is not the neutral form requested.",
+        "summary": "The learner used statement word order in a German yes/no question. Neutral yes/no questions still need practice with the finite verb first, before the subject.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2237,
+        "input_tokens_details": {
+          "cache_write_tokens": 2234,
+          "cached_tokens": 0
+        },
+        "output_tokens": 236,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2473,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2237,
+            "output_tokens": 236,
+            "total_tokens": 2473,
+            "input_tokens_details": {
+              "cache_write_tokens": 2234,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 6.455,
+      "passed": true
+    },
+    {
+      "case": "minor_slip",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "183db0655a3a4f039f8f60108adcc8e0",
+          "kind": "exercise",
+          "lesson_id": "5fcf2225754f4024b1ce53b443048c30",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Yesterday I {{blank}} to school. (walk)\n2. Last week we {{blank}} our aunt. (visit)\n3. Yesterday they {{blank}} football. (play)",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "02cf078c57e64780a0359934dc21573b",
+              "name": "minor slip",
+              "role": "target",
+              "success_criterion": "Form the English simple past of regular verbs with -ed."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Yesterday I {{blank}} to school. (walk)",
+                "context": ""
+              },
+              {
+                "text": "Last week we {{blank}} our aunt. (visit)",
+                "context": ""
+              },
+              {
+                "text": "Yesterday they {{blank}} football. (play)",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "complete_sentence",
+            "items": [
+              {
+                "text": "Yesterday I {{blank}} to school. (walk)",
+                "context": "",
+                "references": [
+                  "walked"
+                ]
+              },
+              {
+                "text": "Last week we {{blank}} our aunt. (visit)",
+                "context": "",
+                "references": [
+                  "visited"
+                ]
+              },
+              {
+                "text": "Yesterday they {{blank}} football. (play)",
+                "context": "",
+                "references": [
+                  "played"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"walked\"\nItem 2: \"visited\"\nItem 3: \"play\"",
+        "skills": [
+          {
+            "id": "02cf078c57e64780a0359934dc21573b",
+            "language": "English",
+            "key": "minor_slip",
+            "name": "minor slip",
+            "definition": "Form the English simple past of regular verbs with -ed.",
+            "success_criteria": [
+              "Form the English simple past of regular verbs with -ed."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Form the English simple past of regular verbs with -ed."
+          }
+        ],
+        "lesson": {
+          "language": "English",
+          "objective": "Form the English simple past of regular verbs with -ed.",
+          "recap": "Form the English simple past of regular verbs with -ed."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": {
+          "previous_assessments": [
+            {
+              "score": {
+                "correct": 3,
+                "total": 3
+              },
+              "feedback": "",
+              "observations": [
+                {
+                  "skill_id": "02cf078c57e64780a0359934dc21573b",
+                  "outcome": "success",
+                  "issue_severity": "none",
+                  "rationale": "Correct regular past forms."
+                }
+              ],
+              "errors": []
+            },
+            {
+              "score": {
+                "correct": 3,
+                "total": 3
+              },
+              "feedback": "",
+              "observations": [
+                {
+                  "skill_id": "02cf078c57e64780a0359934dc21573b",
+                  "outcome": "success",
+                  "issue_severity": "none",
+                  "rationale": "Correct regular past forms."
+                }
+              ],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "183db0655a3a4f039f8f60108adcc8e0",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 2,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 3,
+              "correct": false,
+              "feedback": "Use “played.” Regular verbs form the simple past with -ed."
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "02cf078c57e64780a0359934dc21573b",
+              "outcome": "success",
+              "issue_severity": "minor",
+              "rationale": "Correctly formed two regular simple past forms; one answer omitted -ed."
+            }
+          ]
+        },
+        "reply": "For item 3, use “played”—add -ed to form the simple past.",
+        "summary": "The learner has demonstrated understanding of regular simple past formation, including two correct forms in the current exercise. One response omitted -ed; this appears to be a local slip rather than a general misunderstanding.",
+        "completion_summary": "Earlier work showed correct regular past forms, and this exercise again demonstrates the pattern. One answer omitted -ed; remember to add it to regular verbs."
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2489,
+        "input_tokens_details": {
+          "cache_write_tokens": 2486,
+          "cached_tokens": 0
+        },
+        "output_tokens": 377,
+        "output_tokens_details": {
+          "reasoning_tokens": 47
+        },
+        "total_tokens": 2866,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2489,
+            "output_tokens": 377,
+            "total_tokens": 2866,
+            "input_tokens_details": {
+              "cache_write_tokens": 2486,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 47
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 3.575,
+      "passed": true
+    },
+    {
+      "case": "minor_slip",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "183db0655a3a4f039f8f60108adcc8e0",
+          "kind": "exercise",
+          "lesson_id": "5fcf2225754f4024b1ce53b443048c30",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Yesterday I {{blank}} to school. (walk)\n2. Last week we {{blank}} our aunt. (visit)\n3. Yesterday they {{blank}} football. (play)",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "02cf078c57e64780a0359934dc21573b",
+              "name": "minor slip",
+              "role": "target",
+              "success_criterion": "Form the English simple past of regular verbs with -ed."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Yesterday I {{blank}} to school. (walk)",
+                "context": ""
+              },
+              {
+                "text": "Last week we {{blank}} our aunt. (visit)",
+                "context": ""
+              },
+              {
+                "text": "Yesterday they {{blank}} football. (play)",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "complete_sentence",
+            "items": [
+              {
+                "text": "Yesterday I {{blank}} to school. (walk)",
+                "context": "",
+                "references": [
+                  "walked"
+                ]
+              },
+              {
+                "text": "Last week we {{blank}} our aunt. (visit)",
+                "context": "",
+                "references": [
+                  "visited"
+                ]
+              },
+              {
+                "text": "Yesterday they {{blank}} football. (play)",
+                "context": "",
+                "references": [
+                  "played"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"walked\"\nItem 2: \"visited\"\nItem 3: \"play\"",
+        "skills": [
+          {
+            "id": "02cf078c57e64780a0359934dc21573b",
+            "language": "English",
+            "key": "minor_slip",
+            "name": "minor slip",
+            "definition": "Form the English simple past of regular verbs with -ed.",
+            "success_criteria": [
+              "Form the English simple past of regular verbs with -ed."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Form the English simple past of regular verbs with -ed."
+          }
+        ],
+        "lesson": {
+          "language": "English",
+          "objective": "Form the English simple past of regular verbs with -ed.",
+          "recap": "Form the English simple past of regular verbs with -ed."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": {
+          "previous_assessments": [
+            {
+              "score": {
+                "correct": 3,
+                "total": 3
+              },
+              "feedback": "",
+              "observations": [
+                {
+                  "skill_id": "02cf078c57e64780a0359934dc21573b",
+                  "outcome": "success",
+                  "issue_severity": "none",
+                  "rationale": "Correct regular past forms."
+                }
+              ],
+              "errors": []
+            },
+            {
+              "score": {
+                "correct": 3,
+                "total": 3
+              },
+              "feedback": "",
+              "observations": [
+                {
+                  "skill_id": "02cf078c57e64780a0359934dc21573b",
+                  "outcome": "success",
+                  "issue_severity": "none",
+                  "rationale": "Correct regular past forms."
+                }
+              ],
+              "errors": []
+            }
+          ]
+        }
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "183db0655a3a4f039f8f60108adcc8e0",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 2,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "item_number": 3,
+              "correct": false,
+              "feedback": "Use “played”: “yesterday” requires the simple past, so add -ed to “play”."
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "02cf078c57e64780a0359934dc21573b",
+              "outcome": "success",
+              "issue_severity": "minor",
+              "rationale": "Two correct regular past forms demonstrate the -ed pattern; leaving “play” unchanged is a local omission."
+            }
+          ]
+        },
+        "reply": "For item 3, use “played,” not “play”: “yesterday” requires the past form with -ed.",
+        "summary": "The learner demonstrated regular simple-past formation with two correct -ed forms. One local slip: omitted -ed from “play” in a sentence about yesterday.",
+        "completion_summary": "Across the submissions, the learner demonstrated understanding of regular simple-past forms with -ed. The remaining point is consistency: the latest response omitted -ed from one verb referring to yesterday."
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2489,
+        "input_tokens_details": {
+          "cache_write_tokens": 2486,
+          "cached_tokens": 0
+        },
+        "output_tokens": 274,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2763,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2489,
+            "output_tokens": 274,
+            "total_tokens": 2763,
+            "input_tokens_details": {
+              "cache_write_tokens": 2486,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 6.196,
+      "passed": true
+    },
+    {
+      "case": "empty_response",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "3756e543de9b4a0ebda6f75bfbf3e2d0",
+          "kind": "exercise",
+          "lesson_id": "fdf4dd90edb94de8b590f8900ba651cc",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Ihr {{blank}} Zeit.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "05e0ba669ef34c81a5cf4fb4449aebae",
+              "name": "empty response",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "complete_sentence",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": "",
+                "references": [
+                  "habt"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"\"",
+        "skills": [
+          {
+            "id": "05e0ba669ef34c81a5cf4fb4449aebae",
+            "language": "German",
+            "key": "empty_response",
+            "name": "empty response",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "uncertain",
+        "severity": "unclear",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "3756e543de9b4a0ebda6f75bfbf3e2d0",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": false,
+              "feedback": "Use “habt”: “Ihr habt Zeit.” The blank needs the present-tense form of haben that agrees with “ihr”."
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "05e0ba669ef34c81a5cf4fb4449aebae",
+              "outcome": "uncertain",
+              "issue_severity": "unclear",
+              "rationale": "No answer was provided, so agreement of haben with the subject cannot be judged."
+            }
+          ]
+        },
+        "reply": "The blank was left unanswered; the form that fits is “habt.”",
+        "summary": "The response to the present-tense haben agreement task was blank, so understanding cannot be judged.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2192,
+        "input_tokens_details": {
+          "cache_write_tokens": 2189,
+          "cached_tokens": 0
+        },
+        "output_tokens": 268,
+        "output_tokens_details": {
+          "reasoning_tokens": 69
+        },
+        "total_tokens": 2460,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2192,
+            "output_tokens": 268,
+            "total_tokens": 2460,
+            "input_tokens_details": {
+              "cache_write_tokens": 2189,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 69
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 3.009,
+      "passed": true
+    },
+    {
+      "case": "empty_response",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "3756e543de9b4a0ebda6f75bfbf3e2d0",
+          "kind": "exercise",
+          "lesson_id": "fdf4dd90edb94de8b590f8900ba651cc",
+          "title": "Complete a sentence",
+          "task": "Fill in the blank.\n\n1. Ihr {{blank}} Zeit.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "05e0ba669ef34c81a5cf4fb4449aebae",
+              "name": "empty response",
+              "role": "target",
+              "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "complete_sentence",
+            "instruction": "Fill in the blank.",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "complete_sentence",
+            "items": [
+              {
+                "text": "Ihr {{blank}} Zeit.",
+                "context": "",
+                "references": [
+                  "habt"
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"\"",
+        "skills": [
+          {
+            "id": "05e0ba669ef34c81a5cf4fb4449aebae",
+            "language": "German",
+            "key": "empty_response",
+            "name": "empty response",
+            "definition": "Use a present-tense form of haben agreeing with the subject.",
+            "success_criteria": [
+              "Use a present-tense form of haben agreeing with the subject."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Use a present-tense form of haben agreeing with the subject."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Use a present-tense form of haben agreeing with the subject.",
+          "recap": "Use a present-tense form of haben agreeing with the subject."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "uncertain",
+        "severity": "unclear",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "3756e543de9b4a0ebda6f75bfbf3e2d0",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": false,
+              "feedback": "Missing answer: habt. The present-tense form of haben with ihr is habt."
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "05e0ba669ef34c81a5cf4fb4449aebae",
+              "outcome": "uncertain",
+              "issue_severity": "unclear",
+              "rationale": "The answer was empty, so subject–verb agreement with haben could not be assessed."
+            }
+          ]
+        },
+        "reply": "The blank was left empty. Use habt: haben takes this present-tense form with ihr.",
+        "summary": "The learner left the haben sentence blank; there is insufficient evidence to judge present-tense subject–verb agreement.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2192,
+        "input_tokens_details": {
+          "cache_write_tokens": 2189,
+          "cached_tokens": 0
+        },
+        "output_tokens": 195,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2387,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2192,
+            "output_tokens": 195,
+            "total_tokens": 2387,
+            "input_tokens_details": {
+              "cache_write_tokens": 2189,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 5.015,
+      "passed": true
+    },
+    {
+      "case": "assisted_success",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "09b0948680a64473849652b6d7a8d2b8",
+          "kind": "exercise",
+          "lesson_id": "b38b1cabd1074fc692702d44423bea93",
+          "title": "Transform a sentence",
+          "task": "Rewrite using the simple past.\n\n1. We visit our aunt.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "f45afba311984f3d8caa3d9affa927e0",
+              "name": "assisted success",
+              "role": "target",
+              "success_criterion": "Form the English simple past of regular verbs with -ed."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "transform",
+            "target_form": "the simple past",
+            "instruction": "Rewrite using the simple past.",
+            "items": [
+              {
+                "text": "We visit our aunt.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "transform",
+            "target_form": "the simple past",
+            "items": [
+              {
+                "text": "We visit our aunt.",
+                "context": "",
+                "references": [
+                  "We visited our aunt."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"We visited our aunt.\"",
+        "skills": [
+          {
+            "id": "f45afba311984f3d8caa3d9affa927e0",
+            "language": "English",
+            "key": "assisted_success",
+            "name": "assisted success",
+            "definition": "Form the English simple past of regular verbs with -ed.",
+            "success_criteria": [
+              "Form the English simple past of regular verbs with -ed."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Form the English simple past of regular verbs with -ed."
+          }
+        ],
+        "lesson": {
+          "language": "English",
+          "objective": "Form the English simple past of regular verbs with -ed.",
+          "recap": "Form the English simple past of regular verbs with -ed."
+        },
+        "preferences": {},
+        "assistance": [
+          {
+            "skill_id": "f45afba311984f3d8caa3d9affa927e0",
+            "level": "explanation"
+          }
+        ],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": true
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "09b0948680a64473849652b6d7a8d2b8",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "f45afba311984f3d8caa3d9affa927e0",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Correctly formed the regular verb in the simple past."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "Correctly formed a regular verb in the simple past in this submission.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2240,
+        "input_tokens_details": {
+          "cache_write_tokens": 2237,
+          "cached_tokens": 0
+        },
+        "output_tokens": 200,
+        "output_tokens_details": {
+          "reasoning_tokens": 55
+        },
+        "total_tokens": 2440,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2240,
+            "output_tokens": 200,
+            "total_tokens": 2440,
+            "input_tokens_details": {
+              "cache_write_tokens": 2237,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 55
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.819,
+      "passed": true
+    },
+    {
+      "case": "assisted_success",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "09b0948680a64473849652b6d7a8d2b8",
+          "kind": "exercise",
+          "lesson_id": "b38b1cabd1074fc692702d44423bea93",
+          "title": "Transform a sentence",
+          "task": "Rewrite using the simple past.\n\n1. We visit our aunt.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "f45afba311984f3d8caa3d9affa927e0",
+              "name": "assisted success",
+              "role": "target",
+              "success_criterion": "Form the English simple past of regular verbs with -ed."
+            }
+          ],
+          "source_ids": [],
+          "format": {
+            "version": 1,
+            "type": "transform",
+            "target_form": "the simple past",
+            "instruction": "Rewrite using the simple past.",
+            "items": [
+              {
+                "text": "We visit our aunt.",
+                "context": ""
+              }
+            ]
+          }
+        },
+        "assessment_contract": {
+          "version": 1,
+          "content": {
+            "type": "transform",
+            "target_form": "the simple past",
+            "items": [
+              {
+                "text": "We visit our aunt.",
+                "context": "",
+                "references": [
+                  "We visited our aunt."
+                ]
+              }
+            ]
+          }
+        },
+        "learner_response": "Item 1: \"We visited our aunt.\"",
+        "skills": [
+          {
+            "id": "f45afba311984f3d8caa3d9affa927e0",
+            "language": "English",
+            "key": "assisted_success",
+            "name": "assisted success",
+            "definition": "Form the English simple past of regular verbs with -ed.",
+            "success_criteria": [
+              "Form the English simple past of regular verbs with -ed."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Form the English simple past of regular verbs with -ed."
+          }
+        ],
+        "lesson": {
+          "language": "English",
+          "objective": "Form the English simple past of regular verbs with -ed.",
+          "recap": "Form the English simple past of regular verbs with -ed."
+        },
+        "preferences": {},
+        "assistance": [
+          {
+            "skill_id": "f45afba311984f3d8caa3d9affa927e0",
+            "level": "explanation"
+          }
+        ],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": true
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "09b0948680a64473849652b6d7a8d2b8",
+          "feedback": "",
+          "score": null,
+          "item_results": [
+            {
+              "item_number": 1,
+              "correct": true,
+              "feedback": ""
+            }
+          ],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "f45afba311984f3d8caa3d9affa927e0",
+              "outcome": "success",
+              "issue_severity": "none",
+              "rationale": "Correctly formed the regular simple past by adding -ed to visit."
+            }
+          ]
+        },
+        "reply": "Correct.",
+        "summary": "The learner correctly formed the simple past of a regular verb with -ed in a sentence transformation, with explanation assistance provided.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2240,
+        "input_tokens_details": {
+          "cache_write_tokens": 2237,
+          "cached_tokens": 0
+        },
+        "output_tokens": 156,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2396,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2240,
+            "output_tokens": 156,
+            "total_tokens": 2396,
+            "input_tokens_details": {
+              "cache_write_tokens": 2237,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 5.015,
+      "passed": true
+    },
+    {
+      "case": "legacy_blanks",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "3165b269c8bc4d8a83bc8ef051ce21c5",
+          "kind": "exercise",
+          "lesson_id": "2269ad55550e47349555a63870de789d",
+          "title": "Saved legacy practice",
+          "task": "Fill in the regular past forms.\n1. walk → {{blank}}\n2. visit → {{blank}}\n3. play → {{blank}}",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "d03d4912a1404fe980974e3680344abc",
+              "name": "legacy blanks",
+              "role": "target",
+              "success_criterion": "Form the English simple past of regular verbs with -ed."
+            }
+          ],
+          "source_ids": []
+        },
+        "assessment_contract": null,
+        "learner_response": "Blank 1: walked\nBlank 2: visited\nBlank 3: play",
+        "skills": [
+          {
+            "id": "d03d4912a1404fe980974e3680344abc",
+            "language": "English",
+            "key": "legacy_blanks",
+            "name": "legacy blanks",
+            "definition": "Form the English simple past of regular verbs with -ed.",
+            "success_criteria": [
+              "Form the English simple past of regular verbs with -ed."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Form the English simple past of regular verbs with -ed."
+          }
+        ],
+        "lesson": {
+          "language": "English",
+          "objective": "Form the English simple past of regular verbs with -ed.",
+          "recap": "Form the English simple past of regular verbs with -ed."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "3165b269c8bc4d8a83bc8ef051ce21c5",
+          "feedback": "",
+          "score": {
+            "correct": 2,
+            "total": 3
+          },
+          "item_results": [],
+          "blank_results": [
+            {
+              "blank_number": 1,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "blank_number": 2,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "blank_number": 3,
+              "correct": false,
+              "feedback": "The past form is “played”; add -ed to “play”."
+            }
+          ],
+          "observations": [
+            {
+              "skill_id": "d03d4912a1404fe980974e3680344abc",
+              "outcome": "success",
+              "issue_severity": "minor",
+              "rationale": "Two regular past forms are correct; the third omits the -ed ending."
+            }
+          ]
+        },
+        "reply": "For blank 3, write “played”; the past form needs -ed.",
+        "summary": "Demonstrated the regular past -ed form correctly for two verbs; omitted -ed on one form.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2120,
+        "input_tokens_details": {
+          "cache_write_tokens": 2117,
+          "cached_tokens": 0
+        },
+        "output_tokens": 262,
+        "output_tokens_details": {
+          "reasoning_tokens": 48
+        },
+        "total_tokens": 2382,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2120,
+            "output_tokens": 262,
+            "total_tokens": 2382,
+            "input_tokens_details": {
+              "cache_write_tokens": 2117,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 48
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.855,
+      "passed": true
+    },
+    {
+      "case": "legacy_blanks",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "3165b269c8bc4d8a83bc8ef051ce21c5",
+          "kind": "exercise",
+          "lesson_id": "2269ad55550e47349555a63870de789d",
+          "title": "Saved legacy practice",
+          "task": "Fill in the regular past forms.\n1. walk → {{blank}}\n2. visit → {{blank}}\n3. play → {{blank}}",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "d03d4912a1404fe980974e3680344abc",
+              "name": "legacy blanks",
+              "role": "target",
+              "success_criterion": "Form the English simple past of regular verbs with -ed."
+            }
+          ],
+          "source_ids": []
+        },
+        "assessment_contract": null,
+        "learner_response": "Blank 1: walked\nBlank 2: visited\nBlank 3: play",
+        "skills": [
+          {
+            "id": "d03d4912a1404fe980974e3680344abc",
+            "language": "English",
+            "key": "legacy_blanks",
+            "name": "legacy blanks",
+            "definition": "Form the English simple past of regular verbs with -ed.",
+            "success_criteria": [
+              "Form the English simple past of regular verbs with -ed."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Form the English simple past of regular verbs with -ed."
+          }
+        ],
+        "lesson": {
+          "language": "English",
+          "objective": "Form the English simple past of regular verbs with -ed.",
+          "recap": "Form the English simple past of regular verbs with -ed."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "3165b269c8bc4d8a83bc8ef051ce21c5",
+          "feedback": "",
+          "score": {
+            "correct": 2,
+            "total": 3
+          },
+          "item_results": [],
+          "blank_results": [
+            {
+              "blank_number": 1,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "blank_number": 2,
+              "correct": true,
+              "feedback": ""
+            },
+            {
+              "blank_number": 3,
+              "correct": false,
+              "feedback": "Use “played”: add -ed to “play” to form the simple past."
+            }
+          ],
+          "observations": [
+            {
+              "skill_id": "d03d4912a1404fe980974e3680344abc",
+              "outcome": "success",
+              "issue_severity": "minor",
+              "rationale": "Correctly added -ed to two regular verbs, with one local omission of the past-tense ending."
+            }
+          ]
+        },
+        "reply": "For blank 3, use “played,” not “play”: the simple past needs -ed.",
+        "summary": "The learner demonstrated regular simple-past formation with -ed in two answers, with one local omission of the ending on “play.”",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2120,
+        "input_tokens_details": {
+          "cache_write_tokens": 2117,
+          "cached_tokens": 0
+        },
+        "output_tokens": 229,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2349,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2120,
+            "output_tokens": 229,
+            "total_tokens": 2349,
+            "input_tokens_details": {
+              "cache_write_tokens": 2117,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 6.512,
+      "passed": true
+    },
+    {
+      "case": "legacy_components",
+      "model": "gpt-6-luna",
+      "input": {
+        "exercise": {
+          "id": "a17ecdd1d97e4a3d81154d68a67cef23",
+          "kind": "exercise",
+          "lesson_id": "c74496bfb6ca436f984b0e080e0f14d0",
+          "title": "Saved legacy practice",
+          "task": "Give each German subject pronoun and its English meaning: 1. first person singular; 2. second person singular informal.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "6ca3d91c8e0947e9877103eb185f526d",
+              "name": "legacy components",
+              "role": "target",
+              "success_criterion": "Recall the German pronouns ich and du and their English meanings."
+            }
+          ],
+          "source_ids": []
+        },
+        "assessment_contract": null,
+        "learner_response": "ich = I; du (I forgot its meaning)",
+        "skills": [
+          {
+            "id": "6ca3d91c8e0947e9877103eb185f526d",
+            "language": "German",
+            "key": "legacy_components",
+            "name": "legacy components",
+            "definition": "Recall the German pronouns ich and du and their English meanings.",
+            "success_criteria": [
+              "Recall the German pronouns ich and du and their English meanings."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Recall the German pronouns ich and du and their English meanings."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Recall the German pronouns ich and du and their English meanings.",
+          "recap": "Recall the German pronouns ich and du and their English meanings."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "a17ecdd1d97e4a3d81154d68a67cef23",
+          "feedback": "“du” means “you” (informal singular).",
+          "score": {
+            "correct": 3,
+            "total": 4
+          },
+          "item_results": [],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "6ca3d91c8e0947e9877103eb185f526d",
+              "outcome": "success",
+              "issue_severity": "minor",
+              "rationale": "Correctly gave both pronouns and the meaning of “ich”; omitted only the meaning of “du.”"
+            }
+          ]
+        },
+        "reply": "“du” means “you” (informal singular).",
+        "summary": "Correctly recalled “ich” as “I” and identified “du” as the second-person informal pronoun; did not recall its English meaning.",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2123,
+        "input_tokens_details": {
+          "cache_write_tokens": 2120,
+          "cached_tokens": 0
+        },
+        "output_tokens": 258,
+        "output_tokens_details": {
+          "reasoning_tokens": 71
+        },
+        "total_tokens": 2381,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2123,
+            "output_tokens": 258,
+            "total_tokens": 2381,
+            "input_tokens_details": {
+              "cache_write_tokens": 2120,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 71
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 2.997,
+      "passed": true
+    },
+    {
+      "case": "legacy_components",
+      "model": "gpt-6.1-sol",
+      "input": {
+        "exercise": {
+          "id": "a17ecdd1d97e4a3d81154d68a67cef23",
+          "kind": "exercise",
+          "lesson_id": "c74496bfb6ca436f984b0e080e0f14d0",
+          "title": "Saved legacy practice",
+          "task": "Give each German subject pronoun and its English meaning: 1. first person singular; 2. second person singular informal.",
+          "context": "",
+          "scaffolding": "none",
+          "skills": [
+            {
+              "id": "6ca3d91c8e0947e9877103eb185f526d",
+              "name": "legacy components",
+              "role": "target",
+              "success_criterion": "Recall the German pronouns ich and du and their English meanings."
+            }
+          ],
+          "source_ids": []
+        },
+        "assessment_contract": null,
+        "learner_response": "ich = I; du (I forgot its meaning)",
+        "skills": [
+          {
+            "id": "6ca3d91c8e0947e9877103eb185f526d",
+            "language": "German",
+            "key": "legacy_components",
+            "name": "legacy components",
+            "definition": "Recall the German pronouns ich and du and their English meanings.",
+            "success_criteria": [
+              "Recall the German pronouns ich and du and their English meanings."
+            ],
+            "status": "active",
+            "version": 1,
+            "role": "target",
+            "success_criterion": "Recall the German pronouns ich and du and their English meanings."
+          }
+        ],
+        "lesson": {
+          "language": "German",
+          "objective": "Recall the German pronouns ich and du and their English meanings.",
+          "recap": "Recall the German pronouns ich and du and their English meanings."
+        },
+        "preferences": {},
+        "assistance": [],
+        "discussion_summary": "",
+        "completion_context": null
+      },
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "output": {
+        "assessment": {
+          "exercise_id": "a17ecdd1d97e4a3d81154d68a67cef23",
+          "feedback": "Both German pronouns and the meaning of ich are correct. The meaning of du is missing: it means “you” (singular, informal).",
+          "score": {
+            "correct": 3,
+            "total": 4
+          },
+          "item_results": [],
+          "blank_results": [],
+          "observations": [
+            {
+              "skill_id": "6ca3d91c8e0947e9877103eb185f526d",
+              "outcome": "success",
+              "issue_severity": "minor",
+              "rationale": "Recalled both requested pronouns and the meaning of ich; explicitly forgot the meaning of du, a local vocabulary gap."
+            }
+          ]
+        },
+        "reply": "du means “you” when addressing one person informally. That meaning was the only missing component.",
+        "summary": "The learner recalled the German first- and second-person singular informal pronouns and the English meaning of ich, but explicitly forgot the English meaning of du. Supplied the missing meaning: singular informal “you.”",
+        "completion_summary": null
+      },
+      "usage": {
+        "requests": 1,
+        "input_tokens": 2123,
+        "input_tokens_details": {
+          "cache_write_tokens": 2120,
+          "cached_tokens": 0
+        },
+        "output_tokens": 225,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 2348,
+        "request_usage_entries": [
+          {
+            "input_tokens": 2123,
+            "output_tokens": 225,
+            "total_tokens": 2348,
+            "input_tokens_details": {
+              "cache_write_tokens": 2120,
+              "cached_tokens": 0
+            },
+            "output_tokens_details": {
+              "reasoning_tokens": 0
+            }
+          }
+        ]
+      },
+      "problems": [],
+      "seconds": 5.549,
+      "passed": true
+    }
+  ]
+}

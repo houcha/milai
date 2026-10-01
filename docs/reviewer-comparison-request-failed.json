@@ -1,0 +1,464 @@
+{
+  "timestamp": "2026-09-30T22:24:18.452528+00:00",
+  "prompt_hash": "563673a3c7113bd8",
+  "reasoning_effort": "low",
+  "service_tier": "standard",
+  "max_output_tokens": 8192,
+  "models": [
+    "gpt-6-luna",
+    "gpt-6.1-sol"
+  ],
+  "label_source": "Predefined expected correctness and evidence; Sol is a comparator, not ground truth.",
+  "results": [
+    {
+      "case": "informal_plural",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 16.576,
+      "passed": false
+    },
+    {
+      "case": "informal_plural",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.841,
+      "passed": false
+    },
+    {
+      "case": "valid_alternative",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.276,
+      "passed": false
+    },
+    {
+      "case": "valid_alternative",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.273,
+      "passed": false
+    },
+    {
+      "case": "completion",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.286,
+      "passed": false
+    },
+    {
+      "case": "completion",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.236,
+      "passed": false
+    },
+    {
+      "case": "transformation",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.256,
+      "passed": false
+    },
+    {
+      "case": "transformation",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.269,
+      "passed": false
+    },
+    {
+      "case": "open_vocabulary_gap",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.289,
+      "passed": false
+    },
+    {
+      "case": "open_vocabulary_gap",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.32,
+      "passed": false
+    },
+    {
+      "case": "incidental_vocabulary",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.26,
+      "passed": false
+    },
+    {
+      "case": "incidental_vocabulary",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.26,
+      "passed": false
+    },
+    {
+      "case": "target_grammar_error",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "needs_work",
+        "severity": "substantial",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.295,
+      "passed": false
+    },
+    {
+      "case": "target_grammar_error",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "needs_work",
+        "severity": "substantial",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.248,
+      "passed": false
+    },
+    {
+      "case": "minor_slip",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.251,
+      "passed": false
+    },
+    {
+      "case": "minor_slip",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.249,
+      "passed": false
+    },
+    {
+      "case": "empty_response",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "uncertain",
+        "severity": "unclear",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.291,
+      "passed": false
+    },
+    {
+      "case": "empty_response",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          false
+        ],
+        "outcome": "uncertain",
+        "severity": "unclear",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.232,
+      "passed": false
+    },
+    {
+      "case": "assisted_success",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": true
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.598,
+      "passed": false
+    },
+    {
+      "case": "assisted_success",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true
+        ],
+        "outcome": "success",
+        "severity": "none",
+        "assisted": true
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.266,
+      "passed": false
+    },
+    {
+      "case": "legacy_blanks",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.269,
+      "passed": false
+    },
+    {
+      "case": "legacy_blanks",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.581,
+      "passed": false
+    },
+    {
+      "case": "legacy_components",
+      "model": "gpt-6-luna",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.281,
+      "passed": false
+    },
+    {
+      "case": "legacy_components",
+      "model": "gpt-6.1-sol",
+      "expected": {
+        "correct": [
+          true,
+          true,
+          true,
+          false
+        ],
+        "outcome": "success",
+        "severity": "minor",
+        "assisted": false
+      },
+      "problems": [
+        "BadRequestError"
+      ],
+      "error": "Error code: 400 - {'error': {'message': \"Invalid value: 'standard'. Supported values are: 'auto', 'default', 'fast', 'flex', and 'priority'.\", 'type': 'invalid_request_error', 'param': 'service_tier', 'code': 'invalid_value'}}",
+      "seconds": 0.296,
+      "passed": false
+    }
+  ]
+}

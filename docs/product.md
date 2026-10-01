@@ -148,8 +148,13 @@ learner-supplied or retrieved from a public HTTPS URL. Original examples are
 distinguished from verified source excerpts.
 
 Milai runs locally in terminal or browser, uses the OpenAI Agents SDK and SQLite,
-and keeps one learner-facing tutor. Chat and assessment use the configured
-`OPENAI_MODEL` with low reasoning. A private structured planner uses the separate
+and keeps one learner-facing tutor. Chat uses the configured
+`OPENAI_MODEL` with low reasoning. Exercise submissions use a compact, tool-free
+structured reviewer, defaulting to `gpt-6-luna` with medium reasoning and Standard
+processing. Each exercise retains its own submit action; scoring, evidence,
+discussion memory, and an optional final-set recap save atomically in one model
+call. Invalid review output leaves the answer available for retry. A private
+structured planner uses the separate
 lesson model and generation settings; the application validates its draft before
 saving the document, exercises, lesson card, and main reply together. A failed
 generation leaves the turn unchanged. Schema 5–9 databases upgrade to schema 10

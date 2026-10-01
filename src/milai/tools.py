@@ -569,9 +569,14 @@ async def record_assistance(
 async def assess_attempt(
     ctx: RunContextWrapper[Context], assessment: AttemptAssessment
 ) -> dict:
-    """Save reply and observations; repeated prior-skill difficulty may open a review."""
+    """Save an explicit submission's assessment and learning evidence."""
     c = ctx.context
     c.check()
+    return persist_assessment(c, assessment)
+
+
+def persist_assessment(c: Context, assessment: AttemptAssessment) -> dict:
+    """Validate and persist an assessment from a tool or the private reviewer."""
     if c.action != "answer":
         raise ValueError("Assess only an explicit exercise answer submission")
     if c.selected_exercise_id and c.selected_exercise_id != assessment.exercise_id:

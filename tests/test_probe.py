@@ -36,6 +36,7 @@ def test_probe_exercises_real_adapter_with_mocked_transport(monkeypatch):
             recall,
             recall,
             structured,
+            structured,
         ]
     )
     provider.service_tier = "priority"
@@ -56,6 +57,9 @@ def test_probe_exercises_real_adapter_with_mocked_transport(monkeypatch):
     assert result["conversation_continuation"] == "passed"
     assert result["lesson_structured_output"] == "passed"
     assert result["lesson_returned_service_tier"] == "priority"
+    assert result["review_structured_output"] == "passed"
+    assert result["review_model"] == "gpt-6-luna"
+    assert result["usage_review"]["requests"] == 1
     assert json.loads(json.dumps(result))["usage_first"]["requests"] == 2
     assert [r["reasoning"]["effort"] for r in provider.requests] == [
         "low",
@@ -63,6 +67,7 @@ def test_probe_exercises_real_adapter_with_mocked_transport(monkeypatch):
         "low",
         "high",
         "low",
+        "medium",
     ]
     assert [r["model"] for r in provider.requests] == [
         "mock-model",
@@ -70,9 +75,12 @@ def test_probe_exercises_real_adapter_with_mocked_transport(monkeypatch):
         "mock-model",
         "mock-model",
         "gpt-6-sol",
+        "gpt-6-luna",
     ]
-    assert provider.requests[-1]["service_tier"] == "fast"
-    assert provider.requests[-1]["max_output_tokens"] == 32768
+    assert provider.requests[-2]["service_tier"] == "fast"
+    assert provider.requests[-2]["max_output_tokens"] == 32768
+    assert provider.requests[-1]["service_tier"] == "default"
+    assert provider.requests[-1]["max_output_tokens"] == 8192
     assert provider.requests[-1]["text"]["format"]["type"] == "json_schema"
     assert all(r["store"] is False for r in provider.requests)
     assert all("reasoning.encrypted_content" in r["include"] for r in provider.requests)

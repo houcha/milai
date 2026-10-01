@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from milai.reviewer import ReviewOutput
 from milai.store import SCHEMA_VERSION, InvalidReference, Store
 from milai.tools import Context, assess_attempt
 from milai.tutor import LessonTurnOutput
@@ -63,27 +64,17 @@ def test_completion_uses_whole_set_evidence_and_survives_reload(
     async def run(agent, messages, *, context, **kwargs):
         calls.append(context.action)
         if context.action == "answer":
-            result = await invoke(
-                assess_attempt,
-                context,
-                {
-                    "assessment": assessment(lesson, tasks[-1]),
-                },
-            )
-            practice = result["practice_result"]
-            assert practice["finished"] and practice["set_id"] == "lesson"
-            assert practice["completion_turn_id"] == context.turn_id
-            assert (practice["correct"], practice["total"]) == (5, 6)
-            evidence = result["practice_assessments"]
-            assert [entry["exercise_id"] for entry in evidence] == [
-                t["id"] for t in tasks
-            ]
-            assert all(entry["assessment"] for entry in evidence)
-            # The current assessment is available before its turn is committed.
-            assert evidence[-1]["assessment"]["score"] == {"correct": 1, "total": 2}
-            json.dumps(result)  # No recursive references to the enclosing tool result.
-            output = LessonTurnOutput(
-                reply="Assessed.", summary="Discussed forms.", completion_summary=recap
+            data = json.loads(messages.split("\n", 1)[1])
+            previous = data["completion_context"]["previous_assessments"]
+            assert len(previous) == 2
+            assert [item["score"] for item in previous] == [
+                {"correct": 2, "total": 2}
+            ] * 2
+            output = ReviewOutput(
+                assessment=assessment(lesson, tasks[-1]),
+                reply="Assessed.",
+                summary="Discussed forms.",
+                completion_summary=recap,
             )
         elif context.lesson_id:
             output = LessonTurnOutput(
@@ -152,12 +143,12 @@ def test_failed_completion_rolls_back_and_retry_saves_once(
     fail = True
 
     async def run(agent, messages, *, context, **kwargs):
-        await invoke(
-            assess_attempt, context, {"assessment": assessment(lesson, tasks[-1])}
-        )
         return SimpleNamespace(
-            final_output=LessonTurnOutput(
-                reply="Saved", summary="Memory", completion_summary=RECAP
+            final_output=ReviewOutput(
+                assessment=assessment(lesson, tasks[-1]),
+                reply="Saved",
+                summary="Memory",
+                completion_summary=RECAP,
             ),
             to_input_list=lambda: messages,
         )

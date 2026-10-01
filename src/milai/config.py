@@ -26,6 +26,11 @@ class Settings:
     ] = "low"
     lesson_service_tier: str = "fast"
     lesson_max_output_tokens: int = 32768
+    review_model: str = "gpt-6-luna"
+    review_reasoning_effort: Literal[
+        "none", "low", "medium", "high", "xhigh", "max"
+    ] = "medium"
+    review_max_output_tokens: int = 8192
 
     @classmethod
     def load(cls) -> Self:
@@ -72,6 +77,20 @@ class Settings:
             ) from exc
         if lesson_max_output_tokens < 1:
             raise ValueError("MILAI_LESSON_MAX_OUTPUT_TOKENS must be positive")
+        review_model = os.getenv("OPENAI_REVIEW_MODEL", "gpt-6-luna").strip()
+        review_effort = os.getenv("OPENAI_REVIEW_REASONING_EFFORT", "medium").strip()
+        if not review_model:
+            raise ValueError("OPENAI_REVIEW_MODEL must not be empty")
+        if review_effort not in {"none", "low", "medium", "high", "xhigh", "max"}:
+            raise ValueError("OPENAI_REVIEW_REASONING_EFFORT is unsupported")
+        try:
+            review_budget = int(os.getenv("MILAI_REVIEW_MAX_OUTPUT_TOKENS", "8192"))
+        except ValueError as exc:
+            raise ValueError(
+                "MILAI_REVIEW_MAX_OUTPUT_TOKENS must be an integer"
+            ) from exc
+        if review_budget < 1:
+            raise ValueError("MILAI_REVIEW_MAX_OUTPUT_TOKENS must be positive")
         return cls(
             base_url=values["OPENAI_BASE_URL"],
             model=values["OPENAI_MODEL"],
@@ -81,6 +100,9 @@ class Settings:
             lesson_reasoning_effort=lesson_effort,
             lesson_service_tier=lesson_tier,
             lesson_max_output_tokens=lesson_max_output_tokens,
+            review_model=review_model,
+            review_reasoning_effort=review_effort,
+            review_max_output_tokens=review_budget,
         )
 
 

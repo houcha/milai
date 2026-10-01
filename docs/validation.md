@@ -1,5 +1,63 @@
 # Validation reports
 
+## 2026-10-01 — Compact Luna exercise reviewer
+
+The reviewer default subsequently changed to Medium reasoning at the learner's
+request. The live measurements below retain the Low setting used for that run.
+
+`uv run pytest -q` passed all 186 Python tests. Ruff lint, format validation, and
+ty passed. `npm run test:web` passed all three browser/renderer test files.
+Regression coverage exercises all four current formats, historical choice and
+legacy tasks, configurable review settings, one-request routing, private history,
+helped evidence, completion/restart, cross-session references, malformed output,
+timeouts, provider errors, and transaction rollback with a valid subsequent retry.
+
+The final [live comparison](reviewer-comparison.json) made 24 successful requests:
+both `gpt-6-luna` and `gpt-6.1-sol` passed all 12 predefined German/English labels
+with reviewer prompt hash `c0087bb20b55dedf`, Low reasoning, Standard processing
+(`service_tier="default"`), and an 8,192-token output budget. Each review used one
+model request and no tools. Cases included valid alternatives, incidental spelling
+and vocabulary gaps, target grammar errors, minor slips, missing answers, assisted
+success, legacy component/blank scoring, and a final-set recap. Sol was a comparator,
+not ground truth. Temporary synthetic databases left personal learning data untouched.
+
+| Final run, 12 reviews per model | Luna | Sol |
+| --- | ---: | ---: |
+| Passed labels and storage checks | 12/12 | 12/12 |
+| Input tokens (including cache categories) | 26,818 | 26,818 |
+| Cache-write tokens | 26,782 | 26,782 |
+| Cache-read tokens | 0 | 0 |
+| Output tokens (including reasoning) | 2,841 | 2,355 |
+| Reasoning tokens | 600 | 0 |
+| Median response time | 2.84 s | 5.66 s |
+| Estimated total model cost | $0.004772 | $0.090577 |
+
+Estimates use [OpenAI Standard API pricing](https://developers.openai.com/api/docs/pricing)
+checked on October 1: per million tokens, Luna costs $0.10 input, $0.01 cache read,
+$0.125 cache write, and $0.50 output; Sol costs $2, $0.10, $2.50, and $10 respectively.
+Cache writes and reads are subtracted from input before applying the ordinary
+input rate; reasoning is already included in output. This run used short contexts
+and no cache reads. Luna's estimate was about 94.7% lower for these compact inputs.
+These are token-based estimates, not invoices, a comparison with the old full-tutor
+path, or a guarantee of production savings or latency.
+
+The first live request used the unsupported tier name `standard`; the API rejected
+it before grading. The corrected API value is `default`. Preserve the
+[request-failure report](reviewer-comparison-request-failed.json). Two subsequent
+[calibration runs](reviewer-comparison-calibration-failed.json) exposed overly severe
+local-slip evidence and inconsistent legacy score counting/omission. The general
+prompt now separates accuracy from demonstrated understanding, counts explicitly
+requested components independently, and distinguishes typed contracts from legacy
+blank tasks. There is no runtime retry or model fallback.
+
+Manual review of the final replies, summaries, and recap found concise corrections,
+acceptance of alternative answers, and grammar credit for incidental vocabulary
+gaps. The helped answer retained non-independent evidence; Luna's memory was terser
+and omitted the assistance label without claiming independence. The completion
+recap combined previous evidence with the current local slip. These 12 synthetic
+cases support the chosen default but do not establish general grading reliability
+across languages or repeated samples. Historical results remain untouched.
+
 ## 2026-09-30 — New lesson in the learning path
 
 `npm run test:web` passed. Existing continuation checks still cover the current

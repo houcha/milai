@@ -5,8 +5,8 @@
 Milai has one learner-facing tutor with two conversation scopes in each session:
 main chat and one discussion per lesson. The main chat chooses direction and
 introduces a generated lesson with a card. Lesson discussions answer questions,
-assess submitted answers, and add requested practice. The tutor keeps its chat
-model separate from a private structured lesson planner; both share one
+handle submitted answers, and add requested practice. The tutor keeps its chat
+model separate from a private lesson planner and exercise reviewer; all share one
 authenticated API client and one shutdown path.
 
 ## Lesson generation
@@ -25,7 +25,7 @@ Generation uses `OPENAI_LESSON_MODEL=gpt-6.1-sol`,
 `OPENAI_LESSON_REASONING_EFFORT=low`, and
 `OPENAI_LESSON_SERVICE_TIER=fast` by default. The SDK receives the reasoning
 effort and `ModelSettings.extra_body={"service_tier": "fast"}`. Chat, lesson
-questions, assessments, and extra practice retain the configured chat model,
+questions and extra practice retain the configured chat model,
 low reasoning, and its existing processing setting. No model or effort fallback
 occurs on unsupported configuration, provider errors, or timeouts. A SQLite
 transaction covers lesson content, exercises, card linkage, main reply, and the
@@ -103,7 +103,7 @@ multi-item terminal answers use `/answer <id>` to collect one answer at a time;
 legacy and single-item answers retain `/answer <id> <text>`. Bad mappings are
 rejected without consuming a submission.
 
-Typed `assess_attempt` calls return `item_results` with one numbered correctness
+Typed reviews return `item_results` with one numbered correctness
 flag and feedback per item; aggregate score must be null and legacy feedback fields
 empty. Storage validates complete coverage, checks choice flags against the saved
 key, and rejects correct marks for empty answers. It calculates one point per
@@ -210,7 +210,9 @@ Each practice result also exposes `set_id` (its generating turn), the completing
 first-submission `completion_turn_id`, and nullable `completion_summary`. The
 assessment tool returns the selected set's computed status and, when finished,
 its first-assessment evidence, including the current uncommitted assessment.
-Structured lesson output may provide a recap of at most 600 characters. It is
+The private reviewer receives compact previous assessment evidence only when its
+submission will complete the selected practice set. Its structured output may
+provide a recap of at most 600 characters. It is
 saved on the completing answer turn in the same transaction; non-completing
 turns cannot save a recap, and absent recaps do not invalidate assessments.
 Later discussion summaries cannot overwrite a set's recap. Existing results
@@ -237,6 +239,32 @@ request, preserves the unsent draft and quote, and reveals fresh exercises after
 they save. Failed actions offer a retry tied to the originating lesson.
 
 ## Tutor loop and context
+
+Explicit answer submissions take a separate path after ownership, final-submission,
+and item-mapping checks. One tool-free structured Responses request uses
+`OPENAI_REVIEW_MODEL=gpt-6-luna`, `OPENAI_REVIEW_REASONING_EFFORT=medium`, Standard
+processing (`service_tier="default"`), and
+`MILAI_REVIEW_MAX_OUTPUT_TOKENS=8192`. It receives the selected
+exercise and private contract, learner answer, relevant skill definitions and
+criteria, lesson objective and recap, explanation preferences, skill-specific
+assistance flags, and the previous discussion summary. It does not replay the
+conversation, full document, source records, skill catalog, or other exercises.
+The completing submission additionally receives previous scores, observations,
+and incorrect-part feedback from its own practice set.
+
+The review returns the existing assessment schema, public reply, updated summary,
+and optional completion recap. A shared persistence function retains the same
+score, observation, assistance, review, and mastery validation as the assessment
+tool. Assessment, reply, summary, and recap save in one transaction. Invalid
+output, timeouts, or provider failures leave the submission available for retry;
+there is no automatic retry, model fallback, or subsequent tutor call.
+Only the original user message and public reply enter `turns.items`, never the
+private review input or structured output envelope. The packaged reviewer prompt
+contributes to the combined prompt hash. Existing framework instrumentation
+captures the generation; the application span adds reviewer identity, request
+count, input/cache-read/cache-write/output/reasoning token counts, and commit IDs
+under the same content-privacy settings. All three model adapters share one API
+client, closed once.
 
 One `Tutor.respond` call is one learner turn. The application validates the
 session, lesson, section, and exercise relationship before model execution and

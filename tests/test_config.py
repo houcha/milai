@@ -20,6 +20,9 @@ def test_openai_defaults_ignore_old_provider(monkeypatch, tmp_path):
         "OPENAI_LESSON_REASONING_EFFORT",
         "OPENAI_LESSON_SERVICE_TIER",
         "MILAI_LESSON_MAX_OUTPUT_TOKENS",
+        "OPENAI_REVIEW_MODEL",
+        "OPENAI_REVIEW_REASONING_EFFORT",
+        "MILAI_REVIEW_MAX_OUTPUT_TOKENS",
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("GEMINI_API_KEY", "old-secret")
@@ -29,6 +32,9 @@ def test_openai_defaults_ignore_old_provider(monkeypatch, tmp_path):
     assert settings.lesson_reasoning_effort == "low"
     assert settings.lesson_service_tier == "fast"
     assert settings.lesson_max_output_tokens == 32768
+    assert settings.review_model == "gpt-6-luna"
+    assert settings.review_reasoning_effort == "medium"
+    assert settings.review_max_output_tokens == 8192
     assert settings.base_url == "https://api.openai.com/v1"
     assert settings.api_key == "test-secret"
     assert settings.request_timeout == 300
@@ -47,12 +53,18 @@ def test_lesson_generation_overrides_and_shared_client(monkeypatch, tmp_path):
     monkeypatch.setenv("OPENAI_LESSON_REASONING_EFFORT", "high")
     monkeypatch.setenv("OPENAI_LESSON_SERVICE_TIER", "priority")
     monkeypatch.setenv("MILAI_LESSON_MAX_OUTPUT_TOKENS", "16000")
+    monkeypatch.setenv("OPENAI_REVIEW_MODEL", "custom-review")
+    monkeypatch.setenv("OPENAI_REVIEW_REASONING_EFFORT", "high")
+    monkeypatch.setenv("MILAI_REVIEW_MAX_OUTPUT_TOKENS", "6000")
     settings = Settings.load()
     assert settings.model == "custom-chat"
     assert settings.lesson_model == "custom-generation"
     assert settings.lesson_reasoning_effort == "high"
     assert settings.lesson_service_tier == "priority"
     assert settings.lesson_max_output_tokens == 16000
+    assert settings.review_model == "custom-review"
+    assert settings.review_reasoning_effort == "high"
+    assert settings.review_max_output_tokens == 6000
     chat, generation = providers(settings)
     assert chat.model == "custom-chat"
     assert generation.model == "custom-generation"
@@ -66,6 +78,10 @@ def test_lesson_generation_overrides_and_shared_client(monkeypatch, tmp_path):
         ("OPENAI_LESSON_REASONING_EFFORT", "ultra", "REASONING_EFFORT"),
         ("OPENAI_LESSON_SERVICE_TIER", " ", "SERVICE_TIER"),
         ("MILAI_LESSON_MAX_OUTPUT_TOKENS", "0", "MAX_OUTPUT_TOKENS"),
+        ("OPENAI_REVIEW_MODEL", " ", "OPENAI_REVIEW_MODEL"),
+        ("OPENAI_REVIEW_REASONING_EFFORT", "minimal", "REASONING_EFFORT"),
+        ("MILAI_REVIEW_MAX_OUTPUT_TOKENS", "0", "MAX_OUTPUT_TOKENS"),
+        ("MILAI_REVIEW_MAX_OUTPUT_TOKENS", "broken", "MAX_OUTPUT_TOKENS"),
     ],
 )
 def test_invalid_lesson_generation_config(monkeypatch, tmp_path, name, value, expected):
@@ -99,6 +115,7 @@ def test_tutor_closes_shared_client_once(tmp_path):
         Telemetry(enabled=False),
         model=SimpleNamespace(_client=client),
         generation_model=SimpleNamespace(_client=client),
+        review_model=SimpleNamespace(_client=client),
     )
     asyncio.run(tutor.close())
     assert client.close_calls == 1

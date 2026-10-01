@@ -1,5 +1,25 @@
 # Decision log
 
+## 2026-10-01 — Compact Luna exercise review
+
+- Keep per-exercise submissions and route explicit answers to one tool-free,
+  structured reviewer request. Default to `gpt-6-luna`, Medium reasoning, Standard
+  processing, and 8,192 output tokens. Model, effort, and budget are configurable;
+  provider failures do not trigger retries or a Sol fallback.
+- Send only the selected task, private contract, answer, relevant skill criteria,
+  objective/recap, explanation preferences, help flags, and discussion summary.
+  Add compact previous assessment evidence only on the final submission in its
+  practice set. The same request produces feedback, memory, and an optional recap.
+- Reuse existing persistence validation and mastery calculations, with no schema
+  migration or retrospective regrading. Persist only the public message/reply in
+  model history; private review data and output envelopes remain out of replay.
+- Compare Luna and Sol on 12 predefined synthetic German/English labels before
+  accepting the reviewer default. Check correctness, evidence severity, assistance,
+  completion, and storage validity. Sol is a comparator, not the grading oracle.
+  Preserve raw usage and latency, and review prose separately from contract checks.
+- The learner subsequently requested Medium reasoning for the reviewer. The
+  recorded live comparison used Low; retain those measured settings in its report.
+
 ## 2026-09-30 — Keep grammar practice within learned background
 
 - Test the current lesson's explicitly explained target with supporting grammar
