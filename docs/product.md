@@ -17,8 +17,13 @@ prefix.
 
 Each lesson is a fixed document focused on one precise, reusable language skill.
 It contains an objective, ordered explanation sections, worked examples, a recap,
-and three to six exercises, including at least two without scaffolding. The
-lesson's own conversation stays available beside the document. Learners can ask
+and three to six exercises. All newly generated lesson and extra-practice
+exercises require independent application, without scaffolding. The
+examples demonstrate different forms and contrasts; a repeated passage adds a
+new teaching point. Independent practice uses fresh material beyond solved
+examples, and changing the answer format alone does not make a repeated task
+independent. Visible context and attribution must not give away its answer.
+The lesson's own conversation stays available beside the document. Learners can ask
 about a section or exercise, submit an answer, and return later to the same
 discussion. Each question considers the complete lesson. Highlighting lesson or
 exercise text optionally attaches a removable quote to the next question, without

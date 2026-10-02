@@ -1,5 +1,18 @@
 # Decision log
 
+## 2026-10-02 — Vary lesson examples and independent practice
+
+- Give passages distinct teaching purposes and reuse them only to add a new
+  teaching point. The planner selects varied confidently recalled snippets when
+  authentic material is requested, honoring explicit example preferences.
+- Generate only unscaffolded lesson and extra-practice exercises with
+  `scaffolding: "none"`. Use fresh material and vary the taught forms and
+  contrasts; a different exercise format or ID alone does not establish
+  independence. Remove answer clues instead of generating supported variants.
+- Check visible context, attribution, titles, and playable text for answer clues.
+  The planner checks and revises its draft within the existing generation call;
+  mastery calculations and model request counts stay unchanged.
+
 ## 2026-10-01 — Compact Luna exercise review
 
 - Keep per-exercise submissions and route explicit answers to one tool-free,

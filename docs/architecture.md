@@ -15,8 +15,10 @@ authenticated API client and one shutdown path.
 reusable skills, prerequisite status, validated source excerpts, and a focused
 lesson intent. The planner returns a typed draft with one focus skill and its
 direct prerequisites, objective, ordered Markdown sections with stable IDs,
-worked examples, recap, and three to six exercises. At least two exercises are
-unscaffolded. The application resolves skill references, checks ownership,
+worked examples, recap, and three to six exercises. Generation prompts require
+every new lesson and extra-practice exercise to be unscaffolded; the existing
+structural validator checks a minimum of two per lesson. The application resolves
+skill references, checks ownership,
 prerequisite graph integrity, content bounds, and exercise contracts before saving.
 The document is capped at 32,000 characters; the generation request allows
 32,768 output tokens shared by reasoning and visible output.
@@ -85,8 +87,9 @@ contract with one of four content variants: `complete_sentence`,
 models validate gap counts and content bounds. The application
 compiles a fixed English instruction, title, and readable task; labels such as the
 answer language and target form are bounded parameters. Item text and context are
-plain content, never a place for additional instructions. Lesson generation still
-requires two unscaffolded exercises. A separate stored-contract schema retains
+plain content, never a place for additional instructions. Prompts require
+`scaffolding: "none"` on every new exercise and removal of answer clues from
+visible and playable text. A separate stored-contract schema retains
 choice support for historical exercises; new writes reject choice contracts.
 
 SQLite retains the private contract alongside the compiled task. Public exercises
