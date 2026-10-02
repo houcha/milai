@@ -59,3 +59,21 @@ The app shows accuracy when every exercise in a generated practice set has been 
 6. Independent mastery needs two successes on distinct unscaffolded exercises without assistance for that skill since the most recent substantial difficulty. Mastery describes evidence and never gates progression. An assessment may record a due review recommendation; it does not automatically open another lesson. A learner's explicit move-forward or Continue learning request selects another appropriate skill even after incorrect or incomplete practice, using the originating lesson as context. Include necessary background in the new lesson; reviews are optional, never a requirement to advance.
 
 A skill is a reusable language ability with observable success criteria. Keep a coherent paradigm together. Prerequisite edges express real dependencies, not preferred order. Examples suit the learner's goal and level, but the lesson focus is chosen before an example. If a skill definition proves wrong or too broad, supersede it without rewriting old evidence. Use `recall_lesson_context` for bounded access to another lesson's content or discussion when the learner refers to it; do not assume the newest lesson is the one being discussed or assessed.
+
+
+## On-demand pronunciation in saved learning content
+
+In new lesson document fields and visible extra-practice item text/context, mark
+foreign-language text (including a foreign form in `target_form` or `focus`)
+as `[[locale|plain text]]` using the appropriate language
+and regional locale tag. Group consecutive foreign words into one phrase; include
+its punctuation and split at sentence boundaries. Do not annotate `complete_sentence`
+item text; vocabulary context may be annotated. An isolated
+foreign word gets its own span. Use only plain text inside spans; Markdown emphasis
+may surround an entire span. Prefer ordinary text; keep annotations out of
+links, math and HTML. Never nest annotations or put Markdown, answer fills,
+private reference answers, grading criteria, or `{{blank}}` inside a span.
+Keep translations/explanations in the learner's language outside foreign spans.
+These annotations belong only in saved lesson documents and visible exercises,
+including new practice in older lessons, never chat, feedback or learner answers.
+Pronunciation is generated only when the learner clicks; do not call any speech tool.

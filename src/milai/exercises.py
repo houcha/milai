@@ -8,6 +8,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from milai.exercise_format import BLANK_MARKER
+from milai.pronunciation import parse_spans
 
 
 class ContentModel(BaseModel):
@@ -104,8 +105,20 @@ class ExerciseContract(ContentModel):
 
     @model_validator(mode="after")
     def valid_content(self) -> Self:
+        for key in ("target_form", "focus", "language"):
+            value = getattr(self.content, key, None)
+            if isinstance(value, str):
+                parse_spans(value)
         gapped = self.content.type in {"choose_form", "complete_sentence"}
         for item in self.content.items:
+            parse_spans(item.text)
+            parse_spans(item.context)
+            if isinstance(item, TextItem) and any(
+                "[[" in ref or "]]" in ref for ref in item.references
+            ):
+                raise ValueError(
+                    "Private reference answers cannot contain pronunciation annotations"
+                )
             if item.text.count(BLANK_MARKER) != int(gapped):
                 raise ValueError(
                     "Choice and completion items need exactly one {{blank}}; "
@@ -177,6 +190,16 @@ class GeneratedExerciseContract(ExerciseContract):
     """Formats allowed for new exercises; saved contracts retain choice support."""
 
     content: CompleteSentence | Translate | Transform | ShortResponse
+
+    @model_validator(mode="after")
+    def no_completion_pronunciation(self) -> Self:
+        if isinstance(self.content, CompleteSentence) and any(
+            parse_spans(item.text)[1] for item in self.content.items
+        ):
+            raise ValueError(
+                "Fill-in sentence text cannot contain pronunciation annotations"
+            )
+        return self
 
 
 TITLES = {

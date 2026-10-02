@@ -33,3 +33,21 @@ Choose the type appropriate to the selected skill:
 Items have optional factual `context` (empty string if unnecessary). It disambiguates the task or supplies incidental vocabulary without adding instructions or revealing the target answer. Check that every item is answerable, that the assessed target is absent from the cue, and that reference answers satisfy the displayed requirement. References are private grading data. Accept other valid answers; do not use references as hidden requirements.
 
 At least two exercises have `scaffolding: "none"`. Scaffolding reflects actual support for the target skill, not difficulty, incidental vocabulary glosses, or input widget. Every exercise has exactly one `target` skill whose `skill_key` is the selected focus. Optional `supporting` skills must use actual catalog keys from previously taught skills, including attempted skills without completion or mastery. Copy each `success_criterion` exactly from the skill catalog. Use `source_ids` only when the item truly depends on a supplied validated excerpt. Vary context and form so independent attempts can support separate mastery evidence. Keep production instructions general; learner examples belong in exercise content only when appropriate.
+
+
+## On-demand pronunciation in saved learning content
+
+In new lesson document fields and visible extra-practice item text/context, mark
+foreign-language text (including a foreign form in `target_form` or `focus`)
+as `[[locale|plain text]]` using the appropriate language
+and regional locale tag. Group consecutive foreign words into one phrase; include
+its punctuation and split at sentence boundaries. Do not annotate `complete_sentence`
+item text; vocabulary context may be annotated. An isolated
+foreign word gets its own span. Use only plain text inside spans; Markdown emphasis
+may surround an entire span. Prefer ordinary text; keep annotations out of
+links, math and HTML. Never nest annotations or put Markdown, answer fills,
+private reference answers, grading criteria, or `{{blank}}` inside a span.
+Keep translations/explanations in the learner's language outside foreign spans.
+These annotations belong only in saved lesson documents and visible exercises,
+including new practice in older lessons, never chat, feedback or learner answers.
+Pronunciation is generated only when the learner clicks; do not call any speech tool.

@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import vm from "node:vm";
 import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH, parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH } from "../src/milai/web/exercise-controller.js";
-import { renderExerciseMarkdown } from "../src/milai/web/markdown.bundle.js";
+import { createPronunciationController } from "../src/milai/web/pronunciation-controller.js";
+import { renderExerciseMarkdown, renderPronunciationText } from "../src/milai/web/markdown.bundle.js";
 
 const lesson = {
   id: "older", title: "Subject pronouns", objective: "Choose the right subject pronoun.",
@@ -230,6 +231,7 @@ function application(hash = "#chat", respond = () => new Promise(() => {}), brow
   node("#lesson-reading").append(node("#lesson-document"), node("#lesson-exercises"));
   const context = vm.createContext({
     createLessonState: () => createLessonState(browserStorage), MAX_SELECTED_TEXT, readLessonSelection,
+    createPronunciationController, renderPronunciationText,
     renderExerciseMarkdown, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH,
     parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH,
     renderMarkdown: (value) => value, sessionStorage: browserStorage,
@@ -1389,5 +1391,29 @@ test("older numbered-task drafts and submissions keep their full shared answer",
       assert.equal(card.querySelectorAll("textarea").length, 1);
       assert.equal(card.querySelector("textarea").value, response);
     }
+  }
+});
+
+test("fill-in sentences stay silent before and after submission while vocabulary context remains playable", async () => {
+  for (const submitted of [false, true]) {
+    const payload = typedDetail("complete_sentence");
+    const exercise = payload.lesson.exercises[0];
+    exercise.format.items[0].context = "Vocabulary: haben";
+    exercise.pronunciation = [
+      {id: "before", field: "format.items.0.text", position: 0, text: "Ihr", locale: "de-DE"},
+      {id: "after", field: "format.items.0.text", position: 14, text: "Zeit.", locale: "de-DE"},
+      {id: "vocabulary", field: "format.items.0.context", position: 12, text: "haben", locale: "de-DE"},
+    ];
+    if (submitted) payload.exercise_status.typed = {submitted: true, assessments: [{learner_response: serializeItemAnswers(["habt", "hat"])}]};
+    const app = application("#lesson/older", async () => ({ok: true, json: async () => payload}));
+    app.run(`applySession(${JSON.stringify(sessionPayload())})`);
+    await app.run("renderView()");
+    const card = app.node("#lesson-exercises").children[0];
+    const prompt = app.descendants(card).find(node => node.id === "prompt-typed-1");
+    assert.ok(prompt);
+    assert.ok([prompt, ...app.descendants(prompt)].every(node => !node.innerHTML.includes('class="pronunciation"')));
+    const context = app.descendants(card).find(node => node.id === "context-typed-1");
+    assert.match(context.innerHTML, /data-span-id="vocabulary"/);
+    assert.equal(app.requests.some(request => request.path === "/api/pronunciation"), false);
   }
 });

@@ -167,3 +167,25 @@ without losing saved lessons or conversations. Earlier schemas require an explic
 2. Which languages and learner populations define the first teaching evaluation.
 3. Which discovery provider and non-text formats should follow URL retrieval.
 4. How learners should edit facts or reset part of a session's learning state.
+
+## Pronunciation in lessons and practice
+
+New lesson documents and visible exercise text subtly highlight playable foreign
+phrases, including isolated words. Consecutive foreign words play together;
+sentence boundaries separate clips. Fill-in sentence text has no pronunciation
+controls, including after submission; separate vocabulary context stays playable. Click or focus a phrase and press
+Enter/Space to hear its AI-generated pronunciation. Text can still be selected
+and quoted. The lesson explains that highlighted text has AI-generated audio.
+
+The first click generates the whole clip and shows a loading indicator only on
+that phrase. It may take longer than one second. Repeat clicks use browser memory;
+reloads and server restarts use a persistent session cache. Cached click-to-playback
+under one second is the target, subject to the browser/device. A new selection
+stops the current clip, and leaving a lesson prevents late audio from starting.
+Failures offer an explicit click to retry. Browsers that block initial playback
+offer another play click using the already-fetched audio.
+
+Older lessons stay readable without automatic annotation or paid backfill. New
+practice added to them can include pronunciation. Discussion messages, feedback,
+learner answers and terminal audio playback are outside this version. The terminal
+shows clean lesson and exercise text, without pronunciation annotation syntax.

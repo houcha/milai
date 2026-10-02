@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sqlite3
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
@@ -20,8 +21,14 @@ from milai.exercises import (
     compile_exercise,
     parse_answers,
 )
+from milai.pronunciation import document_fields, extract_fields, parse_spans
 
-SCHEMA_VERSION = "10"
+SCHEMA_VERSION = "11"
+PRONUNCIATION_SCHEMA = """CREATE TABLE IF NOT EXISTS pronunciation_spans (
+    id TEXT PRIMARY KEY, lesson_id TEXT NOT NULL REFERENCES lessons(id),
+    exercise_id TEXT REFERENCES exercises(id), field TEXT NOT NULL,
+    position INTEGER NOT NULL, text TEXT NOT NULL, locale TEXT NOT NULL
+)"""
 MAX_SELECTED_TEXT = 4000
 
 
@@ -244,6 +251,7 @@ class Store:
         }
         if not tables:
             self.db.executescript(SCHEMA)
+            self.db.execute(PRONUNCIATION_SCHEMA)
             self.db.executemany(
                 "INSERT INTO metadata(key, value) VALUES (?, ?)",
                 (("schema_version", SCHEMA_VERSION), ("local_owner", identifier())),
@@ -256,7 +264,7 @@ class Store:
                     "SELECT value FROM metadata WHERE key='schema_version'"
                 ).fetchone()
                 version = row[0] if row else None
-            if version in {"5", "6", "7", "8", "9"}:
+            if version in {"5", "6", "7", "8", "9", "10"}:
                 try:
                     self.db.execute("BEGIN IMMEDIATE")
                     # Another process may have upgraded while this one waited.
@@ -284,6 +292,8 @@ class Store:
                         self.db.execute(
                             "ALTER TABLE turns ADD COLUMN completion_summary TEXT"
                         )
+                    if locked_version in {"5", "6", "7", "8", "9", "10"}:
+                        self.db.execute(PRONUNCIATION_SCHEMA)
                         self.db.execute(
                             "UPDATE metadata SET value=? WHERE key='schema_version'",
                             (SCHEMA_VERSION,),
@@ -299,7 +309,7 @@ class Store:
                 self.db.close()
                 raise SchemaMismatch(version if existed else None)
 
-        # Schemas 5–9 upgrade without losing learning state. Earlier schemas still
+        # Schemas 5–10 upgrade without losing learning state. Earlier schemas still
         # require an explicit archival reset.
 
     @contextmanager
@@ -392,6 +402,10 @@ class Store:
     def delete_session(self, learner: str, session: str) -> None:
         scope = self.learning_scope(learner, session)
         with self.transaction():
+            self.db.execute(
+                "DELETE FROM pronunciation_spans WHERE lesson_id IN (SELECT id FROM lessons WHERE learner=?)",
+                (scope,),
+            )
             # Delete dependent records before their parents, retaining other sessions.
             for table, parent, column in (
                 ("turn_exercises", "exercises", "exercise_id"),
@@ -434,6 +448,8 @@ class Store:
                 self.db.execute(f"DELETE FROM {table} WHERE learner=?", (scope,))
             self.db.execute("DELETE FROM session_scopes WHERE session=?", (session,))
             self.db.execute("DELETE FROM sessions WHERE id=?", (session,))
+
+        shutil.rmtree(self.path.parent / "audio" / session, ignore_errors=True)
 
     def latest_session(self, learner: str) -> str | None:
         row = self.db.execute(
@@ -784,6 +800,7 @@ class Store:
             for item in exercises
         ]
         self._validate_lesson_document(document, exercises)
+        document, pronunciation = extract_fields(document, document_fields(document))
         if self.db.execute(
             "SELECT 1 FROM events WHERE learner=? AND turn_id=? AND kind='lesson' LIMIT 1",
             (ctx.learner, ctx.turn_id),
@@ -841,6 +858,7 @@ class Store:
                 now(),
             ),
         )
+        self._save_pronunciation(lesson_id, None, pronunciation)
         self.db.execute(
             "INSERT INTO current_focus(learner, lesson_id) VALUES (?, ?) "
             "ON CONFLICT(learner) DO UPDATE SET lesson_id=excluded.lesson_id",
@@ -907,6 +925,7 @@ class Store:
                 *(item["title"] + item["markdown"] for item in [*sections, *examples]),
             ]
         )
+        extract_fields(document, document_fields(document))
         if size > 32_000:
             raise ValueError("Lesson document exceeds 32,000 characters")
         if (
@@ -1204,8 +1223,77 @@ class Store:
             "worked_examples": json.loads(row["worked_examples"]),
             "recap": row["recap"],
             "exercises": [self.exercise(scope, item[0]) for item in exercise_ids],
+            "pronunciation": self.pronunciation_spans(lesson_id),
             "discussion_summary": self.discussion_summary(scope, lesson_id),
         }
+
+    def _save_pronunciation(
+        self, lesson_id: str, exercise_id: str | None, spans: list[dict]
+    ) -> None:
+        self.db.executemany(
+            "INSERT INTO pronunciation_spans VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    s["id"],
+                    lesson_id,
+                    exercise_id,
+                    s["field"],
+                    s["position"],
+                    s["text"],
+                    s["locale"],
+                )
+                for s in spans
+            ],
+        )
+
+    def _pronunciation_field_allowed(self, exercise_id: str | None, field: str) -> bool:
+        if exercise_id is None:
+            return True
+        exercise = self.db.execute(
+            "SELECT contract, task FROM exercises WHERE id=?", (exercise_id,)
+        ).fetchone()
+        if exercise is None:
+            return False
+        if exercise["contract"]:
+            gapped = json.loads(exercise["contract"])["content"]["type"] in {
+                "complete_sentence",
+                "choose_form",
+            }
+            return not (
+                gapped
+                and (
+                    field == "task"
+                    or (field.startswith("format.items.") and field.endswith(".text"))
+                )
+            )
+        return not (field == "task" and BLANK_MARKER in exercise["task"])
+
+    def pronunciation_spans(
+        self, lesson_id: str, exercise_id: str | None = None
+    ) -> list[dict]:
+        return [
+            dict(row)
+            for row in self.db.execute(
+                "SELECT * FROM pronunciation_spans WHERE lesson_id=? AND exercise_id IS ? ORDER BY field, position",
+                (lesson_id, exercise_id),
+            )
+            if self._pronunciation_field_allowed(exercise_id, row["field"])
+        ]
+
+    def pronunciation_span(
+        self, learner: str, session: str, lesson_id: str, span_id: str
+    ) -> dict:
+        scope = self.learning_scope(learner, session)
+        self.lesson(scope, lesson_id)
+        row = self.db.execute(
+            "SELECT * FROM pronunciation_spans WHERE lesson_id=? AND id=?",
+            (lesson_id, span_id),
+        ).fetchone()
+        if row is None or not self._pronunciation_field_allowed(
+            row["exercise_id"], row["field"]
+        ):
+            raise InvalidReference("Choose a saved pronunciation span in this lesson")
+        return dict(row)
 
     def lesson_excerpt(
         self, learner: str, lesson_id: str, start: int = 0, length: int = 4000
@@ -1443,6 +1531,38 @@ class Store:
             ):
                 raise ValueError("Supporting skills must have an earlier lesson")
         self._validate_sources(ctx.learner, exercise["source_ids"])
+        if exercise.get("contract"):
+            contract = exercise["contract"]
+            fields = [
+                f"content.items.{i}.{field}"
+                for i, _ in enumerate(contract["content"]["items"])
+                for field in ("text", "context")
+            ]
+            _, instruction_spans = parse_spans(
+                ExerciseContract.model_validate(contract).public()["instruction"]
+            )
+            label_fields = [
+                f"content.{key}"
+                for key in ("target_form", "focus", "language")
+                if isinstance(contract["content"].get(key), str)
+            ]
+            contract, pronunciation = extract_fields(contract, fields + label_fields)
+            pronunciation = [
+                {**span, "field": span["field"].replace("content.", "format.", 1)}
+                for span in pronunciation
+                if span["field"] in fields
+            ] + [{**span, "field": "format.instruction"} for span in instruction_spans]
+            exercise = compile_exercise(
+                {**exercise, "contract": contract}, lesson["language"]
+            )
+        else:
+            exercise, pronunciation = extract_fields(exercise, ["task", "context"])
+            if BLANK_MARKER in exercise["task"] and any(
+                span["field"] == "task" for span in pronunciation
+            ):
+                raise ValueError(
+                    "Fill-in sentence text cannot contain pronunciation annotations"
+                )
         exercise_id = identifier()
         self.db.execute(
             "INSERT INTO exercises (id, learner, lesson_id, title, task, context, scaffolding, created_turn, created, contract) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -1459,6 +1579,7 @@ class Store:
                 _json(exercise["contract"]) if exercise.get("contract") else None,
             ),
         )
+        self._save_pronunciation(lesson["id"], exercise_id, pronunciation)
         self.db.executemany(
             "INSERT INTO exercise_skills VALUES (?, ?, ?, ?)",
             [
@@ -1782,6 +1903,7 @@ class Store:
         return {
             "id": exercise_id,
             "kind": "exercise",
+            "pronunciation": self.pronunciation_spans(row["lesson_id"], exercise_id),
             "lesson_id": row["lesson_id"],
             "title": row["title"],
             "task": row["task"],

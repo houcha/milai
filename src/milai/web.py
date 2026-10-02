@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 from contextlib import suppress
 from importlib.resources import files
 from urllib.parse import parse_qs, urlsplit
@@ -10,6 +11,7 @@ from openai import APITimeoutError, RateLimitError
 
 from milai.config import Settings
 from milai.observability import Telemetry
+from milai.speech import OpenAISpeechService, SpeechCache, SpeechService
 from milai.store import Store
 from milai.tutor import Tutor
 
@@ -36,7 +38,14 @@ def learning_view(snapshot: dict) -> dict:
 class WebApplication:
     """Serve one local learner's sessions, chat, and exercise actions over HTTP."""
 
-    def __init__(self, store: Store, tutor: Tutor, session: str, port: int):
+    def __init__(
+        self,
+        store: Store,
+        tutor: Tutor,
+        session: str,
+        port: int,
+        speech: SpeechService | None = None,
+    ):
         """Bind the app to a store, tutor, selected session, and local port."""
         self.store = store
         self.tutor = tutor
@@ -44,6 +53,9 @@ class WebApplication:
         self.session = session
         self.port = port
         self.lock = asyncio.Lock()
+        self.speech = (
+            SpeechCache(store.path, speech, self._speech_allowed) if speech else None
+        )
         asset_root = files("milai").joinpath("web")
         self.assets = {
             "/": ("text/html; charset=utf-8", asset_root.joinpath("index.html")),
@@ -54,6 +66,10 @@ class WebApplication:
             "/app.js": (
                 "text/javascript; charset=utf-8",
                 asset_root.joinpath("app.js"),
+            ),
+            "/pronunciation-controller.js": (
+                "text/javascript; charset=utf-8",
+                asset_root.joinpath("pronunciation-controller.js"),
             ),
             "/exercise-controller.js": (
                 "text/javascript; charset=utf-8",
@@ -188,6 +204,7 @@ class WebApplication:
                 "/api/chat/stream",
                 "/api/session",
                 "/api/exercise",
+                "/api/pronunciation",
             }:
                 if not self.valid_origin(headers.get("origin")):
                     await self.respond(writer, 403, b"Invalid origin")
@@ -210,6 +227,8 @@ class WebApplication:
                     await self.chat(writer, payload)
                 elif path == "/api/chat/stream":
                     await self.chat_stream(writer, payload)
+                elif path == "/api/pronunciation":
+                    await self.pronunciation(writer, payload)
                 elif path == "/api/exercise":
                     await self.exercise(writer, payload)
                 else:
@@ -227,6 +246,56 @@ class WebApplication:
             writer.close()
             with suppress(ConnectionError, RuntimeError):
                 await writer.wait_closed()
+
+    def _speech_allowed(self, session: str) -> bool:
+        try:
+            with self.store.read_snapshot() as store:
+                store.authorize(self.learner, session)
+            return True
+        except (ValueError, PermissionError):
+            return False
+
+    async def pronunciation(self, writer: asyncio.StreamWriter, payload: dict) -> None:
+        try:
+            if set(payload) != {"session", "lesson_id", "span_id"} or any(
+                not isinstance(value, str) for value in payload.values()
+            ):
+                raise ValueError(
+                    "Choose a session, lesson and saved pronunciation span"
+                )
+            if payload["session"] != self.session:
+                raise ValueError("Choose a lesson in the active session")
+            with self.store.read_snapshot() as store:
+                span = store.pronunciation_span(
+                    self.learner,
+                    payload["session"],
+                    payload["lesson_id"],
+                    payload["span_id"],
+                )
+        except (ValueError, PermissionError):
+            await self.json_response(
+                writer,
+                400,
+                {"error": "Choose a saved pronunciation span in your session."},
+            )
+            return
+        try:
+            if self.speech is None:
+                raise RuntimeError("Speech service is unavailable")
+            audio = await self.speech.clip(
+                payload["session"], span["text"], span["locale"]
+            )
+            await self.respond(writer, 200, audio, content_type="audio/mpeg")
+        except Exception:
+            await self.json_response(
+                writer,
+                502,
+                {"error": "Pronunciation unavailable. Click again to retry."},
+            )
+
+    async def close(self) -> None:
+        if self.speech:
+            await self.speech.close()
 
     def valid_host(self, host: str) -> bool:
         """Accept only this server's loopback host and port."""
@@ -306,7 +375,8 @@ class WebApplication:
             b"X-Frame-Options: DENY\r\n"
             b"Referrer-Policy: no-referrer\r\n"
             b"Content-Security-Policy: default-src 'self'; style-src 'self'; "
-            b"script-src 'self'; connect-src 'self'; img-src 'self' data:\r\n"
+            b"script-src 'self'; connect-src 'self'; img-src 'self' data:; "
+            b"media-src 'self' blob:\r\n"
             b"Connection: close\r\n\r\n"
         )
         try:
@@ -482,6 +552,7 @@ class WebApplication:
             431: "Request Header Fields Too Large",
             500: "Internal Server Error",
             504: "Gateway Timeout",
+            502: "Bad Gateway",
         }
         headers = [
             f"HTTP/1.1 {status} {reasons[status]}",
@@ -492,7 +563,8 @@ class WebApplication:
             "X-Frame-Options: DENY",
             "Referrer-Policy: no-referrer",
             "Content-Security-Policy: default-src 'self'; style-src 'self'; "
-            "script-src 'self'; connect-src 'self'; img-src 'self' data:",
+            "script-src 'self'; connect-src 'self'; img-src 'self' data:; "
+            "media-src 'self' blob:",
             "Connection: close",
             "",
             "",
@@ -504,13 +576,20 @@ class WebApplication:
 async def serve(settings: Settings, session: str | None, port: int) -> None:
     if not 1024 <= port <= 65535:
         raise ValueError("Web port must be between 1024 and 65535")
+    speech_logger = logging.getLogger("milai.speech")
+    if not speech_logger.hasHandlers():
+        speech_logger.addHandler(logging.StreamHandler())
+    speech_logger.setLevel(logging.INFO)
     store = Store(settings.database)
     telemetry = Telemetry()
     tutor = Tutor(settings, store, telemetry)
+    application = None
     try:
         selected = session or store.latest_session(store.owner)
         session = store.session(store.owner, selected)
-        application = WebApplication(store, tutor, session, port)
+        application = WebApplication(
+            store, tutor, session, port, OpenAISpeechService(settings)
+        )
         server = await asyncio.start_server(
             application.handle, HOST, port, limit=MAX_HEADER_BYTES
         )
@@ -519,5 +598,7 @@ async def serve(settings: Settings, session: str | None, port: int) -> None:
         async with server:
             await server.serve_forever()
     finally:
+        if application:
+            await application.close()
         await tutor.close()
         store.close()

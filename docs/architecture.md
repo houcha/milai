@@ -291,12 +291,12 @@ their quote.
 
 ## Storage and navigation
 
-SQLite schema 10 stores nullable `turns.completion_summary`, alongside `exercises.contract` and
+SQLite schema 11 stores nullable `turns.completion_summary`, alongside `exercises.contract` and
 `attempts.item_results` JSON. Null contracts identify preserved legacy exercises.
 It also stores optional part-level scores and per-blank assessment results
 on attempts and selected text alongside each discussion turn, in addition
 to lesson documents, scoped references, discussion summaries, current teaching
-focus, and presentation links. Schemas 5–9 upgrade transactionally on open,
+focus, and presentation links. Schemas 5–10 upgrade transactionally on open,
 adding the typed fields after applying earlier steps: add nullable `attempts.blank_results`, add `attempts.score` for schemas 5/6, and add
 `turns.selected_text` for schema 5, followed by the nullable completion recap.
 Existing data is preserved; historical attempts
@@ -352,3 +352,49 @@ Content is masked by default unless `MILAI_TRACE_CONTENT=true`. Responses use
 `store=false` with encrypted reasoning items for tool continuation. Model
 requests and tutor turns keep their existing 300-second timeout and no-retry
 behavior. A failed turn rolls back learning changes and transcript together.
+
+## On-demand pronunciation
+
+Schema 11 adds `pronunciation_spans` without rewriting historical lessons. New
+lesson documents and extra practice accept strict `[[locale|plain text]]`
+annotations. The application removes syntax before storage and grading, preserving
+Unicode code-point positions, exact punctuation, locale, stable span ID, owning
+lesson/exercise, and content field. Exercise reference answers remain private and
+unchanged; blanks are never spoken. Public lesson/exercise payloads include span
+metadata. The planner and extra-practice prompts group adjacent foreign words and
+split at sentence boundaries. Gapped sentence text is excluded from generation,
+public metadata, playback lookup and browser controls; separate vocabulary context
+remains eligible, including for completion exercises. No language detection or
+paid backfill runs for older content. The terminal consumes the same clean text.
+
+`POST /api/pronunciation` accepts only session, lesson ID and saved span ID. Shared
+host/origin checks precede ownership resolution through a short committed read
+snapshot. The snapshot closes before speech synthesis, outside tutor locks and
+SQLite transactions. Clients cannot submit arbitrary text or speech options.
+
+The injectable asynchronous speech service uses existing OpenAI credentials/base
+URL, `gpt-4o-mini-tts`, `marin`, MP3, speed 1.0 and concise exact-text dialect
+instructions. Its separate client has no retries and closes on application shutdown.
+A 30-second deadline includes semaphore waiting; at most four requests synthesize
+at once. Identical session/cache-key requests share one shielded in-flight task.
+The SHA-256 key includes text, locale, model, voice, instruction version and actual
+instructions, speed and format. Successful nonempty complete responses are written
+with a private temporary file and atomic replacement under
+`<database-directory>/audio/<session-id>/`. Errors and incomplete transport reads
+produce no cache file. Session deletion removes metadata and the audio directory;
+completion checks session existence again before writing. Logging records hits,
+generation milliseconds and failure class, without phrase content or token costs.
+
+The renderer inserts app-owned focusable inline controls into persisted spans,
+retaining selectable text and surrounding Markdown emphasis. Visible exercise
+items are escaped plain text. An explicit click, Enter or Space fetches a complete
+clip, with a per-span loading/error state. Browser memory keeps fetched object URLs;
+reload and server restart reuse disk audio. A new selection pauses previous audio
+and navigation invalidates late responses. Playback restrictions retain the clip
+for another click. Speech failures require an explicit retry; no hover, render,
+navigation, lesson generation, discussion or answer flow requests speech.
+
+Speech API parameter behavior follows the [official OpenAI text-to-speech
+guide](https://developers.openai.com/api/docs/guides/text-to-speech).
+See [pronunciation validation](pronunciation-validation.md) for regression coverage,
+live timings, screenshots and physical-device measurement limits.

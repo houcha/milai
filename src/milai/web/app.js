@@ -1,5 +1,29 @@
-import { renderMarkdown, renderExerciseMarkdown } from "/markdown.bundle.js";
+import { createPronunciationController } from "/pronunciation-controller.js";
+import { renderMarkdown, renderExerciseMarkdown, renderPronunciationText } from "/markdown.bundle.js";
 import { createLessonState, MAX_SELECTED_TEXT, readLessonSelection, blankAnswers, parseBlankAnswers, serializeBlankAnswers, MAX_BLANK_ANSWER_LENGTH, parseItemAnswers, serializeItemAnswers, MAX_EXERCISE_ANSWER_LENGTH } from "/exercise-controller.js";
+
+const pronunciation = createPronunciationController({fetchClip: async (payload) => {
+  const response = await fetch("/api/pronunciation", {
+    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error("Pronunciation unavailable");
+  return response.blob();
+}});
+const spansFor = (owner, field) => (owner.pronunciation || []).filter(span => span.field === field);
+function pronunciationText(element, source, owner, field) {
+  const spans = spansFor(owner, field);
+  if (!spans.length) { element.textContent = source; return element; }
+  element.innerHTML = renderPronunciationText(source, spans);
+  pronunciation.bind(element, {session: activeSession, lesson_id: lessonData.id});
+  return element;
+}
+function lessonMarkdown(source, field) {
+  const block = document.createElement("div");
+  block.className = "markdown";
+  block.innerHTML = renderMarkdown(source, spansFor(lessonData, field));
+  pronunciation.bind(block, {session: activeSession, lesson_id: lessonData.id});
+  return block;
+}
 
 const savedWork = createLessonState();
 const elements = {
@@ -518,9 +542,15 @@ function renderLessonDocument() {
   title.textContent = lessonData.title;
   const objective = document.createElement("p");
   objective.className = "lesson-objective";
-  objective.textContent = text(lessonData.objective);
+  pronunciationText(objective, text(lessonData.objective), lessonData, "objective");
   elements.lessonDocument.append(eyebrow, title, objective);
-  for (const section of lessonData.sections || []) {
+  if ((lessonData.pronunciation || []).length || (lessonData.exercises || []).some(item => (item.pronunciation || []).length)) {
+    const note = document.createElement("p");
+    note.className = "pronunciation-note";
+    note.textContent = "Click highlighted text to hear AI-generated pronunciation.";
+    elements.lessonDocument.append(note);
+  }
+  for (const [index, section] of (lessonData.sections || []).entries()) {
     const wrapper = document.createElement("section");
     wrapper.className = "lesson-section";
     wrapper.id = `lesson-section-${section.id}`;
@@ -528,9 +558,9 @@ function renderLessonDocument() {
     const heading = document.createElement("div");
     heading.className = "lesson-section-heading";
     const name = document.createElement("h2");
-    name.textContent = section.title;
+    pronunciationText(name, section.title, lessonData, `sections.${index}.title`);
     heading.append(name);
-    wrapper.append(heading, markdownBlock(section.markdown));
+    wrapper.append(heading, lessonMarkdown(section.markdown, `sections.${index}.markdown`));
     elements.lessonDocument.append(wrapper);
   }
   const examples = lessonData.worked_examples || [];
@@ -540,7 +570,7 @@ function renderLessonDocument() {
     const heading = document.createElement("h2");
     heading.textContent = "Worked examples";
     wrapper.append(heading);
-    for (const example of Array.isArray(examples) ? examples : [examples]) {
+    for (const [index, example] of (Array.isArray(examples) ? examples : [examples]).entries()) {
       if (typeof example === "string") wrapper.append(markdownBlock(example));
       else {
         const card = document.createElement("div");
@@ -548,10 +578,10 @@ function renderLessonDocument() {
         if (example.id) card.dataset.sectionId = example.id;
         if (example.title) {
           const name = document.createElement("h3");
-          name.textContent = example.title;
+          pronunciationText(name, example.title, lessonData, `worked_examples.${index}.title`);
           card.append(name);
         }
-        card.append(markdownBlock(example.markdown || example.explanation || ""));
+        card.append(lessonMarkdown(example.markdown || example.explanation || "", `worked_examples.${index}.markdown`));
         wrapper.append(card);
       }
     }
@@ -562,7 +592,7 @@ function renderLessonDocument() {
     wrapper.className = "lesson-section lesson-recap";
     const heading = document.createElement("h2");
     heading.textContent = "Recap";
-    wrapper.append(heading, markdownBlock(lessonData.recap));
+    wrapper.append(heading, lessonMarkdown(lessonData.recap, "recap"));
     elements.lessonDocument.append(wrapper);
   }
 }
@@ -619,9 +649,12 @@ function renderLessonExercises(onlyExerciseId = null) {
       continue;
     }
     const context = markdownBlock(item.context || "", "markdown exercise-context");
+    context.innerHTML = renderMarkdown(item.context || "", spansFor(item, "context"));
+    pronunciation.bind(context, {session: activeSession, lesson_id: lessonData.id});
     const task = document.createElement("div");
     task.className = "markdown exercise-task";
-    task.innerHTML = renderExerciseMarkdown((item.task || item.prompt || "").replaceAll("\\n", "\n"));
+    task.innerHTML = renderExerciseMarkdown((item.task || item.prompt || "").replaceAll("\\n", "\n"), spansFor(item, "task"));
+    pronunciation.bind(task, {session: activeSession, lesson_id: lessonData.id});
     const blanks = [...task.querySelectorAll(".exercise-blank")];
     const numberedItems = [...task.querySelectorAll(".exercise-item")];
     const previousAnswer = history[0]?.learner_response || "";
@@ -789,7 +822,7 @@ function renderTypedExercise(card, exercise, {disabled, submitted, history, requ
     node.className = className;
     return node;
   };
-  const instruction = makeText("p", format.instruction, "exercise-instruction");
+  const instruction = pronunciationText(makeText("p", "", "exercise-instruction"), format.instruction, exercise, "format.instruction");
   instruction.dataset.selectionSource = "";
   card.append(instruction);
   const form = document.createElement("form");
@@ -822,11 +855,13 @@ function renderTypedExercise(card, exercise, {disabled, submitted, history, requ
     const completion = format.type === "complete_sentence";
     const choice = format.type === "choose_form";
     const prompt = makeText("p", completion ? "" : item.text.replace("{{blank}}", "____"), "typed-prompt");
+    if (!completion && !choice) pronunciationText(prompt, item.text, exercise, `format.items.${index}.text`);
     prompt.id = promptId;
     entry.append(prompt);
     const contextId = `context-${exercise.id}-${index + 1}`;
     if (item.context) {
       const context = makeText("p", item.context, "exercise-context");
+      pronunciationText(context, item.context, exercise, `format.items.${index}.context`);
       context.id = contextId;
       entry.append(context);
     }
@@ -1072,7 +1107,7 @@ async function renderView() {
     return;
   }
   const changed = !sameRoute(route, currentRoute);
-  if (changed) backSwipe = null;
+  if (changed) { backSwipe = null; pronunciation.stop(); }
   if (changed && currentRoute.view === "lesson") saveReadingPosition();
   if (changed && currentRoute.view === "chat") chatScroll.set(activeSession, elements.messages.scrollTop);
   currentRoute = route;
@@ -1113,7 +1148,7 @@ function setBusy(value) {
   elements.message.disabled = value;
   elements.lessonMessage.disabled = value;
   document.querySelector("#lesson-send").disabled = value;
-  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .exercise-blank input, .lesson-section button, .lesson-toolbar button, .completion-actions button, .action-retry"]) {
+  for (const selector of ["#new-session, .session-list button, .lesson-link, .suggestions button, .lesson-card button, .exercise-answer-form button, .exercise-blank input, .lesson-section button:not(.pronunciation), .lesson-toolbar button, .completion-actions button, .action-retry"]) {
     document.querySelectorAll(selector).forEach((button) => { button.disabled = value; });
   }
   syncContinuationControls();
@@ -1391,6 +1426,7 @@ function renderSessions(sessions) {
 function applySession(payload) {
   if (activeSession) savedWork.setMainDraft(activeSession, elements.message.value);
   const changed = activeSession !== payload.session;
+  pronunciation.stop();
   activeSession = payload.session;
   if (changed) {
     lessonData = null;

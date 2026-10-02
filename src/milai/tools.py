@@ -24,6 +24,7 @@ from openai.types.shared import Reasoning
 from pydantic import BaseModel, ConfigDict, Field
 
 from milai.exercises import GeneratedExerciseContract
+from milai.pronunciation import document_fields, extract_fields
 from milai.retrieval import retrieve
 from milai.store import InvalidReference, Store
 
@@ -317,6 +318,7 @@ def _validated_lesson_draft(
         raise RuntimeError("A lesson skill cannot be its own prerequisite")
 
     document = plan.document.model_dump()
+    extract_fields(document, document_fields(document))
     section_ids = [item.id for item in plan.document.sections]
     example_ids = [item.id for item in plan.document.worked_examples]
     if len(set(section_ids + example_ids)) != len(section_ids + example_ids):
