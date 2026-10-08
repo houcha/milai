@@ -50,6 +50,10 @@ not remove the checkmark. The most recent scored, finished set appears below the
 title as a slim green accuracy bar with a right-aligned percentage. Hover text
 and accessible lesson labels identify status and practice accuracy. Navigation
 highlighting remains separate from these progress indicators.
+Long learning paths scroll within the rail using a slim sage-green scrollbar
+along its far-left edge, with the lesson content inset for comfortable spacing.
+The scrollbar blends into the background while keeping scrolling discoverable.
+Main chat and lesson discussion use the same scrollbar styling on their right edge.
 
 Prerequisite edges form a directed acyclic graph. Prerequisites guide background
 explanations and never block progression. Mastery means two independent

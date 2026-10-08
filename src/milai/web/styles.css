@@ -104,8 +104,21 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
 
 .app-shell.wide-view { grid-template-columns:minmax(0,1fr); }
 .app-shell.wide-view .studio { grid-template-rows:minmax(0,1fr) auto; }
-.path-rail { min-height:0; display:flex; flex-direction:column; padding:30px 22px 22px; border-right:1px solid var(--line); background:#eeefe7; }
-#path-panel { overflow-y:auto; min-height:0; flex:1; }
+.path-rail { --path-inset:22px; min-height:0; display:flex; flex-direction:column; padding:30px var(--path-inset) 22px; border-right:1px solid var(--line); background:#eeefe7; }
+/* Extend the scroll area to the rail's left edge, keeping its content inset. */
+#path-panel { overflow-y:auto; min-height:0; flex:1; direction:rtl; margin-left:calc(-1 * var(--path-inset)); padding-left:var(--path-inset); }
+#path-panel > * { direction:ltr; }
+/* Path and chat scrollbars share the same treatment at their respective edges. */
+:is(#path-panel,.messages,.lesson-messages) { scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#a6b598 transparent; }
+/* Use rounded scrollbar parts where available; Firefox keeps its native thin bar. */
+@supports selector(::-webkit-scrollbar) {
+  :is(#path-panel,.messages,.lesson-messages) { scrollbar-width:auto; scrollbar-color:auto; }
+  :is(#path-panel,.messages,.lesson-messages)::-webkit-scrollbar { width:6px; }
+  :is(#path-panel,.messages,.lesson-messages)::-webkit-scrollbar-track { background:transparent; }
+  :is(#path-panel,.messages,.lesson-messages)::-webkit-scrollbar-thumb { border-radius:999px; background:#a6b598; }
+  :is(#path-panel,.messages,.lesson-messages)::-webkit-scrollbar-thumb:hover { background:#7c8e69; }
+  :is(#path-panel,.messages,.lesson-messages)::-webkit-scrollbar-button { display:none; }
+}
 #path-heading { color:var(--muted); font-size:12px; font-weight:600; margin:8px 0 20px; }
 .path-empty { color:var(--muted); line-height:1.7; font-size:13px; }
 .lesson-chain { list-style:none; padding:0 0 0 10px; margin:0; }
@@ -152,7 +165,7 @@ dialog input { width:100%; border:1px solid #cdd2c2; border-radius:6px; padding:
   .app-shell { display:flex; flex-direction:column; width:100%; min-width:0; }
   .studio { display:contents; }
   .topbar { order:0; padding:16px 20px; min-height:60px; min-width:0; }
-  .path-rail { order:1; padding:0 20px 12px; max-height:35dvh; min-width:0; border-right:0; border-bottom:1px solid var(--line); }
+  .path-rail { --path-inset:20px; order:1; padding:0 var(--path-inset) 12px; max-height:35dvh; min-width:0; border-right:0; border-bottom:1px solid var(--line); }
   #path-panel,.lesson-chain { min-width:0; }
   .path-rail .brand { display:none; }
   #path-heading { margin:12px 0; }
